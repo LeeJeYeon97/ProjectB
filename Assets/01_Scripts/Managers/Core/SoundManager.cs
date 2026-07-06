@@ -23,25 +23,25 @@ public class SoundManager
 
     public void Init()
     {
-        //// 1. AudioSource 기본 세팅
-        //GameObject root = GameObject.Find("@Sound");
-        //if (root == null)
-        //{
-        //    root = new GameObject { name = "@Sound" };
-        //    Object.DontDestroyOnLoad(root);
-        //
-        //    string[] soundNames = System.Enum.GetNames(typeof(Sound));
-        //    for (int i = 0; i < soundNames.Length - 1; i++)
-        //    {
-        //        GameObject go = new GameObject { name = soundNames[i] };
-        //        _audioSources[i] = go.AddComponent<AudioSource>();
-        //        go.transform.parent = root.transform;
-        //    }
-        //    _audioSources[(int)Sound.Bgm].loop = true;
-        //}
-        //
-        //// 2. SO 데이터 로드 및 딕셔너리 캐싱 (핵심!)
-        //// (Managers.Data 쪽에 SO를 물려두셨다면 그걸 가져오셔도 됩니다.)
+        // 1. AudioSource 기본 세팅
+        GameObject root = GameObject.Find("@Sound");
+        if (root == null)
+        {
+            root = new GameObject { name = "@Sound" };
+            Object.DontDestroyOnLoad(root);
+
+            string[] soundNames = System.Enum.GetNames(typeof(Sound));
+            for (int i = 0; i < soundNames.Length - 1; i++)
+            {
+                GameObject go = new GameObject { name = soundNames[i] };
+                _audioSources[i] = go.AddComponent<AudioSource>();
+                go.transform.parent = root.transform;
+            }
+            _audioSources[(int)Sound.Bgm].loop = true;
+        }
+
+        // 2. SO 데이터 로드 및 딕셔너리 캐싱 (핵심!)
+        // (Managers.Data 쪽에 SO를 물려두셨다면 그걸 가져오셔도 됩니다.)
         //SoundDataSO data = Managers.Data.SoundData;
         //if (data != null)
         //{

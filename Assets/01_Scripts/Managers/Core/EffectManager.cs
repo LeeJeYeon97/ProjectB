@@ -5,7 +5,7 @@ using static Define;
 public class EffectManager
 {
     // Dictionary로 빠른 검색을 지원합니다.
-    private Dictionary<EffectType, GameObject> _effectDict = new Dictionary<EffectType, GameObject>();
+    //private Dictionary<EffectType, GameObject> _effectDict = new Dictionary<EffectType, GameObject>();
 
     [Header("스로틀링 설정")]
     [Tooltip("1프레임당 허용할 최대 폭발 횟수 (화면 전체 기준)")]
@@ -29,22 +29,22 @@ public class EffectManager
     }
 
     // 이펙트 재생 핵심 함수
-    public GameObject Play(EffectType type, Vector3 position)
-    {
-        if (_effectDict.TryGetValue(type, out GameObject prefab))
-        {
-            // Managers.Resource의 풀링 시스템을 이용해 이펙트를 가져옵니다!
-            // (이름을 기반으로 프리팹을 Instantiate 하는 기존 기능 활용)
-            GameObject effectGo = Managers.Resource.Instantiate(prefab);
-            effectGo.transform.position = position;
-            return effectGo;
-        }
-        else
-        {
-            Debug.LogWarning($"이펙트를 찾을 수 없습니다: {type}");
-            return null;
-        }
-    }
+    //public GameObject Play(EffectType type, Vector3 position)
+    //{
+    //    if (_effectDict.TryGetValue(type, out GameObject prefab))
+    //    {
+    //        // Managers.Resource의 풀링 시스템을 이용해 이펙트를 가져옵니다!
+    //        // (이름을 기반으로 프리팹을 Instantiate 하는 기존 기능 활용)
+    //        GameObject effectGo = Managers.Resource.Instantiate(prefab);
+    //        effectGo.transform.position = position;
+    //        return effectGo;
+    //    }
+    //    else
+    //    {
+    //        Debug.LogWarning($"이펙트를 찾을 수 없습니다: {type}");
+    //        return null;
+    //    }
+    //}
 
     // 핵심: 모든 업데이트가 끝나는 프레임의 최하단(LateUpdate)에서 카운터를 0으로 초기화합니다.
     public void OnLateUpdate()

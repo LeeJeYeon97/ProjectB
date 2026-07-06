@@ -64,21 +64,21 @@ public class SettingManager
     }
     public void SetLanguage(string langCode)
     {
-        // langCode 예: "ko", "en", "ja"
-        Language = langCode;
-        PlayerPrefs.SetString(Key_Lang, langCode);
+        //// langCode 예: "ko", "en", "ja"
+        //Language = langCode;
+        //PlayerPrefs.SetString(Key_Lang, langCode);
 
-        // Localization 패키지 실제 적용
-        Locale targetLocale = LocalizationSettings.AvailableLocales.GetLocale(langCode);
-        if (targetLocale != null)
-        {
-            LocalizationSettings.SelectedLocale = targetLocale;
-            Debug.Log($"[Setting] 언어 변경 완료: {langCode}");
-        }
-        else
-        {
-            Debug.LogWarning($"[Setting] 해당 언어 코드를 찾을 수 없습니다: {langCode}");
-        }
+        //// Localization 패키지 실제 적용
+        //Locale targetLocale = LocalizationSettings.AvailableLocales.GetLocale(langCode);
+        //if (targetLocale != null)
+        //{
+        //    LocalizationSettings.SelectedLocale = targetLocale;
+        //    Debug.Log($"[Setting] 언어 변경 완료: {langCode}");
+        //}
+        //else
+        //{
+        //    Debug.LogWarning($"[Setting] 해당 언어 코드를 찾을 수 없습니다: {langCode}");
+        //}
     }
 
     private void ApplyAllSettings()

@@ -1,14 +1,11 @@
-//using GooglePlayGames;
-//using System;
-//using System.Threading.Tasks;
-//using Unity.Services.Core;
-//using Unity.Services.Core.Environments;
-//using UnityEngine;
-//using UnityEngine.Localization.Settings;
-//using UnityEngine.UnityConsent;
+using System;
+using System.Threading.Tasks;
+using UnityEngine;
+using UnityEngine.Localization.Settings;
+using UnityEngine.UnityConsent;
 
-//public class InitManager
-//{
+public class InitManager
+{
 //    public bool IsInitialized { get; private set; } = false;
 
 //    public event Action<float, string> OnInitProgress;
@@ -52,7 +49,7 @@
 
 //                Debug.Log("Unity Services Initializing...");
 //                await UnityServices.InitializeAsync();
-                
+
 //                // 3. 리더보드 및 기타 서비스가 완전히 준비될 때까지 안전하게 대기
 //                while (UnityServices.State != ServicesInitializationState.Initialized)
 //                {
@@ -102,4 +99,4 @@
 //            Debug.LogException(e);
 //        }
 //    }
-//}
+}

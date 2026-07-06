@@ -1,12 +1,10 @@
-//using System;
-//using System.Threading.Tasks;
-//using Unity.Services.Core;
-//using Unity.Services.RemoteConfig;
-//using UnityEngine;
-//using UnityEngine.Localization.Settings;
+using System;
+using System.Threading.Tasks;
+using UnityEngine;
+using UnityEngine.Localization.Settings;
 
-//public class UpdateManager 
-//{
+public class UpdateManager
+{
 //    // 현재 앱 버전을 저장할 변수
 //    public string currentAppVersion = "1.0.0";
 
@@ -98,4 +96,4 @@
 //        // 스토어로 화면이 전환되었으므로, 구버전 클라이언트 세션이 유지되지 않도록 앱을 완전히 종료합니다.
 //        Application.Quit();
 //    }
-//}
+}

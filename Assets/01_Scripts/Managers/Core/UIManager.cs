@@ -8,7 +8,6 @@ public class UIManager
 
     Stack<UI_Popup> _popupStack = new Stack<UI_Popup>();
     UI_Scene _sceneUI = null;
-    public UI_Transition Transition;
 
     public GameObject Root
     {
@@ -23,10 +22,6 @@ public class UIManager
 
     public void Init()
     {
-        // 씬 전환 애니메이션용 프리팹
-        GameObject go  = Managers.Resource.Instantiate("UI/SubItem/UI_Transition");
-        Object.DontDestroyOnLoad(go);
-        Transition = go.GetComponent<UI_Transition>();
     }
     public void Clear()
     {

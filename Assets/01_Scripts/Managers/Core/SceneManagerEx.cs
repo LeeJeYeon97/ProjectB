@@ -34,43 +34,41 @@ public class SceneManagerEx
     }
     public void LoadScene(Define.Scene type)
     {
-        
-        LoadSceneWithFade(GetSceneName(type));
     }
-    public void LoadSceneWithFade(string sceneName)
-    {
-        UI_Transition transition = Managers.UI.Transition;
+    //public void LoadSceneWithFade(string sceneName)
+    //{
+    //    UI_Transition transition = Managers.UI.Transition;
 
-        // 1. 화면 가리기 시작!
-        transition.FadeOut(() =>
-        {
-            //  [추가된 핵심 코드: 황금 타이밍의 KillAll] 
-            // 이 중괄호 안쪽은 FadeOut 트윈은 끝났고, FadeIn 트윈은 큐에 들어가지도 않은 상태입니다.
-            // Transition을 예외 처리할 필요조차 없이, 파괴될 씬의 모든 찌꺼기 트윈만 완벽하게 청소합니다!
-            DG.Tweening.DOTween.KillAll();
+    //    // 1. 화면 가리기 시작!
+    //    transition.FadeOut(() =>
+    //    {
+    //        //  [추가된 핵심 코드: 황금 타이밍의 KillAll] 
+    //        // 이 중괄호 안쪽은 FadeOut 트윈은 끝났고, FadeIn 트윈은 큐에 들어가지도 않은 상태입니다.
+    //        // Transition을 예외 처리할 필요조차 없이, 파괴될 씬의 모든 찌꺼기 트윈만 완벽하게 청소합니다!
+    //        DG.Tweening.DOTween.KillAll();
 
-            // 2. 동기(LoadScene) 대신 비동기(LoadSceneAsync)로 씬을 불러옵니다!
-            // 이렇게 하면 로딩 중에도 유니티가 멈추지 않고 애니메이션을 부드럽게 유지합니다.
-            AsyncOperation asyncOper = SceneManager.LoadSceneAsync(sceneName);
+    //        // 2. 동기(LoadScene) 대신 비동기(LoadSceneAsync)로 씬을 불러옵니다!
+    //        // 이렇게 하면 로딩 중에도 유니티가 멈추지 않고 애니메이션을 부드럽게 유지합니다.
+    //        AsyncOperation asyncOper = SceneManager.LoadSceneAsync(sceneName);
 
-            Managers.Instance.Clear();
-            // 3. 씬 로드가 100% "완전히" 끝났을 때(completed) FadeIn을 부르도록 예약!
-            asyncOper.completed += (AsyncOperation obj) =>
-            {
-                Debug.Log("씬로드 완료 페이드인 부름");
+    //        Managers.Instance.Clear();
+    //        // 3. 씬 로드가 100% "완전히" 끝났을 때(completed) FadeIn을 부르도록 예약!
+    //        asyncOper.completed += (AsyncOperation obj) =>
+    //        {
+    //            Debug.Log("씬로드 완료 페이드인 부름");
 
-                if (sceneName == "GameScene")
-                {
+    //            if (sceneName == "GameScene")
+    //            {
 
-                    //transition.FadeIn( () => Managers.UI.ShowPopupUI<UI_StartCountDownPopup>());
-                }
-                else
-                {
-                    transition.FadeIn();
-                }
-            };
-        });
-    }
+    //                //transition.FadeIn( () => Managers.UI.ShowPopupUI<UI_StartCountDownPopup>());
+    //            }
+    //            else
+    //            {
+    //                transition.FadeIn();
+    //            }
+    //        };
+    //    });
+    //}
     string GetSceneName(Define.Scene type)
     {
         string name = System.Enum.GetName(typeof(Define.Scene), type);
