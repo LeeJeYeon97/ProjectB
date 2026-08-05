@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: b74da7c9b31194c4cb4d0e6f65398f92
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 290592
+  packageName: GUI - Neon2
+  packageVersion: 1.0.2
+  assetPath: Assets/Layer Lab/GUI-Neon2/Prefabs/Prefabs_Component_Frames/BasicFrame_Round_60_Text.prefab
+  uploadId: 914930

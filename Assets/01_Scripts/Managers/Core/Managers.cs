@@ -20,13 +20,12 @@ public class Managers : MonoBehaviour
         }
     }
     // ========================================================== //
-    // 각 관리자들 (필요한 매니저들을 여기에 추가)
+    // Core
     private CameraManager _camera;
     private DataManager _data;
     private EffectManager _effect;
     private EventManager _event;
     private InitManager _init;
-    private InputManager _input;
     private LoginManager _login;
     private PoolingManager _pool;       
     private ResourceManager _resource;
@@ -38,14 +37,18 @@ public class Managers : MonoBehaviour
     private WebServerManager _webServer;
     private CoroutineHelper _coroutine;
 
+    // Content
+    private GameManager _game;
+    private UnlockManager _unlock;
+    private CustomerManager _customer;
+
     // ========================================================== //
-    // 프로퍼티를 통해 외부에서 접근하도록 설정
+    // Core
     public static CameraManager Camera => Instance._camera;
     public static DataManager Data => Instance._data;
     public static EffectManager Effect => Instance._effect;
     public static EventManager Event => Instance._event;
     public static InitManager Initialize => Instance._init;
-    public static InputManager Input => Instance._input;
     public static LoginManager Login => Instance._login;
     public static PoolingManager Pool => Instance._pool;
     public static ResourceManager Resource => Instance._resource;
@@ -56,6 +59,11 @@ public class Managers : MonoBehaviour
     public static UpdateManager VersionUpdate => Instance._update;
     public static WebServerManager WebServer => Instance._webServer;
     public static CoroutineHelper Coroutine => Instance._coroutine;
+
+    // Content
+    public static GameManager Game => Instance._game;
+    public static UnlockManager Unlock => Instance._unlock;
+    public static CustomerManager Customer => Instance._customer;
     // ========================================================== //
 
     private void OnApplicationQuit()
@@ -84,7 +92,6 @@ public class Managers : MonoBehaviour
             _instance._effect = new EffectManager();
             _instance._event = new EventManager();
             _instance._init = new InitManager();
-            _instance._input = new InputManager();
             _instance._login = new LoginManager();
             _instance._pool = new PoolingManager();
             _instance._resource = new ResourceManager();
@@ -96,16 +103,24 @@ public class Managers : MonoBehaviour
             _instance._webServer = new WebServerManager();
 
 
+            // Core
+            _instance._game = new GameManager();
+            _instance._unlock = new UnlockManager();
+            _instance._customer = new CustomerManager();
+
             // 매니저들 초기화 함수
             // Core
             // InitManager초기화는 처음 Scene에서 진행하기
             Pool.Init();
-            //Input.Init();
+            Resource.Init();
             Sound.Init();
             Effect.Init();
             Scene.Init();
             UI.Init();
             Setting.Init();
+
+
+            Customer.Init();
 
             // 로그 안보이게
             Debug.unityLogger.logEnabled = Debug.isDebugBuild;
@@ -113,9 +128,13 @@ public class Managers : MonoBehaviour
 
         }
     }
+    public void Test()
+    {
+        Debug.Log("test");
+    }
     private void Update()
     {
-        
+        Customer.OnUpdate();
     }
     private void LateUpdate()
     {

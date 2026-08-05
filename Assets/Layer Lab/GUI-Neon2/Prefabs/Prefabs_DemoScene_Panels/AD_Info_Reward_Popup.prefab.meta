@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: ad658b0263eb4447899222cf82723bd3
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 290592
+  packageName: GUI - Neon2
+  packageVersion: 1.0.2
+  assetPath: Assets/Layer Lab/GUI-Neon2/Prefabs/Prefabs_DemoScene_Panels/AD_Info_Reward_Popup.prefab
+  uploadId: 914930

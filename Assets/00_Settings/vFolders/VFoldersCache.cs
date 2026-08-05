@@ -40,8 +40,8 @@ namespace VFolders
 
         }
         public bool HasIcon(int key) => instance.iconTextureDatas_byKey.ContainsKey(key);
-        [System.NonSerialized]    // 이 줄을 추가하세요!
-        public Dictionary<int, Texture2D> iconTextures_byKey = new Dictionary<int, Texture2D>();
+
+        public Dictionary<int, Texture2D> iconTextures_byKey = new();
         public SerializableDictionary<int, TextureData> iconTextureDatas_byKey = new();
 
         [System.Serializable]

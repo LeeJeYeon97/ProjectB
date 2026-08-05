@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 9999675f6cc2c4d5e9c54901092327ee
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 290592
+  packageName: GUI - Neon2
+  packageVersion: 1.0.2
+  assetPath: Assets/Layer Lab/GUI-Neon2/Prefabs/Prefabs_Component_Label-Titles/Label_Oval_50_Basic_Sky_TextSizeFitter.prefab
+  uploadId: 914930

@@ -725,7 +725,7 @@ namespace VFolders
 
 
 
-        [System.Serializable]
+
         public class FolderDataWrapper
         {
             public string iconNameOrGuid

@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 6ddb27c3f992941878f911dd051e36e5
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 290592
+  packageName: GUI - Neon2
+  packageVersion: 1.0.2
+  assetPath: Assets/Layer Lab/GUI-Neon2/Prefabs/Prefabs_Component_Buttons/Button_Border_Round_92.prefab
+  uploadId: 914930

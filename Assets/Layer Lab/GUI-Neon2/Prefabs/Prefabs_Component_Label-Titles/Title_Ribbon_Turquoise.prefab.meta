@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 17b9ac8b7fefb4e448aef1c7f1d53ddc
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 290592
+  packageName: GUI - Neon2
+  packageVersion: 1.0.2
+  assetPath: Assets/Layer Lab/GUI-Neon2/Prefabs/Prefabs_Component_Label-Titles/Title_Ribbon_Turquoise.prefab
+  uploadId: 914930

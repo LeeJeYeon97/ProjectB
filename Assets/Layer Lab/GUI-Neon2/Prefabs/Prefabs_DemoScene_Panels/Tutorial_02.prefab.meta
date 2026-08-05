@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 3f2904340e0e64159904e8ed56e847ad
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 290592
+  packageName: GUI - Neon2
+  packageVersion: 1.0.2
+  assetPath: Assets/Layer Lab/GUI-Neon2/Prefabs/Prefabs_DemoScene_Panels/Tutorial_02.prefab
+  uploadId: 914930

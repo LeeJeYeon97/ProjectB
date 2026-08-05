@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: d24b30938f99246d19e4aeee82d4e39c
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 290592
+  packageName: GUI - Neon2
+  packageVersion: 1.0.2
+  assetPath: Assets/Layer Lab/GUI-Neon2/Prefabs/Prefabs_Component_Buttons/Button_Basic_Round_102.prefab
+  uploadId: 914930

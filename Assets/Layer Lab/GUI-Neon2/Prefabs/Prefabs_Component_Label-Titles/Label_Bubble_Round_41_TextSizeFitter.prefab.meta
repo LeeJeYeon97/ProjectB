@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: c2378590b315f497d8bbc9909f432c3e
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 290592
+  packageName: GUI - Neon2
+  packageVersion: 1.0.2
+  assetPath: Assets/Layer Lab/GUI-Neon2/Prefabs/Prefabs_Component_Label-Titles/Label_Bubble_Round_41_TextSizeFitter.prefab
+  uploadId: 914930

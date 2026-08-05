@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: c2156d000d2cb486bb58921757ed4e1f
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 290592
+  packageName: GUI - Neon2
+  packageVersion: 1.0.2
+  assetPath: Assets/Layer Lab/GUI-Neon2/Prefabs/Prefabs_DemoScene_Panels/Settings_Language.prefab
+  uploadId: 914930

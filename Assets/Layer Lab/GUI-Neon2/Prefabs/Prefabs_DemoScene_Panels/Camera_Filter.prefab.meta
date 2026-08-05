@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 0b0ab0b27d67b4c3bb6235c6947d591a
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 290592
+  packageName: GUI - Neon2
+  packageVersion: 1.0.2
+  assetPath: Assets/Layer Lab/GUI-Neon2/Prefabs/Prefabs_DemoScene_Panels/Camera_Filter.prefab
+  uploadId: 914930

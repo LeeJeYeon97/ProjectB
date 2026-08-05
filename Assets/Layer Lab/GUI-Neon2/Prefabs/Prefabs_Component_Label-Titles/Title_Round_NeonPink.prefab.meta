@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 1f0d53f9fdd324f11b28e25f083a83b6
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 290592
+  packageName: GUI - Neon2
+  packageVersion: 1.0.2
+  assetPath: Assets/Layer Lab/GUI-Neon2/Prefabs/Prefabs_Component_Label-Titles/Title_Round_NeonPink.prefab
+  uploadId: 914930

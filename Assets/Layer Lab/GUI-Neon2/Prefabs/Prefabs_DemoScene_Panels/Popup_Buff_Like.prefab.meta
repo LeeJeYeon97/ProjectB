@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 7ae92404853064eabbb3108d21e7fb71
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 290592
+  packageName: GUI - Neon2
+  packageVersion: 1.0.2
+  assetPath: Assets/Layer Lab/GUI-Neon2/Prefabs/Prefabs_DemoScene_Panels/Popup_Buff_Like.prefab
+  uploadId: 914930

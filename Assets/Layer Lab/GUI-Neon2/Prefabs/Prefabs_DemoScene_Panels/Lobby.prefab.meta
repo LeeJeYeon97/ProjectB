@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 4d06d3786329a4299a522394a664fd27
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 290592
+  packageName: GUI - Neon2
+  packageVersion: 1.0.2
+  assetPath: Assets/Layer Lab/GUI-Neon2/Prefabs/Prefabs_DemoScene_Panels/Lobby.prefab
+  uploadId: 914930

@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: eea318d22e85b42388274991a69bd208
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 290592
+  packageName: GUI - Neon2
+  packageVersion: 1.0.2
+  assetPath: Assets/Layer Lab/GUI-Neon2/Prefabs/Prefabs_Component_Label-Titles/Label_Oval_33_Border.prefab
+  uploadId: 914930

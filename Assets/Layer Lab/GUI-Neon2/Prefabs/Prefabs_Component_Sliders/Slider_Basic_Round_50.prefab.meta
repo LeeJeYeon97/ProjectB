@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: ce4c5a916b0bb4b0ca058b0b17655783
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 290592
+  packageName: GUI - Neon2
+  packageVersion: 1.0.2
+  assetPath: Assets/Layer Lab/GUI-Neon2/Prefabs/Prefabs_Component_Sliders/Slider_Basic_Round_50.prefab
+  uploadId: 914930

@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 620b0ff86dcce4ae3b0c80a75f5feff8
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 290592
+  packageName: GUI - Neon2
+  packageVersion: 1.0.2
+  assetPath: Assets/Layer Lab/GUI-Neon2/Prefabs/Prefabs_Component_Sliders/_PrefabsPanel_Sliders.prefab
+  uploadId: 914930

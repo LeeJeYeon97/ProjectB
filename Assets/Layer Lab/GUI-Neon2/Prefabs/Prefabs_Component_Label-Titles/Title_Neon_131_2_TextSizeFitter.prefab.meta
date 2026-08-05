@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 3832cd285cca448b08b86e56606730c8
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 290592
+  packageName: GUI - Neon2
+  packageVersion: 1.0.2
+  assetPath: Assets/Layer Lab/GUI-Neon2/Prefabs/Prefabs_Component_Label-Titles/Title_Neon_131_2_TextSizeFitter.prefab
+  uploadId: 914930

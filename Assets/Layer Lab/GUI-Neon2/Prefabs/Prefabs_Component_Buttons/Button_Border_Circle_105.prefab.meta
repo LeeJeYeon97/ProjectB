@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: f3b0eb2117bc94eefa75d3c50285721a
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 290592
+  packageName: GUI - Neon2
+  packageVersion: 1.0.2
+  assetPath: Assets/Layer Lab/GUI-Neon2/Prefabs/Prefabs_Component_Buttons/Button_Border_Circle_105.prefab
+  uploadId: 914930

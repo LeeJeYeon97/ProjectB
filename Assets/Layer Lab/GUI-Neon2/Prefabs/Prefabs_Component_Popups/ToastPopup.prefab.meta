@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 3fa354ca4f94e4903866f8bcb0f2566b
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 290592
+  packageName: GUI - Neon2
+  packageVersion: 1.0.2
+  assetPath: Assets/Layer Lab/GUI-Neon2/Prefabs/Prefabs_Component_Popups/ToastPopup.prefab
+  uploadId: 914930

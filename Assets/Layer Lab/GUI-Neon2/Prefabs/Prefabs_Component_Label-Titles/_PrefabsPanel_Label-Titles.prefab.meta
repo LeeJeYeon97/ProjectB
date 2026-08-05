@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: da8470953faf94b5f99e3f122a70c893
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 290592
+  packageName: GUI - Neon2
+  packageVersion: 1.0.2
+  assetPath: Assets/Layer Lab/GUI-Neon2/Prefabs/Prefabs_Component_Label-Titles/_PrefabsPanel_Label-Titles.prefab
+  uploadId: 914930

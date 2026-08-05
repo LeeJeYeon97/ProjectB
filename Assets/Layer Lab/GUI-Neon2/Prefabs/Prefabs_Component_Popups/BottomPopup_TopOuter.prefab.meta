@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 509013dc9f50245ffb2f94c3a19b590a
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 290592
+  packageName: GUI - Neon2
+  packageVersion: 1.0.2
+  assetPath: Assets/Layer Lab/GUI-Neon2/Prefabs/Prefabs_Component_Popups/BottomPopup_TopOuter.prefab
+  uploadId: 914930

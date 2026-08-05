@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 701fb579d613d48c6a53cd5fe83eb321
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 290592
+  packageName: GUI - Neon2
+  packageVersion: 1.0.2
+  assetPath: Assets/Layer Lab/GUI-Neon2/Prefabs/Prefabs_DemoScene_Panels/Meow_Guest_List_Empty.prefab
+  uploadId: 914930

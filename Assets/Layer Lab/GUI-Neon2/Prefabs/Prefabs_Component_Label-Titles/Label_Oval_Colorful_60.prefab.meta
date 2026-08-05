@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: e8f2ee82c63634a398068ecff60ce690
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 290592
+  packageName: GUI - Neon2
+  packageVersion: 1.0.2
+  assetPath: Assets/Layer Lab/GUI-Neon2/Prefabs/Prefabs_Component_Label-Titles/Label_Oval_Colorful_60.prefab
+  uploadId: 914930

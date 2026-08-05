@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 675de54e52a9549789a4380c5f1d21fe
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 290592
+  packageName: GUI - Neon2
+  packageVersion: 1.0.2
+  assetPath: Assets/Layer Lab/GUI-Neon2/Prefabs/Prefabs_Component_Popups/Popup_01_Border.prefab
+  uploadId: 914930

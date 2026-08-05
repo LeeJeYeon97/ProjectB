@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 399627a4605d64e34be1caaf6102c268
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 290592
+  packageName: GUI - Neon2
+  packageVersion: 1.0.2
+  assetPath: Assets/Layer Lab/GUI-Neon2/Prefabs/Prefabs_Component_UI_Etc/Alert_Edit_Bubble_01.prefab
+  uploadId: 914930

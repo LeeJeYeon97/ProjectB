@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 61ea2e1596eb94999becb38f1f621fb2
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 290592
+  packageName: GUI - Neon2
+  packageVersion: 1.0.2
+  assetPath: Assets/Layer Lab/GUI-Neon2/Prefabs/Prefabs_Component_Frames/PanelFrame_06_TitleBox_Round_130.prefab
+  uploadId: 914930

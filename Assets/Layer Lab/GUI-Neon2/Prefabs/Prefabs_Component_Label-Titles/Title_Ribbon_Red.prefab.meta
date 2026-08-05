@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 0dd0ce5c9486f4bf9afa1cd62873f479
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 290592
+  packageName: GUI - Neon2
+  packageVersion: 1.0.2
+  assetPath: Assets/Layer Lab/GUI-Neon2/Prefabs/Prefabs_Component_Label-Titles/Title_Ribbon_Red.prefab
+  uploadId: 914930

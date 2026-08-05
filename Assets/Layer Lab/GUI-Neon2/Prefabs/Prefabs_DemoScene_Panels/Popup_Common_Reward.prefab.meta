@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: b39a2613f067f4e60b0c52b1f0b141cb
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 290592
+  packageName: GUI - Neon2
+  packageVersion: 1.0.2
+  assetPath: Assets/Layer Lab/GUI-Neon2/Prefabs/Prefabs_DemoScene_Panels/Popup_Common_Reward.prefab
+  uploadId: 914930

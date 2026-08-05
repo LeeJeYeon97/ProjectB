@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 59bcdfe01dae0470b9b199cfb465e795
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 290592
+  packageName: GUI - Neon2
+  packageVersion: 1.0.2
+  assetPath: Assets/Layer Lab/GUI-Neon2/Prefabs/Prefabs_Component_Frames/ListFrame_13_VerticalLayoutGroup.prefab
+  uploadId: 914930

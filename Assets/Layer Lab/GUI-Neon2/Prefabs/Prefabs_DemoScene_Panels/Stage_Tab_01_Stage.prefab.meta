@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: e8f41e3bff1be4cec9675a6b0dd1bede
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 290592
+  packageName: GUI - Neon2
+  packageVersion: 1.0.2
+  assetPath: Assets/Layer Lab/GUI-Neon2/Prefabs/Prefabs_DemoScene_Panels/Stage_Tab_01_Stage.prefab
+  uploadId: 914930

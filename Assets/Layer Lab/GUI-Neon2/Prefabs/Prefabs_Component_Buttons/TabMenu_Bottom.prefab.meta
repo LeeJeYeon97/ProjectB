@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: ded7a5d0be25747328c73e78b1bddd5d
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 290592
+  packageName: GUI - Neon2
+  packageVersion: 1.0.2
+  assetPath: Assets/Layer Lab/GUI-Neon2/Prefabs/Prefabs_Component_Buttons/TabMenu_Bottom.prefab
+  uploadId: 914930

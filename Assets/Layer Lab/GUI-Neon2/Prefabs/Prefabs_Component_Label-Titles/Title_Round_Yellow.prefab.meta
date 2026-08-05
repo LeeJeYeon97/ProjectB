@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 43f41391a565849faaa5e71d15077329
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 290592
+  packageName: GUI - Neon2
+  packageVersion: 1.0.2
+  assetPath: Assets/Layer Lab/GUI-Neon2/Prefabs/Prefabs_Component_Label-Titles/Title_Round_Yellow.prefab
+  uploadId: 914930

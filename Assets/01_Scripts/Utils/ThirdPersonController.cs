@@ -169,10 +169,9 @@ public class ThirdPersonController : MonoBehaviour
         // 3. 아무 입력이 없을 때는 중력에 의해 떨어지도록 처리
         else
         {
-            if (!characterController.isGrounded)
-            {
-                characterController.Move(new Vector3(0f, verticalVelocity, 0f) * Time.deltaTime);
-            }
+            // 조건문(if)을 지우고 매 프레임 무조건 중력 방향으로 Move를 호출합니다.
+            // X, Z 값에 0이 들어가므로 characterController.velocity 값이 즉시 0으로 갱신됩니다.
+            characterController.Move(new Vector3(0f, verticalVelocity, 0f) * Time.deltaTime);
         }
     }
 

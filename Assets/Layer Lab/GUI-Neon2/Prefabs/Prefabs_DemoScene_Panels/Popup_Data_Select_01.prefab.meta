@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 80fad8a81c80a42cebd71d0e25111054
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 290592
+  packageName: GUI - Neon2
+  packageVersion: 1.0.2
+  assetPath: Assets/Layer Lab/GUI-Neon2/Prefabs/Prefabs_DemoScene_Panels/Popup_Data_Select_01.prefab
+  uploadId: 914930

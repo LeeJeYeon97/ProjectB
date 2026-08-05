@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: af782da1bf23e4134a7c890fa4ba6306
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 290592
+  packageName: GUI - Neon2
+  packageVersion: 1.0.2
+  assetPath: Assets/Layer Lab/GUI-Neon2/Prefabs/Prefabs_Component_Popups/Popup_05_Gradient.prefab
+  uploadId: 914930

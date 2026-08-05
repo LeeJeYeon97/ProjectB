@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: ebc45e79106a74917a8331346d70f4d0
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 290592
+  packageName: GUI - Neon2
+  packageVersion: 1.0.2
+  assetPath: Assets/Layer Lab/GUI-Neon2/Prefabs/Prefabs_DemoScene_Panels/Shop_01_Gacha_Result_Popup_1.prefab
+  uploadId: 914930

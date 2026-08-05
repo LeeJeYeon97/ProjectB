@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: deca27a9b789b4a438b2ab44a50d9755
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 290592
+  packageName: GUI - Neon2
+  packageVersion: 1.0.2
+  assetPath: Assets/Layer Lab/GUI-Neon2/Prefabs/Prefabs_Component_Frames/ListFrame_01_Basic_HorizontalLayoutGroup.prefab
+  uploadId: 914930

@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 326d57b4e8e424944801425160c34fd2
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 290592
+  packageName: GUI - Neon2
+  packageVersion: 1.0.2
+  assetPath: Assets/Layer Lab/GUI-Neon2/Prefabs/Prefabs_Component_Label-Titles/Title_Ribbon_Gray_2.prefab
+  uploadId: 914930

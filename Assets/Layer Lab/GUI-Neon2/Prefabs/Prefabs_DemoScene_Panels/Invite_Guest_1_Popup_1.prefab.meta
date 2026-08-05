@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: d9840744e8d6648efab4702f89be91c3
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 290592
+  packageName: GUI - Neon2
+  packageVersion: 1.0.2
+  assetPath: Assets/Layer Lab/GUI-Neon2/Prefabs/Prefabs_DemoScene_Panels/Invite_Guest_1_Popup_1.prefab
+  uploadId: 914930

@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: f5f32ec3325fb44f68ddcf184f691ace
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 290592
+  packageName: GUI - Neon2
+  packageVersion: 1.0.2
+  assetPath: Assets/Layer Lab/GUI-Neon2/Prefabs/Prefabs_Component_Sliders/Slider_Circle_40.prefab
+  uploadId: 914930

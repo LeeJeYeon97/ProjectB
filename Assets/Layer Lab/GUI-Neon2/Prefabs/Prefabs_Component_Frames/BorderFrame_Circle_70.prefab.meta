@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: d8622b5a97ea945dca64d8c28428a9c7
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 290592
+  packageName: GUI - Neon2
+  packageVersion: 1.0.2
+  assetPath: Assets/Layer Lab/GUI-Neon2/Prefabs/Prefabs_Component_Frames/BorderFrame_Circle_70.prefab
+  uploadId: 914930

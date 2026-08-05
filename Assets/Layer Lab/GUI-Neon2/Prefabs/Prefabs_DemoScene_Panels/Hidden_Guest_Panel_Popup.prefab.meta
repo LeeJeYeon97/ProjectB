@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 8f2bab03ecca8423a94cf605bae48512
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 290592
+  packageName: GUI - Neon2
+  packageVersion: 1.0.2
+  assetPath: Assets/Layer Lab/GUI-Neon2/Prefabs/Prefabs_DemoScene_Panels/Hidden_Guest_Panel_Popup.prefab
+  uploadId: 914930

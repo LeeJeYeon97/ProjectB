@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: cb42d4582b0e04785a5a2ed2d7fbb67c
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 290592
+  packageName: GUI - Neon2
+  packageVersion: 1.0.2
+  assetPath: Assets/Layer Lab/GUI-Neon2/Prefabs/Prefabs_Component_Label-Titles/Title_Ribbon_Orange.prefab
+  uploadId: 914930

@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 4874069ba1ce045829eab23d24595e8f
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 290592
+  packageName: GUI - Neon2
+  packageVersion: 1.0.2
+  assetPath: Assets/Layer Lab/GUI-Neon2/Prefabs/Prefabs_Component_Label-Titles/Label_Oval_Neon_60_TextSizeFitter.prefab
+  uploadId: 914930

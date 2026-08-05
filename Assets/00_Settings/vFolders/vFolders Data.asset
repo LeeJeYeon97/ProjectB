@@ -13,6 +13,38 @@ MonoBehaviour:
   m_Name: vFolders Data
   m_EditorClassIdentifier: VFolders::VFolders.VFoldersData
   folderDatas_byGuid:
-    keys: []
-    values: []
-  bookmarks: []
+    keys:
+    - 45b484a9934917a4d9377aca47d7ac13
+    - cf440f1784be97243a6db8b9d815ef24
+    - 7827d040b41012b4ba8d8fa901044f53
+    - af5f6009ea99e4640bae40b37fb89578
+    - 75efa46671c3ba14cb9acf6e4b6828c3
+    - ff1a071ddd7438041a648f0b9cc0514d
+    values:
+    - iconNameOrGuid: cs Script Icon
+      colorIndex: 4
+      isIconRecursive: 0
+      isColorRecursive: 0
+    - iconNameOrGuid: 
+      colorIndex: 2
+      isIconRecursive: 0
+      isColorRecursive: 0
+    - iconNameOrGuid: 
+      colorIndex: 7
+      isIconRecursive: 0
+      isColorRecursive: 0
+    - iconNameOrGuid: 
+      colorIndex: 5
+      isIconRecursive: 0
+      isColorRecursive: 0
+    - iconNameOrGuid: AudioSource Icon
+      colorIndex: 3
+      isIconRecursive: 0
+      isColorRecursive: 0
+    - iconNameOrGuid: 
+      colorIndex: 8
+      isIconRecursive: 0
+      isColorRecursive: 0
+  bookmarks:
+  - guid: ff1a071ddd7438041a648f0b9cc0514d
+  - guid: cd26875e81dba6b41b2cd83c121764f3

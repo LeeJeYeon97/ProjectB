@@ -12,5 +12,68 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 066cf82f8f80d408c856e48fc8f1127b, type: 3}
   m_Name: vFavorites Data
   m_EditorClassIdentifier: VFavorites::VFavorites.VFavoritesData
-  pages: []
+  pages:
+  - items:
+    - globalId:
+        globalObjectIdString: GlobalObjectId_V1-1-11cb862125bfe3747a715e8acae8e074-1826815463781624340-0
+      _typeString: UnityEngine.GameObject, UnityEngine.CoreModule, Version=0.0.0.0,
+        Culture=neutral, PublicKeyToken=null
+      _obj: {fileID: 1826815463781624340, guid: 11cb862125bfe3747a715e8acae8e074, type: 3}
+      isSceneGameObject: 0
+      isFolder: 0
+      isAsset: 1
+      _id: 1064886928
+    - globalId:
+        globalObjectIdString: GlobalObjectId_V1-1-7827d040b41012b4ba8d8fa901044f53-102900000-0
+      _typeString: UnityEditor.DefaultAsset, UnityEditor.CoreModule, Version=0.0.0.0,
+        Culture=neutral, PublicKeyToken=null
+      _obj: {fileID: 102900000, guid: 7827d040b41012b4ba8d8fa901044f53, type: 3}
+      isSceneGameObject: 0
+      isFolder: 1
+      isAsset: 0
+      _id: 1045599226
+    - globalId:
+        globalObjectIdString: GlobalObjectId_V1-1-ff1a071ddd7438041a648f0b9cc0514d-102900000-0
+      _typeString: UnityEditor.DefaultAsset, UnityEditor.CoreModule, Version=0.0.0.0,
+        Culture=neutral, PublicKeyToken=null
+      _obj: {fileID: 102900000, guid: ff1a071ddd7438041a648f0b9cc0514d, type: 3}
+      isSceneGameObject: 0
+      isFolder: 1
+      isAsset: 0
+      _id: 1037778258
+    name: Page 1
+    _id: 1060829795
+  - items: []
+    name: Page 2
+    _id: 1060941527
+  - items: []
+    name: Page 3
+    _id: 1048792121
+  - items: []
+    name: Page 4
+    _id: 1062142830
+  - items: []
+    name: Page 5
+    _id: 1052883750
+  - items: []
+    name: Page 6
+    _id: 1063914712
+  - items: []
+    name: Page 7
+    _id: 1059599889
+  - items: []
+    name: Page 8
+    _id: 1049843093
+  - items: []
+    name: Page 9
+    _id: 1064257150
+  - items: []
+    name: Page 10
+    _id: 1052703765
+  - items: []
+    name: Page 11
+    _id: 1051852301
+  - items: []
+    name: Page 12
+    _id: 0
   rowScale: 1

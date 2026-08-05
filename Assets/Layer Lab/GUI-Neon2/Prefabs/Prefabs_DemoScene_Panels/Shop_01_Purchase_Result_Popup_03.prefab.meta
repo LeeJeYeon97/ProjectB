@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: ae2c6465ac0c1439bbbec9b6f9703cf5
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 290592
+  packageName: GUI - Neon2
+  packageVersion: 1.0.2
+  assetPath: Assets/Layer Lab/GUI-Neon2/Prefabs/Prefabs_DemoScene_Panels/Shop_01_Purchase_Result_Popup_03.prefab
+  uploadId: 914930

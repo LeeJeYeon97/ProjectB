@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: c998abbee07b84c7891dcc2feaa076c7
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 290592
+  packageName: GUI - Neon2
+  packageVersion: 1.0.2
+  assetPath: Assets/Layer Lab/GUI-Neon2/Prefabs/Prefabs_DemoScene_Panels/Inbox_Empty.prefab
+  uploadId: 914930

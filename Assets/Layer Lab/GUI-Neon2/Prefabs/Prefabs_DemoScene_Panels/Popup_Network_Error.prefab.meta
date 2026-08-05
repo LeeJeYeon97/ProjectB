@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 5166e1e7407a24e6eb9f76b454a701ed
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 290592
+  packageName: GUI - Neon2
+  packageVersion: 1.0.2
+  assetPath: Assets/Layer Lab/GUI-Neon2/Prefabs/Prefabs_DemoScene_Panels/Popup_Network_Error.prefab
+  uploadId: 914930

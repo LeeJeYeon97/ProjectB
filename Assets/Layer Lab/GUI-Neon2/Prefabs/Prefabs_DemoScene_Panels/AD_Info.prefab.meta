@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 45b47814fddaf45eab8c04d5cdf6e9dc
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 290592
+  packageName: GUI - Neon2
+  packageVersion: 1.0.2
+  assetPath: Assets/Layer Lab/GUI-Neon2/Prefabs/Prefabs_DemoScene_Panels/AD_Info.prefab
+  uploadId: 914930

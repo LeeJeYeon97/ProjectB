@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: b3ce168b9a63d4c518f1555ded9f6a0e
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 290592
+  packageName: GUI - Neon2
+  packageVersion: 1.0.2
+  assetPath: Assets/Layer Lab/GUI-Neon2/Prefabs/Prefabs_Component_Buttons/_PrefabsPanel_Buttons.prefab
+  uploadId: 914930
