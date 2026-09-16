@@ -50,7 +50,8 @@ public class SeatStation : BaseStation
             case SeatState.Occupied:
                 if (currentCustomer == null) return;
 
-                // 2. 주문받기
+                /*
+                // 2. 주문받기 (착석 시 자동 주문으로 전환되어 주석 처리)
                 if (currentCustomer.CurrentState == CustomerState.WaitingToOrder)
                 {
                     currentProgress += Time.deltaTime;
@@ -60,11 +61,12 @@ public class SeatStation : BaseStation
                         currentProgress = 0f;
                     }
                 }
+                */
                 // 3. 음식 서빙하기
-                else if (currentCustomer.CurrentState == CustomerState.WaitingForFood)
+                if (currentCustomer.CurrentState == CustomerState.WaitingForFood)
                 {
                     // 플레이어의 가방(StackingSystem)에 해당 음식이 있는지 검사
-                    StackingSystem stacking = player.GetComponent<StackingSystem>();
+                    StackingSystem stacking = player.GetComponentInChildren<StackingSystem>();
                     if (stacking != null && HasMatchingFood(stacking))
                     {
                         ServeFood(stacking);
@@ -81,23 +83,39 @@ public class SeatStation : BaseStation
         // TODO: 청소 이펙트 생성, 접시 오브젝트 파괴 등
     }
 
+    /*
     private void TakeOrder()
     {
         currentCustomer.OnOrderTaken();
         Debug.Log("손님의 주문을 받았습니다!");
         // TODO: 머리 위 말풍선 변경 (주문완료 대기 중 상태로)
     }
+    */
 
     private bool HasMatchingFood(StackingSystem stacking)
     {
         // TODO: 플레이어가 머리 위에 쌓아둔 마지막 아이템(혹은 매칭되는 타입)이 손님이 원하는 음식 유형인지 체크
         // 현재 StackingSystem의 리스트를 검사하는 함수 작성 필요
+        
+        if(stacking == null)
+        {
+            return false;
+        }
+        if(currentCustomer == null)
+        {
+            return false;
+        }
+        if(currentCustomer.OrderedType != ItemType.Beer)
+        {
+            return false;
+        }
         return true;
     }
 
     private void ServeFood(StackingSystem stacking)
     {
         // TODO: StackingSystem에서 음식을 제거(Pop)하고, foodServePoint에 배치하는 연출 실행
+        stacking.PopItem();
         currentCustomer.OnFoodServed();
         Debug.Log("음식을 서빙했습니다. 식사를 시작합니다!");
     }

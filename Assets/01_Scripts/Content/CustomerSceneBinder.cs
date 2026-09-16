@@ -8,11 +8,21 @@ public class CustomerSceneBinder : MonoBehaviour
     [Header("Spawn Positions")]
     public Transform spawnPosition;
     public List<Transform> entranceQueue;
+    public Transform counterPoint;
+    public Transform exitPoint;
 
     private void Awake()
     {
+        if (spawnPosition == null) spawnPosition = transform;
+        if (exitPoint == null) exitPoint = spawnPosition;
+        if (counterPoint == null)
+        {
+            var counterObj = GameObject.Find("Zone_Counter");
+            if (counterObj != null) counterPoint = counterObj.transform;
+        }
+
         // 게임이 시작될 때 전역 CustomerManager에 씬의 실제 포지션들을 넘겨줍니다.
-        Managers.Customer.SetScenePositions(spawnPosition, entranceQueue);
+        Managers.Customer.SetScenePositions(spawnPosition, entranceQueue, counterPoint, exitPoint);
     }
     // 유니티 에디터 씬(Scene) 뷰에서 기즈모를 그려주는 내장 함수
     private void OnDrawGizmos()

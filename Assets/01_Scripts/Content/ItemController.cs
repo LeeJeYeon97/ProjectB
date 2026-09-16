@@ -7,6 +7,7 @@ public class ItemController : MonoBehaviour
     public Define.StackType StackType;
     public Define.ItemType type;
     private Collider _collider;
+    public int Value;
 
 
     public float itemHeight = 0.5f;    // 아이템 하나가 쌓일 때마다 올라갈 Y축 높이 (아이템 크기에 맞춰 조절)
@@ -54,6 +55,10 @@ public class ItemController : MonoBehaviour
                 {
                     case Define.ItemType.Money:
                         Debug.Log("돈 먹었어요");
+                        if (PlayerController.Instance != null)
+                        {
+                            PlayerController.Instance.UpdateMoney(Value);
+                        }
                         break;
                 }
             });

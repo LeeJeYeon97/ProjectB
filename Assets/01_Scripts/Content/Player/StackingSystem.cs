@@ -10,20 +10,48 @@ public class StackingSystem : MonoBehaviour
     public int maxStackCount = 10;     // 한 번에 들 수 있는 최대 개수
 
     // 현재 들고 있는 아이템들을 관리할 리스트
+    [SerializeField]
     private List<GameObject> _stackedItems = new List<GameObject>();
+
+    public IReadOnlyList<GameObject> StackedItems => _stackedItems;
+    public int StackCount => _stackedItems.Count;
+    public bool IsFull => _stackedItems.Count >= maxStackCount;
 
     private void OnTriggerEnter(Collider other)
     {
         // 1. 부딪힌 물체의 태그가 "Item"인지, 그리고 가방(리스트)에 자리가 있는지 확인
         if (other.CompareTag("Item"))
         {
-            if(CheckListItem(other.gameObject))
+            if (CheckListItem(other.gameObject))
             {
                 PickUpItem(other.gameObject);
             }
         }
     }
-    private bool CheckListItem(GameObject go)
+
+    public bool CheckListItem(GameObject go)
+    {
+        if (go == null) return false;
+        if (_stackedItems.Count >= maxStackCount)
+            return false;
+
+        ItemController newItem = go.GetComponent<ItemController>();
+        if (newItem == null) return false;
+
+        // 아이템이 있는데 다른 아이템을 주우려는 경우
+        if (_stackedItems.Count > 0)
+        {
+            ItemController firstItem = _stackedItems[0] != null ? _stackedItems[0].GetComponent<ItemController>() : null;
+            if (firstItem != null && firstItem.type != newItem.type)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+    
+    public bool CheckListItem(Define.ItemType itemType)
     {
         if (_stackedItems.Count >= maxStackCount)
             return false;
@@ -31,7 +59,8 @@ public class StackingSystem : MonoBehaviour
         // 아이템이 있는데 다른 아이템을 주우려는 경우
         if (_stackedItems.Count > 0)
         {
-            if (_stackedItems[0].GetComponent<ItemController>().type != go.GetComponent<ItemController>().type)
+            ItemController firstItem = _stackedItems[0] != null ? _stackedItems[0].GetComponent<ItemController>() : null;
+            if (firstItem != null && firstItem.type != itemType)
             {
                 return false;
             }
@@ -40,8 +69,9 @@ public class StackingSystem : MonoBehaviour
         return true;
     }
 
-    private void PickUpItem(GameObject go)
+    public void PickUpItem(GameObject go)
     {
+        if (go == null) return;
         ItemController item = go.GetComponent<ItemController>();
 
         if (item != null)
@@ -69,5 +99,14 @@ public class StackingSystem : MonoBehaviour
                 item.OnPickedUp(stackPoint, 0, null);
             }
         }
+    }
+
+    public GameObject PopItem()
+    {
+        if (_stackedItems.Count == 0) return null;
+        int lastIndex = _stackedItems.Count - 1;
+        GameObject lastItem = _stackedItems[lastIndex];
+        _stackedItems.RemoveAt(lastIndex);
+        return lastItem;
     }
 }

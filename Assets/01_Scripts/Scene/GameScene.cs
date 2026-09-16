@@ -25,6 +25,12 @@ public class GameScene : BaseScene
     private void InitUnlock()
     {
         Managers.Unlock.Init();
+        InitUI();
+    }
+
+    private void InitUI()
+    {
+        Managers.UI.ShowSceneUI<UI_GameScene>();
     }
     public override void Clear()
     {

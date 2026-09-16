@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1 &3909268291893934625
+--- !u!1 &5840126861782496669
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -8,23 +8,23 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 4398700033407017115}
-  - component: {fileID: 766889523039072062}
-  - component: {fileID: 3260745478964681716}
+  - component: {fileID: 6108031914425797799}
+  - component: {fileID: 3154186704241052448}
+  - component: {fileID: 8721622539897891471}
   m_Layer: 0
-  m_Name: SM_Prop_Money_Note_01
-  m_TagString: Item
+  m_Name: SM_Prop_Money_Strapped_01
+  m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &4398700033407017115
+--- !u!4 &6108031914425797799
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3909268291893934625}
+  m_GameObject: {fileID: 5840126861782496669}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -33,21 +33,21 @@ Transform:
   m_Children: []
   m_Father: {fileID: 3819201484560326660}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!33 &766889523039072062
+--- !u!33 &3154186704241052448
 MeshFilter:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3909268291893934625}
-  m_Mesh: {fileID: 4286869133627713255, guid: a4877f422e6b3a745a6a794a728bbc3b, type: 3}
---- !u!23 &3260745478964681716
+  m_GameObject: {fileID: 5840126861782496669}
+  m_Mesh: {fileID: 3058303562686739422, guid: d6dca85320792424f85a13aad4c60121, type: 3}
+--- !u!23 &8721622539897891471
 MeshRenderer:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3909268291893934625}
+  m_GameObject: {fileID: 5840126861782496669}
   m_Enabled: 1
   m_CastShadows: 1
   m_ReceiveShadows: 1
@@ -121,7 +121,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 4398700033407017115}
+  - {fileID: 6108031914425797799}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &8866744045553618724
@@ -137,7 +137,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ItemController
   StackType: 1
-  type: 0
+  type: 1
+  Value: 100
   itemHeight: 0.2
 --- !u!65 &7587660470738888274
 BoxCollider:
@@ -158,5 +159,5 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 0.3, y: 0.06, z: 0.14}
-  m_Center: {x: 0, y: 0.0018470924, z: 0}
+  m_Size: {x: 0.3, y: 0.1, z: 0.1}
+  m_Center: {x: 0, y: 0.04, z: 0}

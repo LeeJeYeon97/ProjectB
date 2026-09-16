@@ -1,9 +1,13 @@
+using System;
 using Unity.VisualScripting;
 using UnityEngine;
 
 public class PlayerController : BaseController
 {
+    public static PlayerController Instance { get; private set; }
+
     public int money = 100;
+    public event Action<int> OnMoneyChanged;
 
     private float throwTimer = 0f;
     public float throwInterval = 0.1f; // 0.1초마다 1번씩 돈을 날림
@@ -13,7 +17,16 @@ public class PlayerController : BaseController
 
     private void Awake()
     {
-        Stacking = GetComponent<StackingSystem>();
+        Instance = this;
+        Stacking = GetComponentInChildren<StackingSystem>();
+    }
+
+    private void OnDestroy()
+    {
+        if (Instance == this)
+        {
+            Instance = null;
+        }
     }
 
     private void OnTriggerEnter(Collider other)
@@ -55,5 +68,12 @@ public class PlayerController : BaseController
     public void UpdateMoney(int addMoney)
     {
         money += addMoney;
+        OnMoneyChanged?.Invoke(money);
+    }
+
+    public void SetMoney(int newMoney)
+    {
+        money = newMoney;
+        OnMoneyChanged?.Invoke(money);
     }
 }

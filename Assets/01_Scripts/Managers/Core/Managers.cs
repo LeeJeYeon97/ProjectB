@@ -83,10 +83,13 @@ public class Managers : MonoBehaviour
                 go.AddComponent<Managers>();
             }
 
-            DontDestroyOnLoad(go);
+            if (Application.isPlaying)
+            {
+                DontDestroyOnLoad(go);
+            }
             _instance = go.GetComponent<Managers>();
 
-            // ÄÄÆ÷³ÍÆ®·Î ºÙÀÏ ÇÊ¿ä¾ø´Â ¸Å´ÏÀú ÃÊ±âÈ­
+            // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ®ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ê¿ï¿½ï¿½ï¿½ï¿½ ï¿½Å´ï¿½ï¿½ï¿½ ï¿½Ê±ï¿½È­
             _instance._camera = new CameraManager();
             _instance._data = new DataManager();
             _instance._effect = new EffectManager();
@@ -108,9 +111,9 @@ public class Managers : MonoBehaviour
             _instance._unlock = new UnlockManager();
             _instance._customer = new CustomerManager();
 
-            // ¸Å´ÏÀúµé ÃÊ±âÈ­ ÇÔ¼ö
+            // ï¿½Å´ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ê±ï¿½È­ ï¿½Ô¼ï¿½
             // Core
-            // InitManagerÃÊ±âÈ­´Â Ã³À½ Scene¿¡¼­ ÁøÇàÇÏ±â
+            // InitManagerï¿½Ê±ï¿½È­ï¿½ï¿½ Ã³ï¿½ï¿½ Sceneï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï±ï¿½
             Pool.Init();
             Resource.Init();
             Sound.Init();
@@ -122,9 +125,9 @@ public class Managers : MonoBehaviour
 
             Customer.Init();
 
-            // ·Î±× ¾Èº¸ÀÌ°Ô
+            // ï¿½Î±ï¿½ ï¿½Èºï¿½ï¿½Ì°ï¿½
             Debug.unityLogger.logEnabled = Debug.isDebugBuild;
-            Application.targetFrameRate = 60; // 60ÇÁ·¹ÀÓ °íÁ¤ (ºÎµå·¯¿î È­¸é)
+            Application.targetFrameRate = 60; // 60ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ (ï¿½Îµå·¯ï¿½ï¿½ È­ï¿½ï¿½)
 
         }
     }

@@ -501,8 +501,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CustomerController
   CurrentState: 1
+  orderedType: 0
   eatingDuration: 5
-  moneyPrefab: {fileID: 0}
+  moneyPrefab: {fileID: 6658021417841733508, guid: db7985689b28bb348b383c3d20110870, type: 3}
   payAmount: 15
   uiBubble: {fileID: 7683930696994065694}
 --- !u!114 &7629821526453498667

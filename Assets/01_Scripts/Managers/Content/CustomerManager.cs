@@ -43,10 +43,11 @@ public class CustomerManager
         }
     }
 
-    public void SetScenePositions(Transform spawn, List<Transform> queue)
+    public void SetScenePositions(Transform spawn, List<Transform> queue, Transform counter = null, Transform exit = null)
     {
         spawnPoint = spawn;
-        exitPoint = spawn; // 퇴장 위치도 일단 스폰 위치와 동일하게 설정
+        exitPoint = exit != null ? exit : spawn; // 퇴장 위치
+        counterPoint = counter;
         entranceQueue = queue;
 
         Debug.Log("CustomerManager: 씬 배치 포지션 캐싱 완료!");

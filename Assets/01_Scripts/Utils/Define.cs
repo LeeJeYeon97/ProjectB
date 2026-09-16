@@ -51,7 +51,9 @@ public class Define
     }
     public enum ItemType
     {
+        None,
         Money,
+        Beer,
     }
     public enum UnlockType
     {
@@ -71,6 +73,7 @@ public class Define
     public enum CustomerState
     {
         None,
+        WalkEntrance,       // 가게 앞으로 걸어가는 중
         WaitingAtEntrance,  // 가게 앞 입구에서 대기 중
         MovingToSeat,       // 예약된 자리로 이동 중
         WaitingToOrder,     // 자리에 앉아서 주문 대기 중 (말풍선 표시)

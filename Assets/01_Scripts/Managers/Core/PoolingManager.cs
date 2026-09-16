@@ -9,9 +9,9 @@ using UnityEngine.Pool;
 public class PoolingManager
 {
     // ObjectPool API
-    //// 2. ½ÇÁ¦ Ç®¸µ ½Ã½ºÅÛ
+    //// 2. ï¿½ï¿½ï¿½ï¿½ Ç®ï¿½ï¿½ ï¿½Ã½ï¿½ï¿½ï¿½
     //private Dictionary<string, IObjectPool<GameObject>> _pools = new Dictionary<string, IObjectPool<GameObject>>();
-    //// Ç®¸µµÈ ¿ÀºêÁ§Æ®µéÀÌ ÇÏÀÌ¾î¶óÅ°¿¡¼­ ÁöÀúºÐÇÏÁö ¾Ê°Ô Á¤¸®ÇÒ ·çÆ®
+    //// Ç®ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ®ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ì¾ï¿½ï¿½Å°ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ê°ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Æ®
     //private Transform _root;
 
     //public void Init()
@@ -22,7 +22,7 @@ public class PoolingManager
     //        Object.DontDestroyOnLoad(_root);
     //    }
 
-    //    // ¿À¸®Áö³Î ÇÁ¸®ÆÕ ´ã´Â µñ¼Å³Ê¸®
+    //    // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½Å³Ê¸ï¿½
     //    foreach (var pool in Managers.Data.poolingData.poolList)
     //    {
     //        if (!_prefabDic.ContainsKey(pool.type))
@@ -32,12 +32,12 @@ public class PoolingManager
     //    }
     //}
 
-    //// ³»ºÎÀûÀ¸·Î Ç®À» »ý¼ºÇÏ´Â ÇÔ¼ö
+    //// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Ç®ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï´ï¿½ ï¿½Ô¼ï¿½
     //private void CreatePool(Define.Pool type)
     //{
 
     //    string key = type.ToString();
-    //    GameObject originalPrefab = _prefabDic[type]; // ¹Ì¸® ÀúÀåÇØµÐ ¿øº» »ç¿ë
+    //    GameObject originalPrefab = _prefabDic[type]; // ï¿½Ì¸ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Øµï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½
 
     //    IObjectPool<GameObject> pool = new ObjectPool<GameObject>(
     //        createFunc: () => {
@@ -54,17 +54,17 @@ public class PoolingManager
     //    _pools.Add(key, pool);
     //}
 
-    //// ÇÙ½É ÇÔ¼ö: ²¨³»±â (ÄÄÆ÷³ÍÆ® Å¸ÀÔÀ¸·Î ¹Ù·Î °¡Á®¿È)
+    //// ï¿½Ù½ï¿½ ï¿½Ô¼ï¿½: ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ (ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ® Å¸ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ù·ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½)
     //public T Get<T>(Define.Pool type, Transform parent = null) where T : UnityEngine.Object
     //{
     //    string key = type.ToString();
-    //    // 1. ÇØ´ç °æ·Î(ÀÌ¸§)ÀÇ Ç®ÀÌ ÀÖ´ÂÁö È®ÀÎÇÏ°í ¾øÀ¸¸é ¸¸µê
+    //    // 1. ï¿½Ø´ï¿½ ï¿½ï¿½ï¿½(ï¿½Ì¸ï¿½)ï¿½ï¿½ Ç®ï¿½ï¿½ ï¿½Ö´ï¿½ï¿½ï¿½ È®ï¿½ï¿½ï¿½Ï°ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
     //    if (!_pools.ContainsKey(key))
     //    {
-    //        // ¸¸¾à ÇÁ¸®ÆÕ µî·Ïµµ ¾È µÇ¾î ÀÖ´Ù¸é ¿¡·¯
+    //        // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ïµï¿½ ï¿½ï¿½ ï¿½Ç¾ï¿½ ï¿½Ö´Ù¸ï¿½ ï¿½ï¿½ï¿½ï¿½
     //        if (!_prefabDic.ContainsKey(type))
     //        {
-    //            Debug.LogError($"[PoolingManager] {type} Å¸ÀÔÀÇ ÇÁ¸®ÆÕÀÌ SO¿¡ µî·ÏµÇÁö ¾Ê¾Ò½À´Ï´Ù!");
+    //            Debug.LogError($"[PoolingManager] {type} Å¸ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ SOï¿½ï¿½ ï¿½ï¿½Ïµï¿½ï¿½ï¿½ ï¿½Ê¾Ò½ï¿½ï¿½Ï´ï¿½!");
     //            return null;
     //        }
     //        CreatePool(type);
@@ -75,12 +75,12 @@ public class PoolingManager
 
     //    if (typeof(T) == typeof(GameObject)) return go as T;
     //    T component = go.GetComponent<T>();
-    //    // 3. T°¡ ÄÄÆ÷³ÍÆ®¶ó¸é GetComponent·Î Ã£¾Æº¸±â
+    //    // 3. Tï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ®ï¿½ï¿½ï¿½ GetComponentï¿½ï¿½ Ã£ï¿½Æºï¿½ï¿½ï¿½
 
-    //    // 4. ÄÄÆ÷³ÍÆ®°¡ ¾ø´Ù¸é? ÄÚµå·Î Á÷Á¢ ºÙ¿©ÁÖ±â!
+    //    // 4. ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ®ï¿½ï¿½ ï¿½ï¿½ï¿½Ù¸ï¿½? ï¿½Úµï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ù¿ï¿½ï¿½Ö±ï¿½!
     //    if (component == null)
     //    {
-    //        // AddComponent<T>() ´ë½Å AddComponent(typeof(T))¸¦ »ç¿ëÇÏ¿© Á¦³×¸¯ Á¦¾à Á¶°Ç ¿ìÈ¸
+    //        // AddComponent<T>() ï¿½ï¿½ï¿½ AddComponent(typeof(T))ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Ï¿ï¿½ ï¿½ï¿½ï¿½×¸ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½È¸
     //        component = go.AddComponent(typeof(T)) as T;
     //    }
 
@@ -88,7 +88,7 @@ public class PoolingManager
 
     //}
 
-    //// ÇÙ½É ÇÔ¼ö: ¹Ý³³ÇÏ±â
+    //// ï¿½Ù½ï¿½ ï¿½Ô¼ï¿½: ï¿½Ý³ï¿½ï¿½Ï±ï¿½
     //public void Release(GameObject go)
     //{
     //    if (go == null || !go.activeSelf) return;
@@ -155,11 +155,11 @@ public class PoolingManager
 
             poolable.gameObject.SetActive(true);
 
-            // DontDestroyOnLoad ÇØÁ¦ ¿ëµµ
-            // DontDestroyOnLoad ÇØÁ¦ ¿ëµµ
+            // DontDestroyOnLoad ï¿½ï¿½ï¿½ï¿½ ï¿½ëµµ
+            // DontDestroyOnLoad ï¿½ï¿½ï¿½ï¿½ ï¿½ëµµ
             if (parent == null)
             {
-                // ¼öÁ¤ Àü: poolable.transform.parent = Managers.Scene.CurrentScene.transform;
+                // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½: poolable.transform.parent = Managers.Scene.CurrentScene.transform;
                 poolable.transform.SetParent(Managers.Scene.CurrentScene.transform, false);
             }
 
@@ -179,7 +179,10 @@ public class PoolingManager
         if (_root == null)
         {
             _root = new GameObject { name = "@Pool_Root" }.transform;
-            Object.DontDestroyOnLoad(_root);
+            if (Application.isPlaying)
+            {
+                Object.DontDestroyOnLoad(_root);
+            }
         }
     }
 
@@ -196,24 +199,24 @@ public class PoolingManager
     {
         if (go == null) return;
 
-        // 2. °¡½¿ÆÅ¿¡ ¸íÂû(Poolable)ÀÌ ÀÖ´ÂÁö ¸Å´ÏÀú°¡ Á÷Á¢ È®ÀÎÇÕ´Ï´Ù.
+        // 2. ï¿½ï¿½ï¿½ï¿½ï¿½Å¿ï¿½ ï¿½ï¿½ï¿½ï¿½(Poolable)ï¿½ï¿½ ï¿½Ö´ï¿½ï¿½ï¿½ ï¿½Å´ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ È®ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
         if (go.TryGetComponent<Poolable>(out Poolable poolable))
         {
             string name = go.name;
 
-            // ¸íÂûÀº ÀÖ´Âµ¥ ³» ¹Ù±¸´Ï ¸ñ·Ï¿¡ ¾ø´Ù¸é? (¿¡·¯ »óÈ²) -> ±×³É ÆÄ±«
+            // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ö´Âµï¿½ ï¿½ï¿½ ï¿½Ù±ï¿½ï¿½ï¿½ ï¿½ï¿½Ï¿ï¿½ ï¿½ï¿½ï¿½Ù¸ï¿½? (ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½È²) -> ï¿½×³ï¿½ ï¿½Ä±ï¿½
             if (_pool.ContainsKey(name) == false)
             {
                 Object.Destroy(go);
                 return;
             }
 
-            // Á¤»óÀûÀÎ Ç®¸µ °´Ã¼¶ó¸é ¹Ù±¸´Ï¿¡ ³Ö±â
+            // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Ç®ï¿½ï¿½ ï¿½ï¿½Ã¼ï¿½ï¿½ï¿½ ï¿½Ù±ï¿½ï¿½Ï¿ï¿½ ï¿½Ö±ï¿½
             _pool[name].Push(poolable);
         }
         else
         {
-            // 3. ¸íÂûÀÌ ¾ø´Â °´Ã¼(ÀÏÈ¸¿ë ÆÄÆ¼Å¬, º¸½º µî)¶ó¸é ¹Ì·Ã ¾øÀÌ Áï½Ã ÆÄ±«!
+            // 3. ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ã¼(ï¿½ï¿½È¸ï¿½ï¿½ ï¿½ï¿½Æ¼Å¬, ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½)ï¿½ï¿½ï¿½ ï¿½Ì·ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½Ä±ï¿½!
             Object.Destroy(go);
         }
     }
