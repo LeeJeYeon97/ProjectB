@@ -3,139 +3,126 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-public class UnlockStation : BaseStation
+public class UnlockStation : MonoBehaviour, IInteractable
 {
-    private string uniqueUnlockID; // 앵커로부터 전달받을 고유 인스턴스 ID
-    private UnlockNodeData nodeData;
-    private int currentPaid = 0;
-    private int visualPaid = 0;
-    private int targetPrice = 0; // 적용될 가격
-    private bool isUnlocked = false;
+    [Header("투척 주기 및 금액 설정")]
+    [Tooltip("돈을 던지는 주기 (초)")]
+    [SerializeField] private float throwInterval = 0.1f;
+    [Tooltip("한 번 던질 때 날아가는 금액")]
+    [SerializeField] private int throwAmount = 10;
 
+    [Header("연출")]
     [SerializeField] private GameObject moneyPrefab;
     [SerializeField] private Transform dropPoint;
 
-    [Header("UI 연동")]
-    [SerializeField] private Image fillImage;         // 게이지용 Fill Image
-    [SerializeField] private TMP_Text progressText;   // 금액 표시 텍스트
-    [SerializeField] private Transform uiContainer;   // 바운스 애니메이션을 적용할 UI 컨테이너 (Canvas 또는 내부 패널)
+    [Header("전용 UI")]
+    [SerializeField] private UI_UnlockStation uiUnlock;
 
-    private Vector3 _initialUiScale = Vector3.one;
-    private Tween _bounceTween;
+    private string _uniqueUnlockID;
+    private UnlockNodeData _nodeData;
+    private int _targetPrice;
+    private int _currentPaid = 0;
+    private int _visualPaid = 0;
+    private bool _isUnlocked = false;
 
+    public float Duration => throwInterval;
 
-    // Setup 시 NodeData가 아닌 Anchor 자체를 넘겨받습니다.
     public void Setup(UnlockAnchor anchor)
     {
-        nodeData = anchor.NodeData;
-        targetPrice = anchor.Price; // 개별 가격 오버라이드 반영
-        currentPaid = 0;
-        visualPaid = 0;
-        isUnlocked = false;
-        uniqueUnlockID = anchor.UniqueID;
+        _nodeData = anchor.NodeData;
+        _targetPrice = anchor.Price;
+        _uniqueUnlockID = anchor.UniqueID;
+        _currentPaid = 0;
+        _visualPaid = 0;
+        _isUnlocked = false;
 
-        if (dropPoint == null) dropPoint = this.transform;
-        if (uiContainer != null) _initialUiScale = uiContainer.localScale;
+        if (dropPoint == null) dropPoint = transform;
+        if (uiUnlock == null) uiUnlock = GetComponentInChildren<UI_UnlockStation>();
 
-        UpdateUI(animate: false);
+        if (uiUnlock != null)
+        {
+            uiUnlock.Init();
+            uiUnlock.UpdateUI(_visualPaid, _targetPrice, animate: false);
+        }
     }
 
-    public override void OnCharacterStay(GameObject character)
+    public bool CanInteract(GameObject actor)
     {
-        TryThrowMoney(character.transform, 10);
+        if (_isUnlocked || _nodeData == null || _currentPaid >= _targetPrice)
+            return false;
+
+        PlayerController player = actor.GetComponent<PlayerController>();
+        return player != null && player.money >= throwAmount;
     }
 
+    public void OnStartInteract(GameObject actor) { }
 
-    public void TryThrowMoney(Transform playerTransform, int throwAmount)
+    public void OnUpdateInteract(GameObject actor, float progress) { }
+
+    // 발판의 Duration(0.1초) 주기가 완료될 때마다 1번씩 실행
+    public void OnCompleteInteract(GameObject actor)
     {
-        if (isUnlocked || nodeData == null || currentPaid >= nodeData.price) return;
+        if (!CanInteract(actor)) return;
 
-        // 실제 플레이어 돈 검증 로직 (PlayerController에서 처리하거나 매니저 활용)
-        PlayerController player = playerTransform.GetComponent<PlayerController>();
-        if (player == null || player.money < throwAmount) return;
+        PlayerController player = actor.GetComponent<PlayerController>();
+        if (player == null) return;
 
-        // 돈 차감
+        // 1. 플레이어 돈 차감
         player.UpdateMoney(-throwAmount);
+        _currentPaid += throwAmount;
 
-        currentPaid += throwAmount;
-
-        // 가짜 돈 날아가는 연출
-        Vector3 startPos = playerTransform.position + Vector3.up * 1f;
-        GameObject flyingMoney = Instantiate(moneyPrefab, startPos, Quaternion.identity);
+        // 2. 날아가는 돈 연출 생성
+        Vector3 startPos = player.transform.position + Vector3.up * 1f;
+        GameObject flyingMoney = Managers.Resource.Instantiate(moneyPrefab, startPos, Quaternion.identity);
 
         flyingMoney.transform.DOJump(
             endValue: dropPoint.position,
             jumpPower: 3f,
             numJumps: 1,
-            duration: 0.5f
+            duration: 0.4f
         ).SetEase(Ease.OutQuad)
         .OnComplete(() =>
         {
-            Destroy(flyingMoney);
+            Managers.Resource.Destroy(flyingMoney);
 
-
-            // 3. 돈이 도착했을 때 시각적 금액을 증가시키고 UI를 업데이트
-            visualPaid += throwAmount;
-            UpdateUI(animate: true);
-
-            // 언락 검사는 시각적 금액(visualPaid)이 다 찼을 때 실행하여 연출이 끝난 후 언락되게 함
-            if (visualPaid >= targetPrice)
+            // 3. 돈이 도착했을 때 시각적 금액 반영 및 UI 갱신
+            _visualPaid += throwAmount;
+            if (uiUnlock != null)
             {
-                Unlock();
+                uiUnlock.UpdateUI(_visualPaid, _targetPrice, animate: true);
+            }
+
+            // 4. 모든 금액이 지불되었으면 언락
+            if (_visualPaid >= _targetPrice)
+            {
+                CompleteUnlock();
             }
         });
     }
 
-    private void UpdateUI(bool animate)
+    public void OnCancelInteract(GameObject actor) { }
+
+    private void CompleteUnlock()
     {
-        if (nodeData == null) return;
+        if (_isUnlocked) return;
+        _isUnlocked = true;
 
-        // UI 표시는 모두 visualPaid를 기준으로 계산합니다.
-        if (fillImage != null)
-            fillImage.fillAmount = (float)visualPaid / targetPrice;
+        // 매니저에 언락 알림
+        Managers.Unlock.UnlockNode(_uniqueUnlockID);
 
-        if (progressText != null)
-        {
-            int remainingPrice = Mathf.Max(0, targetPrice - visualPaid); // 수정
-            progressText.text = remainingPrice.ToString();
-        }
-
-        // 3. 돈이 누적될 때 팅기는 펀치 애니메이션 효과
-        if (animate && uiContainer != null)
-        {
-            _bounceTween?.Kill();
-            uiContainer.localScale = _initialUiScale; // 원래 스케일로 즉시 초기화
-
-            // 월드 스페이스 크기를 고려하여 초기 스케일의 20% 만큼 팅기도록 설정
-            Vector3 punchAmount = _initialUiScale * 0.2f;
-            _bounceTween = uiContainer.DOPunchScale(punchAmount, 0.2f, 10, 1f)
-                .OnKill(() =>
-                {
-                    if (uiContainer != null) uiContainer.localScale = _initialUiScale;
-                });
-        }
-    }
-
-    private void Unlock()
-    {
-        if (isUnlocked) return;
-        isUnlocked = true;
-
-        // [중요] SO 데이터가 아니라 고유 인스턴스 ID를 전달하여 해금!
-        Managers.Unlock.UnlockNode(uniqueUnlockID);
-
-        // 카운터 해금 시 오픈 처리
-        if (uniqueUnlockID == "Stool_0")
+        // 카운터 특정 ID 해금 시 오픈 처리 (기존 로직 유지)
+        if (_uniqueUnlockID == "Stool_0")
         {
             Managers.Game.IsOpen = true;
         }
 
+        // 오브젝트 축소 연출 후 삭제
         transform.DOScale(Vector3.zero, 0.3f)
             .SetEase(Ease.InBack)
             .OnComplete(() =>
             {
-                _bounceTween?.Kill();
-                Destroy(gameObject);
+                if (uiUnlock != null) uiUnlock.KillTweens();
+                Managers.Resource.Destroy(gameObject);
             });
     }
 }

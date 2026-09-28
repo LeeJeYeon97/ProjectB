@@ -107,6 +107,9 @@ public class StackingSystem : MonoBehaviour
         int lastIndex = _stackedItems.Count - 1;
         GameObject lastItem = _stackedItems[lastIndex];
         _stackedItems.RemoveAt(lastIndex);
+
+        Managers.Resource.Destroy(lastItem);
+
         return lastItem;
     }
 }

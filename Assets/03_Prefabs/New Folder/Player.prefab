@@ -721,7 +721,7 @@ GameObject:
   - component: {fileID: 50522842738626156}
   m_Layer: 0
   m_Name: Player
-  m_TagString: Untagged
+  m_TagString: Player
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -909,6 +909,7 @@ MonoBehaviour:
         m_Action: Move
         m_Flags: 0
       m_Flags: 0
+      m_Priority: 0
     m_Reference: {fileID: 0}
   clickAction:
     m_UseReference: 0
@@ -937,6 +938,7 @@ MonoBehaviour:
         m_Action: Click
         m_Flags: 0
       m_Flags: 0
+      m_Priority: 0
     m_Reference: {fileID: 0}
   pointerPositionAction:
     m_UseReference: 0
@@ -965,6 +967,7 @@ MonoBehaviour:
         m_Action: PointerPosition
         m_Flags: 0
       m_Flags: 0
+      m_Priority: 0
     m_Reference: {fileID: 0}
 --- !u!114 &50522842738626156
 MonoBehaviour:
@@ -981,6 +984,7 @@ MonoBehaviour:
   money: 1000000
   throwInterval: 0.1
   throwAmount: 10
+  Stacking: {fileID: 0}
 --- !u!1 &2910704880153460379
 GameObject:
   m_ObjectHideFlags: 0
@@ -1889,6 +1893,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::StackingSystem
   stackPoint: {fileID: 3145563124274365755}
   maxStackCount: 10
+  _stackedItems: []
 --- !u!54 &5812694825430556950
 Rigidbody:
   m_ObjectHideFlags: 0

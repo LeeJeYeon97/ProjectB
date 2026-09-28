@@ -10,7 +10,7 @@ public class ItemController : MonoBehaviour
     public int Value;
 
 
-    public float itemHeight = 0.5f;    // 아이템 하나가 쌓일 때마다 올라갈 Y축 높이 (아이템 크기에 맞춰 조절)
+    public float itemHeight = 0.5f;    // 아이템 하나가 쌓일 때마다 올라갈 Y축 높이 (아이템 크기에 맞춰 조절)ㄴ
 
 
     private void Awake()

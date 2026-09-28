@@ -9,11 +9,10 @@ public class CustomerManager
     public GameObject customerPrefab;       // 손님 프리팹 (Synty 캐릭터 기반)
     public Transform spawnPoint;            // 최초 스폰 위치 (상점 밖)
     public Transform exitPoint;             // 완전 퇴장 위치 (파괴 구역)
-    public Transform counterPoint;          // 계산대 위치
     public List<Transform> entranceQueue;   // 가게 앞 대기줄 순서대로 좌표 리스트
 
     [Header("Shop Infrastructure")]
-    public List<SeatStation> allSeats = new List<SeatStation>();      // 가게 내부의 모든 의자 발판
+    
     private List<CustomerController> waitingCustomers = new List<CustomerController>();
     private float spawnTimer = 0f;
     public float spawnInterval = 7f;        // 스폰 간격
@@ -34,20 +33,11 @@ public class CustomerManager
             };
         }
     }
-
-    public void RegisterSeat(SeatStation seat)
-    {
-        if (!allSeats.Contains(seat))
-        {
-            allSeats.Add(seat);
-        }
-    }
-
-    public void SetScenePositions(Transform spawn, List<Transform> queue, Transform counter = null, Transform exit = null)
+    public void SetScenePositions(Transform spawn, List<Transform> queue, Transform exit = null)
     {
         spawnPoint = spawn;
         exitPoint = exit != null ? exit : spawn; // 퇴장 위치
-        counterPoint = counter;
+      
         entranceQueue = queue;
 
         Debug.Log("CustomerManager: 씬 배치 포지션 캐싱 완료!");
@@ -84,7 +74,7 @@ public class CustomerManager
             // 입구 대기 대상을 설정하고 대기 대열 끝부분 배치
             int currentQueueIndex = waitingCustomers.Count;
             Transform targetQueuePoint = entranceQueue[currentQueueIndex];
-            customer.Init(targetQueuePoint, exitPoint, counterPoint);
+            customer.Init(targetQueuePoint, exitPoint);
 
             waitingCustomers.Add(customer);
         }
@@ -98,7 +88,7 @@ public class CustomerManager
         CustomerController firstInLine = waitingCustomers[0];
 
         // 비어있는 자리가 있는지 탐색
-        SeatStation emptySeat = FindAvailableSeat();
+        SeatStation emptySeat = Managers.Station.FindAvailableSeat();
 
         if (emptySeat != null)
         {
@@ -109,20 +99,6 @@ public class CustomerManager
             // 뒤에 남아있던 손님들을 대기열 한 칸씩 앞으로 당겨서 재정렬
             RearrangeEntranceQueue();
         }
-    }
-
-    private SeatStation FindAvailableSeat()
-    {
-        if(allSeats.Count == 0) return null;
-
-        foreach (var seat in allSeats)
-        {
-            if (seat.CurrentState == SeatState.Empty && seat.isOperational)
-            {
-                return seat;
-            }
-        }
-        return null;
     }
 
     private void RearrangeEntranceQueue()

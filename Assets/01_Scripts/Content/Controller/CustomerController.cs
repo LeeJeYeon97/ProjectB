@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Logging.Abstractions;
+using System;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.AI;
@@ -7,8 +9,11 @@ using static Define;
 [RequireComponent(typeof(NavMeshAgent))]
 public class CustomerController : MonoBehaviour
 {
+    // 결제 이벤트 (손님이 지불한 금액 전달)
+    public event Action<int> OnPayment;
+
     [Header("State")]
-    public CustomerState CurrentState = CustomerState.WaitingAtEntrance;
+    public CustomerState CurrentState = CustomerState.None;
 
     [SerializeField]
     private ItemType orderedType;
@@ -18,29 +23,44 @@ public class CustomerController : MonoBehaviour
     public float eatingDuration = 5.0f; // 밥 먹는 시간
 
     [Header("Payment Settings")]
-    public GameObject moneyPrefab;      // 돈 프리팹 (Assets/03_Prefabs/Item_Money.prefab)
     public int payAmount = 15;          // 식사 가격
 
     private NavMeshAgent agent;
     private SeatStation assignedSeat;
     private Transform exitPoint;
-    private Transform counterPoint;
+    private Transform counterPayPoint;
+    private Counter targetCounter;
 
     private Animator animator; // 1. 애니메이터 캐싱용 변수 추가
 
-    public UI_Bubble uiBubble;
 
-    private void Awake()
-    {
-        agent = GetComponent<NavMeshAgent>();
-        animator = GetComponent<Animator>();
-        uiBubble.gameObject.SetActive(false); // 초기에는 말풍선 비활성화
-    }
+    [Header("UI")]
+    [SerializeField] private UI_InteractionProgress progressUI;
+    [SerializeField] private Vector3 uiOffset = new Vector3(0f, 1.8f, 0f);
+    [SerializeField] private UI_Bubble uiBubble;
 
-    public void Init(Transform entrancePoint, Transform exit, Transform counter)
+    #region 초기화
+
+    public void Init(Transform entrancePoint, Transform exit)
     {
         if (agent == null) agent = GetComponent<NavMeshAgent>(); // agent 할당 확인
         if (animator == null) animator = GetComponent<Animator>(); // animator 할당 확인
+
+        if (uiBubble != null)
+        {
+            uiBubble.gameObject.SetActive(false); // 초기에는 말풍선 비활성화
+        }
+
+        if (progressUI == null)
+        {
+            progressUI = GetComponentInChildren<UI_InteractionProgress>(true);
+        }
+
+        if (progressUI != null)
+        {
+            progressUI.transform.localPosition = uiOffset;
+            progressUI.gameObject.SetActive(false); // 초기에는 프로그레스바 비활성화
+        }
 
         // 1. Agent 컴포넌트 체크
         if (agent == null)
@@ -65,8 +85,9 @@ public class CustomerController : MonoBehaviour
         }
 
         exitPoint = exit;
-        counterPoint = counter;
         CurrentState = CustomerState.WalkEntrance;
+
+        BindCounter();
 
         // 3. 정지 해제 및 경로 지정 성공 여부 확인
         agent.isStopped = false;
@@ -82,7 +103,28 @@ public class CustomerController : MonoBehaviour
         StartCoroutine(CoCheckArrivalAtEntrance());
     }
 
-   
+
+    private void OnDestroy()
+    {
+        if (targetCounter != null)
+        {
+            OnPayment -= targetCounter.ReceivePayment;
+        }
+    }
+
+    private void BindCounter()
+    {
+        targetCounter = Managers.Game.Counter;
+        counterPayPoint = Managers.Game.Counter.PayPoint;
+        
+        if (targetCounter != null)
+        {
+            OnPayment -= targetCounter.ReceivePayment; // 중복 구독 방지
+            OnPayment += targetCounter.ReceivePayment;
+        }
+    }
+
+    #endregion
 
     private void Update()
     {
@@ -93,7 +135,40 @@ public class CustomerController : MonoBehaviour
             animator.SetFloat("Speed", agent.velocity.magnitude);
         }
     }
+    #region NavMesh 이동 보조 루틴
 
+    /// <summary>
+    /// 에이전트가 경로 계산을 완료하고 목적지에 도달할 때까지 대기하는 공통 코루틴
+    /// </summary>
+    private IEnumerator CoWaitUntilArrival(float stoppingDistance = 0.2f)
+    {
+        yield return null;
+
+        while (agent != null && agent.enabled && agent.isOnNavMesh &&
+               (agent.pathPending || agent.remainingDistance > stoppingDistance))
+        {
+            yield return null;
+        }
+    }
+
+    #endregion
+
+    #region 생성 -> 입구 루틴
+
+    // 입구로 가는 코루틴
+    private IEnumerator CoCheckArrivalAtEntrance()
+    {
+        yield return CoWaitUntilArrival(0.2f);
+
+        if (CurrentState == CustomerState.WalkEntrance)
+        {
+            CurrentState = CustomerState.WaitingAtEntrance;
+        }
+    }
+    #endregion
+
+
+    #region 손님이 입구에서 좌석으로 들어가는 코드
     // 매니저가 손님에게 자리를 지정해 줄 때 호출
     public void AssignSeat(SeatStation seat)
     {
@@ -114,96 +189,6 @@ public class CustomerController : MonoBehaviour
 
         StartCoroutine(CoCheckArrivalAtSeat());
     }
-
-    
-
-    /*
-    public void OnOrderTaken()
-    {
-        CurrentState = CustomerState.WaitingForFood;
-        // TODO: 말풍선을 "음식 기다림" 아이콘으로 변경
-    }
-    */
-
-    public void OnFoodServed()
-    {
-        CurrentState = CustomerState.Eating;
-        // TODO: 말풍선 비활성화, 식사 애니메이션 작동
-        Debug.Log("밥 먹습니다..");
-        StartCoroutine(CoEating());
-    }
-
-    private IEnumerator CoEating()
-    {
-        yield return new WaitForSeconds(eatingDuration);
-
-        // 식사 끝, 계산하러 이동 준비
-        CurrentState = CustomerState.MovingToCounter;
-        if (agent != null)
-        {
-            agent.enabled = true;
-            agent.isStopped = false;
-        }
-
-        // 자리를 "치워야 하는 상태"로 전환
-        if (assignedSeat != null)
-        {
-            assignedSeat.CurrentState = SeatState.Dirty;
-            assignedSeat.currentCustomer = null;
-            assignedSeat = null;
-        }
-
-        if (counterPoint != null && agent != null)
-        {
-            agent.SetDestination(counterPoint.position);
-        }
-
-        StartCoroutine(CoCheckArrivalAtCounter());
-    }
-
-    
-
-    private void Pay()
-    {
-        // 카운터 위치에 돈 프리팹 스폰
-        if (moneyPrefab != null && counterPoint != null)
-        {
-            GameObject money = Instantiate(moneyPrefab, counterPoint.position + Vector3.up * 0.5f, Quaternion.identity);
-            // StackingSystem이 먹을 수 있도록 태그가 "Item"인지 확인
-            money.tag = "Item";
-        }
-
-        // 계산 완료 후 퇴장 상태로 전환
-        CurrentState = CustomerState.Leaving;
-        if (agent != null && exitPoint != null)
-        {
-            agent.isStopped = false;
-            agent.SetDestination(exitPoint.position);
-        }
-
-        StartCoroutine(CoCheckExit());
-    }
-
-    // 입구로 가는 코루틴
-    private IEnumerator CoCheckArrivalAtEntrance()
-    {
-        yield return null;
-
-        while (agent != null && agent.enabled && agent.isOnNavMesh && agent.pathPending)
-        {
-            yield return null;
-        }
-
-        while (agent != null && agent.enabled && agent.isOnNavMesh && agent.remainingDistance > 0.2f)
-        {
-            yield return null;
-        }
-
-        if (CurrentState == CustomerState.WalkEntrance)
-        {
-            CurrentState = CustomerState.WaitingAtEntrance;
-        }
-    }
     // 빈 자리로 가는 코루틴
     private IEnumerator CoCheckArrivalAtSeat()
     {
@@ -222,20 +207,8 @@ public class CustomerController : MonoBehaviour
             agent.SetDestination(assignedSeat.customerSitPoint.position);
         }
 
-        // 1. 목적지 설정이 NavMeshAgent에 반영될 수 있도록 한 프레임 대기
-        yield return null;
-
-        // 2. 경로 계산 완료 대기
-        while (agent != null && agent.enabled && agent.isOnNavMesh && agent.pathPending)
-        {
-            yield return null;
-        }
-
-        // 3. 자리에 도착할 때까지 실제 이동 대기
-        while (agent != null && agent.enabled && agent.isOnNavMesh && agent.remainingDistance > 0.2f)
-        {
-            yield return null;
-        }
+        // 목적지 도착 대기
+        yield return CoWaitUntilArrival(0.2f);
 
         // 4. 자리에 착석 및 자동 주문 (음식 대기 상태로 바로 진입)
         // CurrentState = CustomerState.WaitingToOrder;
@@ -268,46 +241,122 @@ public class CustomerController : MonoBehaviour
         // TODO: 앉는 애니메이션 재생 (Animator.SetTrigger("Sit"))
         Debug.Log("손님이 자리에 앉아 자동으로 주문을 넣었습니다. (음식 대기 중)");
     }
+    #endregion
+
+    
+    #region 음식받고 음식 먹는 코드
+    public void OnFoodServed()
+    {
+        CurrentState = CustomerState.Eating;
+        // TODO: 말풍선 비활성화, 식사 애니메이션 작동
+        
+        if (uiBubble != null)
+        {
+            uiBubble.gameObject.SetActive(false); // 말풍선 비활성화
+        }
+
+        Debug.Log("밥 먹습니다..");
+        StartCoroutine(CoEating());
+    }
+
+    private IEnumerator CoEating()
+    {
+        if (progressUI != null)
+        {
+            progressUI.gameObject.SetActive(true);
+            progressUI.SetVisible(true);
+            progressUI.SetProgress(0f);
+        }
+
+        float elapsed = 0f;
+        while (elapsed < eatingDuration)
+        {
+            elapsed += Time.deltaTime;
+            float ratio = eatingDuration > 0f ? Mathf.Clamp01(elapsed / eatingDuration) : 1f;
+
+            if (progressUI != null)
+            {
+                progressUI.SetProgress(ratio);
+            }
+
+            yield return null;
+        }
+
+        if (progressUI != null)
+        {
+            progressUI.SetProgress(1f);
+            progressUI.gameObject.SetActive(false);
+        }
+
+        // 식사 끝, 계산하러 이동 준비
+        CurrentState = CustomerState.MovingToCounter;
+        if (agent != null)
+        {
+            agent.enabled = true;
+            agent.isStopped = false;
+        }
+
+        // 자리를 "치워야 하는 상태"로 전환
+        if (assignedSeat != null)
+        {
+            assignedSeat.CurrentState = SeatState.Dirty;
+            assignedSeat.currentCustomer = null;
+            assignedSeat = null;
+        }
+
+        if (counterPayPoint != null && agent != null)
+        {
+            agent.SetDestination(counterPayPoint.position);
+        }
+
+        StartCoroutine(CoCheckArrivalAtCounter());
+    }
+
+    #endregion
+
+
+    #region 값 지불
 
     // 카운터로 가는 코루틴
     private IEnumerator CoCheckArrivalAtCounter()
     {
-        yield return null;
-
-        while (agent != null && agent.enabled && agent.isOnNavMesh && agent.pathPending)
-        {
-            yield return null;
-        }
-
-        while (agent != null && agent.enabled && agent.isOnNavMesh && agent.remainingDistance > 0.2f)
-        {
-            yield return null;
-        }
+        yield return CoWaitUntilArrival(0.2f);
 
         CurrentState = CustomerState.WaitingToPay;
         Debug.Log("카운터에 도착하여 결제를 요청합니다.");
 
         // 일정 시간 후 결제 처리 (또는 카운터 발판에 플레이어가 상호작용하면 결제하게 할 수도 있음)
-        yield return new WaitForSeconds(1.0f);
+        yield return new WaitForSeconds(0.5f);
         Pay();
     }
 
+
+    private void Pay()
+    {
+        // 카운터 바인딩 재확인 (런타임 생성 대비)
+        BindCounter();
+
+        // 카운터로 결제 이벤트 전송 (카운터가 지정된 위치에 돈을 생성)
+        OnPayment?.Invoke(payAmount);
+
+        // 계산 완료 후 퇴장 상태로 전환
+        CurrentState = CustomerState.Leaving;
+        if (agent != null && exitPoint != null)
+        {
+            agent.isStopped = false;
+            agent.SetDestination(exitPoint.position);
+        }
+
+        StartCoroutine(CoCheckExit());
+    }
     // 나가는 코루틴
     private IEnumerator CoCheckExit()
     {
-        yield return null;
-
-        while (agent != null && agent.enabled && agent.isOnNavMesh && agent.pathPending)
-        {
-            yield return null;
-        }
-
-        while (agent != null && agent.enabled && agent.isOnNavMesh && agent.remainingDistance > 0.5f)
-        {
-            yield return null;
-        }
+        yield return CoWaitUntilArrival(0.5f);
 
         Debug.Log("손님이 퇴장하여 오브젝트가 정리됩니다.");
-        Destroy(gameObject); // 혹은 오브젝트 풀에 반환(PoolingManager)
+        Managers.Resource.Destroy(gameObject);
     }
+
+    #endregion
 }

@@ -27,6 +27,12 @@ MonoBehaviour:
     m_SerializedLabels:
     - Preload
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 8bb6c0e3b6f4d0f4b93c63169484d89e
+    m_Address: Prefab_Employee
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Preload
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: db7072b1cdd7f394790ea83be7698d4c
     m_Address: Prefab_Customer
     m_ReadOnly: 0

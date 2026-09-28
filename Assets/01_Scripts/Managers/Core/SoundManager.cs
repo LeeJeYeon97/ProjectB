@@ -5,30 +5,33 @@ using static Define;
 
 public class SoundManager
 {
-    // »ç¿îµå Àç»ý ÇØÁÙ ¿Àµð¿À ¼Ò½ºµé
+    // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ò½ï¿½ï¿½ï¿½
     private AudioSource[] _audioSources = new AudioSource[(int)Sound.MaxCount];
 
-    // String °æ·Î ´ë½Å Enum(SoundID)À» Å°°ªÀ¸·Î »ç¿ëÇÕ´Ï´Ù!
+    // String ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ Enum(SoundID)ï¿½ï¿½ Å°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½!
     private Dictionary<SoundID, AudioClip> _audioClips = new Dictionary<SoundID, AudioClip>();
 
-    // [Ãß°¡] ¸¶½ºÅÍ º¼·ý °è¼ö (0.0 ~ 1.0)
+    // [ï¿½ß°ï¿½] ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ (0.0 ~ 1.0)
     private float _bgmVolumeMultiplier = 1.0f;
     private float _sfxVolumeMultiplier = 1.0f;
 
-    // [Ãß°¡] °¢ »ç¿îµåº° ¸¶Áö¸· Àç»ý ½Ã°£À» ±â¾ïÇÏ´Â µñ¼Å³Ê¸®
+    // [ï¿½ß°ï¿½] ï¿½ï¿½ ï¿½ï¿½ï¿½åº° ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½Ã°ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Ï´ï¿½ ï¿½ï¿½Å³Ê¸ï¿½
     private Dictionary<Define.SoundID, float> _lastPlayTimes = new Dictionary<Define.SoundID, float>();
 
-    // [Ãß°¡] °°Àº ¼Ò¸®°¡ Áßº¹ Àç»ýµÇ´Â °ÍÀ» ¸·´Â ÄðÅ¸ÀÓ (0.05ÃÊ ~ 0.1ÃÊ ±ÇÀå)
+    // [ï¿½ß°ï¿½] ï¿½ï¿½ï¿½ï¿½ ï¿½Ò¸ï¿½ï¿½ï¿½ ï¿½ßºï¿½ ï¿½ï¿½ï¿½ï¿½Ç´ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Å¸ï¿½ï¿½ (0.05ï¿½ï¿½ ~ 0.1ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½)
     //private float _sfxCooldown = 0.05f;
 
     public void Init()
     {
-        // 1. AudioSource ±âº» ¼¼ÆÃ
+        // 1. AudioSource ï¿½âº» ï¿½ï¿½ï¿½ï¿½
         GameObject root = GameObject.Find("@Sound");
         if (root == null)
         {
             root = new GameObject { name = "@Sound" };
-            Object.DontDestroyOnLoad(root);
+            if (Application.isPlaying)
+            {
+                Object.DontDestroyOnLoad(root);
+            }
 
             string[] soundNames = System.Enum.GetNames(typeof(Sound));
             for (int i = 0; i < soundNames.Length - 1; i++)
@@ -40,8 +43,8 @@ public class SoundManager
             _audioSources[(int)Sound.Bgm].loop = true;
         }
 
-        // 2. SO µ¥ÀÌÅÍ ·Îµå ¹× µñ¼Å³Ê¸® Ä³½Ì (ÇÙ½É!)
-        // (Managers.Data ÂÊ¿¡ SO¸¦ ¹°·ÁµÎ¼Ì´Ù¸é ±×°É °¡Á®¿À¼Åµµ µË´Ï´Ù.)
+        // 2. SO ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Îµï¿½ ï¿½ï¿½ ï¿½ï¿½Å³Ê¸ï¿½ Ä³ï¿½ï¿½ (ï¿½Ù½ï¿½!)
+        // (Managers.Data ï¿½Ê¿ï¿½ SOï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Î¼Ì´Ù¸ï¿½ ï¿½×°ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Åµï¿½ ï¿½Ë´Ï´ï¿½.)
         //SoundDataSO data = Managers.Data.SoundData;
         //if (data != null)
         //{
@@ -50,19 +53,19 @@ public class SoundManager
         //        if (!_audioClips.ContainsKey(info.id))
         //        {
         //            _audioClips.Add(info.id, info.clip);
-        //            _soundInfo.Add(info.id, info); // º¼·ý µ¥ÀÌÅÍ µîÀ» À§ÇØ °°ÀÌ ÀúÀå
+        //            _soundInfo.Add(info.id, info); // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
         //        }
         //    }
         //}
         //else
         //{
-        //    Debug.LogError("SoundData ScriptableObject¸¦ Ã£À» ¼ö ¾ø½À´Ï´Ù!");
+        //    Debug.LogError("SoundData ScriptableObjectï¿½ï¿½ Ã£ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï´ï¿½!");
         //}
     }
 
     // ==========================================================
-    // [Ãß°¡ 1] AudioClipÀ» Á÷Á¢ ¹Þ´Â Play ÇÔ¼ö
-    // (ScriptableObject³ª ÀÎ½ºÆåÅÍ¿¡¼­ Á÷Á¢ ÇÒ´çÇÑ Å¬¸³À» Àç»ýÇÒ ¶§ »ç¿ë)
+    // [ï¿½ß°ï¿½ 1] AudioClipï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Þ´ï¿½ Play ï¿½Ô¼ï¿½
+    // (ScriptableObjectï¿½ï¿½ ï¿½Î½ï¿½ï¿½ï¿½ï¿½Í¿ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ò´ï¿½ï¿½ï¿½ Å¬ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½)
     // ==========================================================
     public void Play(AudioClip clip, Sound type = Sound.Sfx, float pitch = 1.0f, float baseVolume = 1.0f)
     {
@@ -73,14 +76,14 @@ public class SoundManager
             float finalVolume = baseVolume * _bgmVolumeMultiplier;
             AudioSource audioSource = _audioSources[(int)Sound.Bgm];
 
-            // 1. ¸¸¾à Áö±Ý Æ²·Á´Â ºê±ÝÀÌ ÀÌ¹Ì Àç»ý ÁßÀÎ ºê±Ý°ú ¶È°°´Ù¸é ¹«½Ã!
+            // 1. ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ Æ²ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ì¹ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ý°ï¿½ ï¿½È°ï¿½ï¿½Ù¸ï¿½ ï¿½ï¿½ï¿½ï¿½!
             if (audioSource.isPlaying && audioSource.clip == clip)
                 return;
 
-            // 2. ÀÌÀü¿¡ °ãÃÄ¼­ ½ÇÇà ÁßÀÌ´ø º¼·ý ¾Ö´Ï¸ÞÀÌ¼ÇÀÌ ÀÖ´Ù¸é °­Á¦ Á¾·á
+            // 2. ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ä¼ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ì´ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ö´Ï¸ï¿½ï¿½Ì¼ï¿½ï¿½ï¿½ ï¿½Ö´Ù¸ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
             audioSource.DOKill();
 
-            // 3. ºÎµå·¯¿î ÀüÈ¯ ·ÎÁ÷ (Fade Out -> Change -> Fade In)
+            // 3. ï¿½Îµå·¯ï¿½ï¿½ ï¿½ï¿½È¯ ï¿½ï¿½ï¿½ï¿½ (Fade Out -> Change -> Fade In)
             if (audioSource.isPlaying)
             {
                 audioSource.DOFade(0f, 0.5f).OnComplete(() =>
@@ -112,25 +115,25 @@ public class SoundManager
     }
 
     // ==========================================================
-    // [Ãß°¡ 2] String(°æ·Î)À» Á÷Á¢ ¹Þ´Â Play ÇÔ¼ö
-    // ("SFX/Explosion" Ã³·³ ¸®¼Ò½º Æú´õ °æ·Î¸¦ ÅëÇØ Àç»ýÇÒ ¶§ »ç¿ë)
+    // [ï¿½ß°ï¿½ 2] String(ï¿½ï¿½ï¿½)ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Þ´ï¿½ Play ï¿½Ô¼ï¿½
+    // ("SFX/Explosion" Ã³ï¿½ï¿½ ï¿½ï¿½ï¿½Ò½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Î¸ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½)
     // ==========================================================
     public void Play(string path, Sound type = Sound.Sfx, float pitch = 1.0f, float baseVolume = 1.0f)
     {
         if (string.IsNullOrEmpty(path)) return;
 
-        // Managers.Resource¸¦ ÅëÇØ AudioClipÀ» ·ÎµåÇØ¿É´Ï´Ù. 
-        // (ÁÖÀÇ: Resource ·Î´õÀÇ Ä³½Ì ±â´ÉÀÌ ¾ø´Ù¸é, ÀÚÁÖ ¾²ÀÌ´Â È¿°úÀ½Àº ¸Å¹ø LoadµÇ¾î ¹«°Å¿ï ¼ö ÀÖ½À´Ï´Ù.)
+        // Managers.Resourceï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ AudioClipï¿½ï¿½ ï¿½Îµï¿½ï¿½Ø¿É´Ï´ï¿½. 
+        // (ï¿½ï¿½ï¿½ï¿½: Resource ï¿½Î´ï¿½ï¿½ï¿½ Ä³ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ù¸ï¿½, ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ì´ï¿½ È¿ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Å¹ï¿½ Loadï¿½Ç¾ï¿½ ï¿½ï¿½ï¿½Å¿ï¿½ ï¿½ï¿½ ï¿½Ö½ï¿½ï¿½Ï´ï¿½.)
         AudioClip clip = Managers.Resource.Load<AudioClip>(path);
 
         if (clip != null)
         {
-            // ·Îµå¿¡ ¼º°øÇß´Ù¸é À§¿¡ ¸¸µé¾îµÐ AudioClip Àü¿ë Play ÇÔ¼ö·Î ³Ñ°ÜÁÝ´Ï´Ù.
+            // ï¿½Îµå¿¡ ï¿½ï¿½ï¿½ï¿½ï¿½ß´Ù¸ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ AudioClip ï¿½ï¿½ï¿½ï¿½ Play ï¿½Ô¼ï¿½ï¿½ï¿½ ï¿½Ñ°ï¿½ï¿½Ý´Ï´ï¿½.
             Play(clip, type, pitch, baseVolume);
         }
         else
         {
-            Debug.LogWarning($"»ç¿îµå ÆÄÀÏÀ» Ã£À» ¼ö ¾ø½À´Ï´Ù: {path}");
+            Debug.LogWarning($"ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Ã£ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï´ï¿½: {path}");
         }
     }
 
@@ -138,61 +141,63 @@ public class SoundManager
     {
         //if (id == SoundID.None) return;
         //
-        //// [Ãß°¡] ÄðÅ¸ÀÓ ¹æ¾î¸·: SFXÀÏ °æ¿ì¿¡¸¸ Ã¼Å©ÇÏ¿© Áßº¹ Àç»ý(¾ÃÈû)À» ¸·½À´Ï´Ù.
+        //// [ï¿½ß°ï¿½] ï¿½ï¿½Å¸ï¿½ï¿½ ï¿½ï¿½î¸·: SFXï¿½ï¿½ ï¿½ï¿½ì¿¡ï¿½ï¿½ Ã¼Å©ï¿½Ï¿ï¿½ ï¿½ßºï¿½ ï¿½ï¿½ï¿½(ï¿½ï¿½ï¿½ï¿½)ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï´ï¿½.
         //if (type == Sound.Sfx)
         //{
         //    if (_lastPlayTimes.TryGetValue(id, out float lastTime))
         //    {
-        //        // ¸¶Áö¸· Àç»ý ½Ã°£À¸·ÎºÎÅÍ ÄðÅ¸ÀÓ(0.05ÃÊ)ÀÌ Áö³ªÁö ¾Ê¾Ò´Ù¸é ¹«½Ã!
+        //        // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½Ã°ï¿½ï¿½ï¿½ï¿½Îºï¿½ï¿½ï¿½ ï¿½ï¿½Å¸ï¿½ï¿½(0.05ï¿½ï¿½)ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ê¾Ò´Ù¸ï¿½ ï¿½ï¿½ï¿½ï¿½!
         //        if (Time.time - lastTime < _sfxCooldown)
         //        {
         //            return;
         //        }
         //    }
-        //    // ÄðÅ¸ÀÓ Åë°ú ½Ã ÇöÀç ½Ã°£À¸·Î °»½Å
+        //    // ï¿½ï¿½Å¸ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ã°ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
         //    _lastPlayTimes[id] = Time.time;
         //}
         //
         //if (_audioClips.TryGetValue(id, out AudioClip clip))
         //{
-        //    // µñ¼Å³Ê¸®¿¡¼­ Å¬¸³°ú ±âº» º¼·ýÀ» Ã£Àº µÚ, AudioClip Àü¿ë Play ÇÔ¼ö·Î Åä½º!
+        //    // ï¿½ï¿½Å³Ê¸ï¿½ï¿½ï¿½ï¿½ï¿½ Å¬ï¿½ï¿½ï¿½ï¿½ ï¿½âº» ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Ã£ï¿½ï¿½ ï¿½ï¿½, AudioClip ï¿½ï¿½ï¿½ï¿½ Play ï¿½Ô¼ï¿½ï¿½ï¿½ ï¿½ä½º!
         //    float baseVolume = _soundInfo[id].volume;
         //    Play(clip, type, pitch, baseVolume);
         //}
         //else
         //{
-        //    Debug.LogWarning($"»ç¿îµå ID¸¦ Ã£À» ¼ö ¾ø½À´Ï´Ù: {id}");
+        //    Debug.LogWarning($"ï¿½ï¿½ï¿½ï¿½ IDï¿½ï¿½ Ã£ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï´ï¿½: {id}");
         //}
     }
 
-    // ¹è°æÀ½ º¼·ý ¼³Á¤ (SettingManager¿¡¼­ È£Ãâ)
+    // ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ (SettingManagerï¿½ï¿½ï¿½ï¿½ È£ï¿½ï¿½)
     public void SetBGMVolume(float volume)
     {
         _bgmVolumeMultiplier = volume;
+        if (_audioSources == null || _audioSources.Length <= (int)Sound.Bgm) return;
         AudioSource bgmSource = _audioSources[(int)Sound.Bgm];
+        if (bgmSource == null) return;
 
-        // ÇöÀç ¹è°æÀ½ÀÌ Àç»ý ÁßÀÌ¶ó¸é Áï½Ã º¼·ý ¹Ý¿µ
+        // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ì¶ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ý¿ï¿½
         if (bgmSource.isPlaying && bgmSource.clip != null)
         {
-            // ÇöÀç Å¬¸³ÀÇ ±âº» º¼·ý Á¤º¸°¡ ÀÖ´ÂÁö È®ÀÎ ÈÄ Àû¿ë
-            // (SoundID¸¦ ¾Ë±â ¾î·Æ´Ù¸é ÇöÀç ¼Ò½º º¼·ýÀ» Á÷Á¢ Á¶ÀýÇÏ°Å³ª, 
-            // ¸¶Áö¸· Àç»ý Á¤º¸¸¦ ÀúÀåÇØµÎ¾ú´Ù°¡ »ç¿ëÇÏ´Â °ÍÀÌ ÁÁ½À´Ï´Ù.)
-            bgmSource.DOKill(); // ±âÁ¸ ÆäÀÌµå ¾Ö´Ï¸ÞÀÌ¼Ç ÁßÁö
+            // ï¿½ï¿½ï¿½ï¿½ Å¬ï¿½ï¿½ï¿½ï¿½ ï¿½âº» ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ö´ï¿½ï¿½ï¿½ È®ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
+            // (SoundIDï¿½ï¿½ ï¿½Ë±ï¿½ ï¿½ï¿½Æ´Ù¸ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ò½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï°Å³ï¿½, 
+            // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ØµÎ¾ï¿½ï¿½Ù°ï¿½ ï¿½ï¿½ï¿½ï¿½Ï´ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï´ï¿½.)
+            bgmSource.DOKill(); // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ìµï¿½ ï¿½Ö´Ï¸ï¿½ï¿½Ì¼ï¿½ ï¿½ï¿½ï¿½ï¿½
             bgmSource.volume = GetFinalBGMVolume(bgmSource.clip);
         }
     }
 
-    // È¿°úÀ½ º¼·ý ¼³Á¤ (SettingManager¿¡¼­ È£Ãâ)
+    // È¿ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ (SettingManagerï¿½ï¿½ï¿½ï¿½ È£ï¿½ï¿½)
     public void SetSFXVolume(float volume)
     {
         _sfxVolumeMultiplier = volume;
     }
 
-    // Å¬¸³ÀÇ ¿ø·¡ º¼·ý°ú ¸¶½ºÅÍ º¼·ýÀ» °öÇÑ ÃÖÁ¾ º¼·ý °è»ê±â
+    // Å¬ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
     private float GetFinalBGMVolume(AudioClip clip)
     {
-        //// ÇöÀç Àç»ý ÁßÀÎ Å¬¸³ÀÇ Á¤º¸¸¦ µñ¼Å³Ê¸®¿¡¼­ ¿ªÃßÀûÇÏ°Å³ª 
-        //// ¸¶Áö¸· Àç»ý ½Ã ÀúÀåµÈ º¼·ý °ªÀ» »ç¿ëÇÕ´Ï´Ù.
+        //// ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ Å¬ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Å³Ê¸ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï°Å³ï¿½ 
+        //// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
         //foreach (var info in _soundInfo.Values)
         //{
         //    if (info.clip == clip)
@@ -208,6 +213,6 @@ public class SoundManager
             audioSource.clip = null;
             audioSource.Stop();
         }
-        // ¾À ÀüÈ¯ ½Ã SO µ¥ÀÌÅÍ´Â °è¼Ó ¾µ °Å¶ó¸é _audioClips.Clear()´Â ¾È ÇÏ¼Åµµ µË´Ï´Ù.
+        // ï¿½ï¿½ ï¿½ï¿½È¯ ï¿½ï¿½ SO ï¿½ï¿½ï¿½ï¿½ï¿½Í´ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½Å¶ï¿½ï¿½ _audioClips.Clear()ï¿½ï¿½ ï¿½ï¿½ ï¿½Ï¼Åµï¿½ ï¿½Ë´Ï´ï¿½.
     }
 }

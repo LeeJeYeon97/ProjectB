@@ -1,11 +1,23 @@
 using System.Collections;
+using System.Reflection.Metadata;
 using UnityEngine;
 using static Define;
 
 public class SeatStation : BaseStation
 {
     [Header("Seat Configuration")]
-    public SeatState CurrentState = SeatState.Empty;
+    [SerializeField]
+    private SeatState currentState = SeatState.Empty;
+    public SeatState CurrentState
+    {
+        get => currentState;
+        set
+        {
+            currentState = value;
+            UpdateUIState();
+        }
+    }
+
     public Transform customerSitPoint; // 손님이 앉을 실제 3D 좌표/회전 기준점
     public Transform foodServePoint;   // 음식을 올려놓을 테이블 위 좌표
 
@@ -14,107 +26,207 @@ public class SeatStation : BaseStation
     private float currentProgress = 0f;
 
     public CustomerController currentCustomer;
+    public EmployeeController AssignedCleaner { get; set; }
 
-    
+    [Header("UI")]
+    [SerializeField] private UI_Bubble uiBubble;
+    [SerializeField] private UI_InteractionProgress progressUI_1;
+    [SerializeField] private Vector3 bubbleOffset = new Vector3(0f, 1.8f, 0f);
+    [SerializeField] private Vector3 progressOffset = new Vector3(0f, 1.4f, 0f);
+
+    private PlayerController _currentPlayer;
+
+    private void Awake()
+    {
+        InitUI();
+    }
+
     private void Start()
     {
-        //stationID = $"Seat_{GetInstanceID()}";
-        Managers.Customer.RegisterSeat(this);
+        InitUI();
+        UpdateUIState();
+        Managers.Station.RegisterSeat(this);
     }
+
+    private void InitUI()
+    {
+        if (uiBubble == null)
+        {
+            uiBubble = GetComponentInChildren<UI_Bubble>(true);
+        }
+        if (uiBubble == null)
+        {
+            GameObject bubblePrefab = Managers.Resource.Load<GameObject>("UI_Bubble");
+#if UNITY_EDITOR
+            if (bubblePrefab == null)
+                bubblePrefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/03_Prefabs/UI/SubItem/UI_Bubble.prefab");
+#endif
+            if (bubblePrefab != null)
+            {
+                GameObject go = Instantiate(bubblePrefab, transform);
+                go.name = "UI_Bubble";
+                uiBubble = go.GetComponent<UI_Bubble>();
+            }
+        }
+        if (uiBubble != null)
+        {
+            uiBubble.transform.localPosition = bubbleOffset;
+            uiBubble.transform.localScale = Vector3.one * 0.01f;
+            uiBubble.gameObject.SetActive(false);
+        }
+
+        if (progressUI_1 == null)
+        {
+            progressUI_1 = GetComponentInChildren<UI_InteractionProgress>(true);
+        }
+        if (progressUI_1 == null)
+        {
+            GameObject progPrefab = Managers.Resource.Load<GameObject>("UI_InteractionProgress");
+#if UNITY_EDITOR
+            if (progPrefab == null)
+                progPrefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/03_Prefabs/UI/SubItem/UI_InteractionProgress.prefab");
+#endif
+            if (progPrefab != null)
+            {
+                GameObject go = Instantiate(progPrefab, transform);
+                go.name = "UI_InteractionProgress";
+                progressUI_1 = go.GetComponent<UI_InteractionProgress>();
+            }
+        }
+        if (progressUI_1 != null)
+        {
+            progressUI_1.transform.localPosition = progressOffset;
+            progressUI_1.transform.localScale = Vector3.one * 0.01f;
+            progressUI_1.gameObject.SetActive(false);
+        }
+    }
+
+    public void UpdateUIState()
+    {
+        if (uiBubble == null)
+            uiBubble = GetComponentInChildren<UI_Bubble>(true);
+        if (progressUI_1 == null)
+            progressUI_1 = GetComponentInChildren<UI_InteractionProgress>(true);
+
+        if (currentState == SeatState.Dirty)
+        {
+            if (uiBubble != null)
+            {
+                uiBubble.gameObject.SetActive(true);
+                uiBubble.SetCleanImage();
+                Managers.Station.RegisterDirtyTable(this);
+            }
+        }
+        else
+        {
+            if (uiBubble != null)
+            {
+                uiBubble.gameObject.SetActive(false);
+            }
+            if (progressUI_1 != null)
+            {
+                progressUI_1.SetProgress(0f);
+                progressUI_1.gameObject.SetActive(false);
+            }
+        }
+    }
+
     public void SetState(SeatState state)
     {
         CurrentState = state;
     }
-    // 플레이어가 자리(발판) 위에 올라와 상호작용할 때 호출됨 (0.1초 간격)
-    public override void OnCharacterStay(GameObject character)
+
+    private void Update()
     {
         if (!isOperational) return;
 
-        // 플레이어 정보를 가져옴
-        PlayerController player = character.GetComponent<PlayerController>();
-        if (player == null) return;
-
-        switch (CurrentState)
+        // 플레이어가 발판 위에 있고 청소 필요한 상태일 때 청소 진행
+        if (_currentPlayer != null && CurrentState == SeatState.Dirty)
         {
-            case SeatState.Dirty:
-                // 1. 자리 치우기 (청소 중)
-                currentProgress += Time.deltaTime;
-                // TODO: UI에 청소 ProgressBar 표시 (예: currentProgress / interactionDuration)
-                if (currentProgress >= interactionDuration)
-                {
-                    CleanSeat();
-                    currentProgress = 0f;
-                }
-                break;
+            currentProgress += Time.deltaTime;
+            float ratio = interactionDuration > 0f ? Mathf.Clamp01(currentProgress / interactionDuration) : 1f;
 
-            case SeatState.Occupied:
-                if (currentCustomer == null) return;
+            if (progressUI_1 != null)
+            {
+                if (!progressUI_1.gameObject.activeSelf)
+                {
+                    progressUI_1.gameObject.SetActive(true);
+                    progressUI_1.SetVisible(true);
+                }
+                progressUI_1.SetProgress(ratio);
+            }
 
-                /*
-                // 2. 주문받기 (착석 시 자동 주문으로 전환되어 주석 처리)
-                if (currentCustomer.CurrentState == CustomerState.WaitingToOrder)
-                {
-                    currentProgress += Time.deltaTime;
-                    if (currentProgress >= interactionDuration)
-                    {
-                        TakeOrder();
-                        currentProgress = 0f;
-                    }
-                }
-                */
-                // 3. 음식 서빙하기
-                if (currentCustomer.CurrentState == CustomerState.WaitingForFood)
-                {
-                    // 플레이어의 가방(StackingSystem)에 해당 음식이 있는지 검사
-                    StackingSystem stacking = player.GetComponentInChildren<StackingSystem>();
-                    if (stacking != null && HasMatchingFood(stacking))
-                    {
-                        ServeFood(stacking);
-                    }
-                }
-                break;
+            if (currentProgress >= interactionDuration)
+            {
+                CleanSeat();
+                currentProgress = 0f;
+            }
+        }
+    }
+    public void SetCleanProgress(float ratio)
+    {
+        if (progressUI_1 != null)
+        {
+            if (!progressUI_1.gameObject.activeSelf)
+            {
+                progressUI_1.gameObject.SetActive(true);
+                progressUI_1.SetVisible(true);
+            }
+            progressUI_1.SetProgress(ratio);
         }
     }
 
-    private void CleanSeat()
+    public void CleanSeat()
     {
         CurrentState = SeatState.Empty;
+        currentProgress = 0f;
+        AssignedCleaner = null;
+        if (progressUI_1 != null)
+        {
+            progressUI_1.SetProgress(0f);
+            progressUI_1.gameObject.SetActive(false);
+        }
+        if (uiBubble != null)
+        {
+            uiBubble.gameObject.SetActive(false);
+        }
         Debug.Log("자리가 깨끗하게 치워졌습니다! 이제 새로운 손님을 받을 수 있습니다.");
-        // TODO: 청소 이펙트 생성, 접시 오브젝트 파괴 등
-    }
 
-    /*
-    private void TakeOrder()
-    {
-        currentCustomer.OnOrderTaken();
-        Debug.Log("손님의 주문을 받았습니다!");
-        // TODO: 머리 위 말풍선 변경 (주문완료 대기 중 상태로)
+        // 여기서 쓰레기통으로 쓰레기를 버릴지 접시를 싱크대로 옮길지 결정
+        // TODO: 청소 이펙트 생성, 접시 오브젝트 파괴 / 스테이션 매니저 처리 추가 등
+
+        if(_currentPlayer != null)
+        {
+            Debug.Log("플레이어가 접시를 주웠습니다.");
+            GameObject go = Managers.Resource.Instantiate("Item_BeerEmpty");
+            _currentPlayer.Stacking.PickUpItem(go);
+        }
     }
-    */
 
     private bool HasMatchingFood(StackingSystem stacking)
     {
-        // TODO: 플레이어가 머리 위에 쌓아둔 마지막 아이템(혹은 매칭되는 타입)이 손님이 원하는 음식 유형인지 체크
-        // 현재 StackingSystem의 리스트를 검사하는 함수 작성 필요
-        
-        if(stacking == null)
+        if (stacking == null)
         {
             return false;
         }
-        if(currentCustomer == null)
+        if (currentCustomer == null)
         {
             return false;
         }
-        if(currentCustomer.OrderedType != ItemType.Beer)
+        if(stacking.StackCount <= 0)
         {
             return false;
         }
+        if (currentCustomer.OrderedType != ItemType.Beer)
+        {
+            return false;
+        }
+        // TODO : 리스트의 첫번째 아이템이 주문 타입과 같은지 확인 필요
         return true;
     }
 
     private void ServeFood(StackingSystem stacking)
     {
-        // TODO: StackingSystem에서 음식을 제거(Pop)하고, foodServePoint에 배치하는 연출 실행
         stacking.PopItem();
         currentCustomer.OnFoodServed();
         Debug.Log("음식을 서빙했습니다. 식사를 시작합니다!");

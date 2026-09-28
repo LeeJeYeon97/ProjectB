@@ -38,9 +38,14 @@ public class Managers : MonoBehaviour
     private CoroutineHelper _coroutine;
 
     // Content
+    [SerializeField]
     private GameManager _game;
     private UnlockManager _unlock;
     private CustomerManager _customer;
+    private EmployeeManager _employee;
+
+    [SerializeField]
+    private StationManager _station;
 
     // ========================================================== //
     // Core
@@ -64,6 +69,8 @@ public class Managers : MonoBehaviour
     public static GameManager Game => Instance._game;
     public static UnlockManager Unlock => Instance._unlock;
     public static CustomerManager Customer => Instance._customer;
+    public static EmployeeManager Employee => Instance._employee;
+    public static StationManager Station => Instance._station;
     // ========================================================== //
 
     private void OnApplicationQuit()
@@ -89,7 +96,7 @@ public class Managers : MonoBehaviour
             }
             _instance = go.GetComponent<Managers>();
 
-            // ������Ʈ�� ���� �ʿ���� �Ŵ��� �ʱ�ȭ
+            // Core
             _instance._camera = new CameraManager();
             _instance._data = new DataManager();
             _instance._effect = new EffectManager();
@@ -106,14 +113,14 @@ public class Managers : MonoBehaviour
             _instance._webServer = new WebServerManager();
 
 
-            // Core
+            // Content
             _instance._game = new GameManager();
             _instance._unlock = new UnlockManager();
             _instance._customer = new CustomerManager();
+            _instance._employee = new EmployeeManager();
+            _instance._station = new StationManager();
 
-            // �Ŵ����� �ʱ�ȭ �Լ�
             // Core
-            // InitManager�ʱ�ȭ�� ó�� Scene���� �����ϱ�
             Pool.Init();
             Resource.Init();
             Sound.Init();
@@ -123,11 +130,12 @@ public class Managers : MonoBehaviour
             Setting.Init();
 
 
+            // Content
             Customer.Init();
+            Employee.Init();
 
-            // �α� �Ⱥ��̰�
             Debug.unityLogger.logEnabled = Debug.isDebugBuild;
-            Application.targetFrameRate = 60; // 60������ ���� (�ε巯�� ȭ��)
+            Application.targetFrameRate = 60; 
 
         }
     }
@@ -148,6 +156,7 @@ public class Managers : MonoBehaviour
         _scene.Clear();
         _sound.Clear();
         _ui.Clear();
+        _employee?.Clear();
         if (_coroutine != null)
         {
             _coroutine.StopAllCoroutines();

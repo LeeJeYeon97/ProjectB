@@ -54,6 +54,8 @@ public class Define
         None,
         Money,
         Beer,
+        Beer_Empty,
+        Beer_Dirty,
     }
     public enum UnlockType
     {
@@ -69,6 +71,9 @@ public class Define
         Kitchen,
         Stool,
         Table,
+        BeerMachine,
+        Sink,
+
     }
     public enum CustomerState
     {
@@ -94,7 +99,21 @@ public class Define
     public enum InterationType
     {
         None,
+    }
+    public enum EmployeeTaskType
+    {
+        None,
+        Cleaning,
 
+        DishWash,
+        Serving,
+        Casher,
+    }
+    public enum EmployeeState
+    {
+        Idle,
+        MovingToWork,
+        Working,
     }
 }
 
