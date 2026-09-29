@@ -27,6 +27,9 @@ public class UnlockStation : MonoBehaviour, IInteractable
 
     public float Duration => throwInterval;
 
+    [SerializeField] private Define.InterationType interactType;
+
+    public Define.InterationType InteractionType => interactType;
     public void Setup(UnlockAnchor anchor)
     {
         _nodeData = anchor.NodeData;

@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using static Define;
-using static UnityEngine.Rendering.DebugUI;
 
 [Serializable]
 public class StationManager
@@ -14,7 +13,7 @@ public class StationManager
     public event Action<EmployeeTaskType, BaseStation> OnRegisterDirtyTable;
 
     // 더러운 테이블 등록
-    public void RegisterDirtyTable(BaseStation seat)
+    public void RegisterDirtyTable(SeatStation seat)
     {
         Managers.Employee.CreateTask(EmployeeTaskType.Cleaning, seat);
     }
@@ -29,8 +28,8 @@ public class StationManager
     {
         foreach (var seat in allSeats)
         {
-            if (seat.CurrentState == SeatState.Empty &&
-                seat.isOperational)
+            if (seat.CurrentState == SeatState.Empty)
+                // &&seat.isOperational)
             {
                 return seat;
             }

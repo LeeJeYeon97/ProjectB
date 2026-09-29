@@ -2424,7 +2424,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: be2cda898a405d945b7c5346a62c9167, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::UI_GameScene
-  canvasRenderMode: 0
 --- !u!114 &1709337878
 MonoBehaviour:
   m_ObjectHideFlags: 0

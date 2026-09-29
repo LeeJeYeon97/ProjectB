@@ -49,14 +49,14 @@ public class EmployeeController : MonoBehaviour
 
     [Header("Target")]
     [SerializeField]
-    private BaseStation target;
+    private SeatStation target;
 
-    public BaseStation Target => target;
+    public SeatStation Target => target;
 
 
     private NavMeshAgent agent;
     private Animator animator;
-    private UI_InteractionProgress progressUI;
+    private UI_BaseStation progressUI;
 
     private float workProgressTimer = 0f;
 
@@ -83,7 +83,7 @@ public class EmployeeController : MonoBehaviour
             animator = GetComponent<Animator>();
 
         if (progressUI == null)
-            progressUI = GetComponentInChildren<UI_InteractionProgress>(true);
+            progressUI = GetComponentInChildren<UI_BaseStation>(true);
     }
 
     private void InitializeAgent()
@@ -369,16 +369,15 @@ public class EmployeeController : MonoBehaviour
 
     private void UpdateCleaning()
     {
-        SeatStation seat = target as SeatStation;
 
-        if (seat == null)
+        if (target == null)
         {
             CancelTask();
             return;
         }
 
         // 이미 다른 이유로 청소가 끝난 경우
-        if (seat.CurrentState != SeatState.Dirty)
+        if (target.CurrentState != SeatState.Dirty)
         {
             CancelTask();
             return;
@@ -393,7 +392,7 @@ public class EmployeeController : MonoBehaviour
                 : 1f;
 
         // 테이블 Progress
-        seat.SetCleanProgress(ratio);
+        target.SetCleanProgress(ratio);
 
         // 직원 Progress UI
         UpdateProgressUI(ratio);
@@ -401,7 +400,7 @@ public class EmployeeController : MonoBehaviour
         // 완료
         if (workProgressTimer >= cleanDuration)
         {
-            FinishCleaning(seat);
+            FinishCleaning(target);
         }
     }
 
@@ -485,12 +484,10 @@ public class EmployeeController : MonoBehaviour
         }
 
         // Cleaning 전용 할당 해제
-        SeatStation seat = target as SeatStation;
-
-        if (seat != null &&
-            seat.AssignedCleaner == this)
+        if (target != null &&
+            target.AssignedCleaner == this)
         {
-            seat.AssignedCleaner = null;
+            target.AssignedCleaner = null;
         }
 
         currentEmployeeTask = null;
@@ -524,7 +521,7 @@ public class EmployeeController : MonoBehaviour
         if (!progressUI.gameObject.activeSelf)
         {
             progressUI.gameObject.SetActive(true);
-            progressUI.SetVisible(true);
+            //progressUI.SetVisible(true);
         }
 
         progressUI.SetProgress(ratio);

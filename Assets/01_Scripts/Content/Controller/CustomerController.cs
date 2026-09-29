@@ -35,7 +35,6 @@ public class CustomerController : MonoBehaviour
 
 
     [Header("UI")]
-    [SerializeField] private UI_InteractionProgress progressUI;
     [SerializeField] private Vector3 uiOffset = new Vector3(0f, 1.8f, 0f);
     [SerializeField] private UI_Bubble uiBubble;
 
@@ -49,17 +48,6 @@ public class CustomerController : MonoBehaviour
         if (uiBubble != null)
         {
             uiBubble.gameObject.SetActive(false); // 초기에는 말풍선 비활성화
-        }
-
-        if (progressUI == null)
-        {
-            progressUI = GetComponentInChildren<UI_InteractionProgress>(true);
-        }
-
-        if (progressUI != null)
-        {
-            progressUI.transform.localPosition = uiOffset;
-            progressUI.gameObject.SetActive(false); // 초기에는 프로그레스바 비활성화
         }
 
         // 1. Agent 컴포넌트 체크
@@ -173,7 +161,7 @@ public class CustomerController : MonoBehaviour
     public void AssignSeat(SeatStation seat)
     {
         assignedSeat = seat;
-        assignedSeat.CurrentState = SeatState.Reserved;
+        assignedSeat.SetState(SeatState.Reserved);
         assignedSeat.currentCustomer = this;
 
         if (CurrentState != CustomerState.WalkEntrance)
@@ -232,13 +220,14 @@ public class CustomerController : MonoBehaviour
             assignedSeat.SetState(SeatState.Occupied);
         }
 
+        // TODO: 앉는 애니메이션 재생 (Animator.SetTrigger("Sit"))
+
         if (uiBubble != null)
         {
             uiBubble.gameObject.SetActive(true); // 말풍선 활성화
-            uiBubble.SetImage();
+            uiBubble.SetBubble(Define.BubbleType.FoodReady);
         }
 
-        // TODO: 앉는 애니메이션 재생 (Animator.SetTrigger("Sit"))
         Debug.Log("손님이 자리에 앉아 자동으로 주문을 넣었습니다. (음식 대기 중)");
     }
     #endregion
@@ -249,11 +238,6 @@ public class CustomerController : MonoBehaviour
     {
         CurrentState = CustomerState.Eating;
         // TODO: 말풍선 비활성화, 식사 애니메이션 작동
-        
-        if (uiBubble != null)
-        {
-            uiBubble.gameObject.SetActive(false); // 말풍선 비활성화
-        }
 
         Debug.Log("밥 먹습니다..");
         StartCoroutine(CoEating());
@@ -261,11 +245,9 @@ public class CustomerController : MonoBehaviour
 
     private IEnumerator CoEating()
     {
-        if (progressUI != null)
+        if (uiBubble != null)
         {
-            progressUI.gameObject.SetActive(true);
-            progressUI.SetVisible(true);
-            progressUI.SetProgress(0f);
+            uiBubble.SetProgress(0f);
         }
 
         float elapsed = 0f;
@@ -274,22 +256,23 @@ public class CustomerController : MonoBehaviour
             elapsed += Time.deltaTime;
             float ratio = eatingDuration > 0f ? Mathf.Clamp01(elapsed / eatingDuration) : 1f;
 
-            if (progressUI != null)
+            if (uiBubble != null)
             {
-                progressUI.SetProgress(ratio);
+                uiBubble.SetProgress(ratio);
             }
 
             yield return null;
         }
 
-        if (progressUI != null)
+        if (uiBubble != null)
         {
-            progressUI.SetProgress(1f);
-            progressUI.gameObject.SetActive(false);
+            uiBubble.SetProgress(1f);
         }
 
         // 식사 끝, 계산하러 이동 준비
         CurrentState = CustomerState.MovingToCounter;
+
+        uiBubble.gameObject.SetActive(false);
         if (agent != null)
         {
             agent.enabled = true;
@@ -299,7 +282,7 @@ public class CustomerController : MonoBehaviour
         // 자리를 "치워야 하는 상태"로 전환
         if (assignedSeat != null)
         {
-            assignedSeat.CurrentState = SeatState.Dirty;
+            assignedSeat.SetState(SeatState.Dirty);
             assignedSeat.currentCustomer = null;
             assignedSeat = null;
         }

@@ -99,6 +99,8 @@ public class Define
     public enum InterationType
     {
         None,
+        Proximity,  // 가까이 가면 상호작용
+        StandOn     // 발판을 밟으면 상호작용
     }
     public enum EmployeeTaskType
     {
@@ -114,6 +116,22 @@ public class Define
         Idle,
         MovingToWork,
         Working,
+    }
+
+    public enum BubbleType
+    {
+        None,
+
+        // 손님 관련
+        //Order,          // 음식 주문
+        Payment,        // 계산 요청
+
+        // 좌석 관련
+        FoodReady,      // 음식 서빙 필요
+        Cleaning,       // 테이블 청소 필요
+
+        // 작업대 관련
+        Progress,       // 작업 진행도
     }
 }
 

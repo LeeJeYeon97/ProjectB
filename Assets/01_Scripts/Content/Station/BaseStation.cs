@@ -6,8 +6,9 @@ public class BaseStation : MonoBehaviour
     [SerializeField] private MonoBehaviour strategyComponent;
     private IInteractable _strategy;
 
+
     [Header("발판 UI")]
-    [SerializeField] private UI_InteractionProgress progressUI;
+    [SerializeField] private UI_BaseStation progressUI;
 
     public bool isOperational = true;
 
@@ -35,8 +36,15 @@ public class BaseStation : MonoBehaviour
             );
         }
         
+
         if (progressUI == null)
-            progressUI = GetComponentInChildren<UI_InteractionProgress>(true);
+            progressUI = GetComponentInChildren<UI_BaseStation>(true);
+
+        if(_strategy.InteractionType == Define.InterationType.Proximity)
+        {
+            progressUI.gameObject.SetActive(false);
+        }
+
     }
 
     private void OnTriggerEnter(Collider other)
@@ -48,6 +56,14 @@ public class BaseStation : MonoBehaviour
         if (other.CompareTag("Player") || player != null)
         {
             GameObject actor = player != null ? player.gameObject : other.gameObject;
+
+            // 이미 동일한 플레이어가 상호작용 중이면 무시
+            if (_currentActor == actor)
+                return;
+
+            // 다른 플레이어가 상호작용 중이면 무시
+            if (_currentActor != null)
+                return;
 
             if (_strategy.CanInteract(actor))
             {
@@ -83,7 +99,6 @@ public class BaseStation : MonoBehaviour
         // UI 게이지 업데이트
         if (progressUI != null)
         {
-            if (!progressUI.gameObject.activeSelf) progressUI.gameObject.SetActive(true);
             progressUI.SetProgress(progress);
         }
 
@@ -127,7 +142,6 @@ public class BaseStation : MonoBehaviour
         if (progressUI != null)
         {
             progressUI.SetProgress(0f);
-            progressUI.gameObject.SetActive(false);
         }
     }
 }

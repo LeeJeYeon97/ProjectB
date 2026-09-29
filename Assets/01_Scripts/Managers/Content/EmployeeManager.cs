@@ -10,11 +10,11 @@ public class EmployeeTask
 {
     public EmployeeTaskType Type { get; }
 
-    public BaseStation Target { get; }
+    public SeatStation Target { get; }
     
     public EmployeeController AssignedEmployee { get; set; }
 
-    public EmployeeTask(EmployeeTaskType type, BaseStation target = null)
+    public EmployeeTask(EmployeeTaskType type, SeatStation target = null)
     {
         Type = type;
         Target = target;
@@ -122,7 +122,7 @@ public class EmployeeManager
         return controller;
     }
 
-    public void CreateTask(EmployeeTaskType type, BaseStation target = null)
+    public void CreateTask(EmployeeTaskType type, SeatStation target = null)
     {
         EmployeeTask task = new EmployeeTask(type, target);
 

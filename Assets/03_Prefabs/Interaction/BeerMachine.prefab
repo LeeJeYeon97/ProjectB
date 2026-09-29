@@ -138,7 +138,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BeerMachine
   beerPrefab: {fileID: 6658021417841733508, guid: f766e0d40028a6b438fceaf5b687ffbe, type: 3}
   spawnPoint: {fileID: 532510816925859904}
-  produceDuration: 2
+  duration: 2
+  interactType: 2
 --- !u!1001 &337646347135090875
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -190,6 +191,10 @@ PrefabInstance:
     - target: {fileID: 8459726506244899750, guid: a698dbe745f0b7449862cc22a8d7602d, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8901967695637834051, guid: a698dbe745f0b7449862cc22a8d7602d, type: 3}
+      propertyPath: interactType
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

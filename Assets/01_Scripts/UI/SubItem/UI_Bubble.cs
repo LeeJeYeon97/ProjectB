@@ -1,14 +1,18 @@
 using UnityEngine;
 using UnityEngine.UI;
+using static Define;
 
 public class UI_Bubble : UI_Base
 {
     public enum Images
     {
-        Image_1,
-        Image_2,
-        Image_3,
+        Image_Progress,
+        Image_Food,
+        Image_Clean,
+        Image_Payment,
     }
+
+    private Image progressImg;
 
     public override void Init()
     {
@@ -16,26 +20,70 @@ public class UI_Bubble : UI_Base
             return;
 
         base.Init();
+
         Bind<Image>(typeof(Images));
 
-        GetImage((int)Images.Image_1)?.gameObject.SetActive(false);
-        GetImage((int)Images.Image_2)?.gameObject.SetActive(false);
-        GetImage((int)Images.Image_3)?.gameObject.SetActive(false);
+        progressImg = GetImage((int)Images.Image_Progress);
+
+        HideAll();
     }
 
-    public void SetImage()
+    private void HideAll()
     {
-        Init();
-        GetImage((int)Images.Image_1)?.gameObject.SetActive(false);
-        GetImage((int)Images.Image_2)?.gameObject.SetActive(true);
-        GetImage((int)Images.Image_3)?.gameObject.SetActive(false);
+        foreach (Images image in System.Enum.GetValues(typeof(Images)))
+        {
+            GetImage((int)image)?.gameObject.SetActive(false);
+        }
     }
 
-    public void SetCleanImage()
+    public void SetBubble(BubbleType type)
     {
         Init();
-        GetImage((int)Images.Image_1)?.gameObject.SetActive(false);
-        GetImage((int)Images.Image_2)?.gameObject.SetActive(false);
-        GetImage((int)Images.Image_3)?.gameObject.SetActive(true);
+
+        HideAll();
+
+        switch (type)
+        {
+            //case BubbleType.Order:
+            case BubbleType.FoodReady:
+                GetImage((int)Images.Image_Food)
+                    ?.gameObject.SetActive(true);
+                break;
+
+            case BubbleType.Payment:
+                GetImage((int)Images.Image_Payment)
+                    ?.gameObject.SetActive(true);
+                break;
+
+            case BubbleType.Cleaning:
+                GetImage((int)Images.Image_Clean)
+                    ?.gameObject.SetActive(true);
+                break;
+
+            case BubbleType.Progress:
+                GetImage((int)Images.Image_Progress)
+                    ?.gameObject.SetActive(true);
+                break;
+
+            case BubbleType.None:
+            default:
+                break;
+        }
+    }
+
+    public void SetProgress(float ratio)
+    {
+        Init();
+
+        if (progressImg != null)
+        {
+            progressImg.fillAmount = Mathf.Clamp01(ratio);
+        }
+    }
+
+    public void Hide()
+    {
+        Init();
+        HideAll();
     }
 }

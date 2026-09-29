@@ -14,26 +14,13 @@ public abstract class UI_Base : MonoBehaviour
 
     // 추가: 초기화 여부를 기억하는 변수
     protected bool _init = false;
-    public RenderMode canvasRenderMode = RenderMode.ScreenSpaceOverlay;
 
     public virtual void Init()
     {
         if (_init)
             return; // 이미 초기화가 끝났다면 그냥 돌아감
 
-        //// 1. 내 자식들 중에 Button 컴포넌트가 있는 걸 싹 다 찾습니다. (비활성화된 것 포함 true)
-        //Button[] buttons = GetComponentsInChildren<Button>(true);
-
-        //foreach (Button btn in buttons)
-        //{
-        //    // 핵심 방어막: 내 위로 가장 가까운 UI_Base를 찾습니다.
-        //    // 그게 '나 자신(this)'이 아니라면, 내 자식 UI의 버튼이므로 건너뜁니다!
-        //    UI_Base owner = btn.GetComponentInParent<UI_Base>(true);
-        //    if (owner != this)
-        //        continue;
-
-        //    btn.onClick.AddListener(() => Managers.Sound.Play(Define.SoundID.Sfx_UIButtonClick));
-        //}
+        
         _init = true; // 이제 초기화 완료!
     }
 

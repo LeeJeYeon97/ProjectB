@@ -9,7 +9,6 @@ public class PlayerController : BaseController
     public int money = 100;
     public event Action<int> OnMoneyChanged;
 
-    private float throwTimer = 0f;
     public float throwInterval = 0.1f; // 0.1초마다 1번씩 돈을 날림
     public int throwAmount = 1;       // 한 번에 1원(또는 지정된 금액)씩 날림
 

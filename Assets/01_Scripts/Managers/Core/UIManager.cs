@@ -41,7 +41,7 @@ public class UIManager
 
         if (uiBase != null)
         {
-            targetMode = uiBase.canvasRenderMode; // 프리팹에서 설정한 값 가져오기
+            //targetMode = uiBase.canvasRenderMode; // 프리팹에서 설정한 값 가져오기
         }
 
         // 2. 유니티가 멋대로 바꿨든 말든, 우리가 원하는 모드로 강제 세팅해버립니다!
