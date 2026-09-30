@@ -1,21 +1,18 @@
 using DG.Tweening;
 using UnityEngine;
 
-public class BeerMachine : MonoBehaviour, IInteractable
+public class BeerMachine : InteractableBase
 {
     [SerializeField] private GameObject beerPrefab;
     [SerializeField] private Transform spawnPoint;
 
     [SerializeField] private float duration = 2f;
 
-    public float Duration => duration;
-
-    [SerializeField] private Define.InterationType interactType;
-
-    public Define.InterationType InteractionType => interactType;
+    public override float Duration => duration;
 
 
-    public bool CanInteract(GameObject actor)
+
+    public override bool CanInteract(GameObject actor)
     {
         var player = actor.GetComponent<PlayerController>();
         if (player == null || player.Stacking == null)
@@ -28,13 +25,13 @@ public class BeerMachine : MonoBehaviour, IInteractable
         return player.Stacking.CheckListItem(Define.ItemType.Beer);
     }
 
-    public void OnCompleteInteract(GameObject actor)
+    public override void OnCompleteInteract(GameObject actor)
     {
         var player = actor.GetComponent<PlayerController>();
         if (player == null) return;
 
         Vector3 spawnPos = spawnPoint != null ? spawnPoint.position : transform.position;
-        GameObject beer = Managers.Resource.Instantiate("Item_Beer", transform.position, Quaternion.identity);
+        GameObject beer = Managers.Resource.Instantiate("Item_Beer", spawnPos, Quaternion.identity);
 
         player.Stacking.PickUpItem(beer);
 

@@ -10,8 +10,6 @@ public class StationManager
     private List<SeatStation> allSeats = new();
     public List<SeatStation> AllSeats => allSeats;
 
-    public event Action<EmployeeTaskType, BaseStation> OnRegisterDirtyTable;
-
     // 더러운 테이블 등록
     public void RegisterDirtyTable(SeatStation seat)
     {

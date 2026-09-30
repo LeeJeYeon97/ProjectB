@@ -209,7 +209,6 @@ GameObject:
   - component: {fileID: 2087801519558632938}
   - component: {fileID: 3840071520951619363}
   - component: {fileID: 6449039367134686927}
-  - component: {fileID: 3666077943451413995}
   m_Layer: 0
   m_Name: UnlockStation
   m_TagString: Untagged
@@ -298,21 +297,6 @@ MonoBehaviour:
   moneyPrefab: {fileID: 6658021417841733508, guid: 9e9d4a04c0894314e90ad31d678e8e05, type: 3}
   dropPoint: {fileID: 0}
   uiUnlock: {fileID: 2336590426430585353}
---- !u!114 &3666077943451413995
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4298938083725916511}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a5037ab2f233a64469964ec54d71e675, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::BaseStation
-  strategyComponent: {fileID: 6449039367134686927}
-  progressUI: {fileID: 0}
-  isOperational: 1
 --- !u!1 &7217083020061413277
 GameObject:
   m_ObjectHideFlags: 0

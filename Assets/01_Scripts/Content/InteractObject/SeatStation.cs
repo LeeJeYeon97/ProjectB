@@ -1,9 +1,7 @@
-using System.Collections;
-using System.Reflection.Metadata;
 using UnityEngine;
 using static Define;
 
-public class SeatStation : MonoBehaviour, IInteractable
+public class SeatStation : InteractableBase
 {
     [Header("Seat Configuration")]
     [SerializeField]
@@ -13,15 +11,20 @@ public class SeatStation : MonoBehaviour, IInteractable
         get => currentState;
         private set
         {
+            if (currentState == value)
+                return;
+
             currentState = value;
             UpdateState();
         }
     }
 
-    
     [Header("Interaction Settings")]
-    private float interactionDuration = 1.5f; // 청소 또는 주문받기에 걸리는 시간
-    public float Duration => interactionDuration;
+    [SerializeField] private float servingDuration = 0.0f;
+    [SerializeField] private float cleaningDuration = 1.5f;
+
+    // 좌석의 현재 상태에 따라 플레이어가 수행하는 행동이 달라진다.
+    public override float Duration => currentState == SeatState.Dirty ? cleaningDuration : servingDuration;
     
     public CustomerController currentCustomer;
     public EmployeeController AssignedCleaner { get; set; }
@@ -30,15 +33,10 @@ public class SeatStation : MonoBehaviour, IInteractable
     [Header("UI")]
     [SerializeField] private UI_Bubble uiBubble;
 
-    private PlayerController _currentPlayer;
-
     [Header("position")]
     public Transform customerSitPoint; // 손님이 앉을 실제 3D 좌표/회전 기준점
     public Transform foodServePoint;   // 음식을 올려놓을 테이블 위 좌표
 
-    [SerializeField] private Define.InterationType interactType;
-
-    public Define.InterationType InteractionType => interactType;
 
     private void Start()
     {
@@ -78,7 +76,6 @@ public class SeatStation : MonoBehaviour, IInteractable
     public void SetState(SeatState state)
     {
         CurrentState = state;
-        UpdateState();
     }
     public void UpdateState()
     {
@@ -91,7 +88,6 @@ public class SeatStation : MonoBehaviour, IInteractable
             {
                 uiBubble.gameObject.SetActive(true);
                 uiBubble.SetBubble(Define.BubbleType.Cleaning);
-                Managers.Station.RegisterDirtyTable(this);
             }
         }
         else
@@ -103,97 +99,78 @@ public class SeatStation : MonoBehaviour, IInteractable
         }
     }
 
+    /// <summary>
+    /// Dirty 상태의 좌석을 비운 상태로 되돌립니다.
+    /// 플레이어가 청소한 경우에만 빈 잔을 플레이어 스택에 넣습니다.
+    /// </summary>
+    public bool CleanSeat(PlayerController cleaner = null)
+    {
+        if (currentState != SeatState.Dirty)
+            return false;
 
-    private void Update()
-    {
-        float progress = 0;
-        progress += Time.deltaTime;
-        //OnUpdateInteract(progress);
-        
-    }
-    public void SetCleanProgress(float ratio)
-    {
-        
-    }
+        if (cleaner != null &&
+            (cleaner.Stacking == null || !cleaner.Stacking.CheckListItem(ItemType.Beer_Empty)))
+        {
+            return false;
+        }
 
-    public void CleanSeat()
-    {
+        if (cleaner != null)
+        {
+            Vector3 spawnPosition = foodServePoint != null ? foodServePoint.position : transform.position;
+            GameObject emptyBeer = Managers.Resource.Instantiate("Item_BeerEmpty", spawnPosition, Quaternion.identity);
+
+            if (emptyBeer == null)
+                return false;
+
+            cleaner.Stacking.PickUpItem(emptyBeer);
+        }
+
         CurrentState = SeatState.Empty;
-        
         AssignedCleaner = null;
-        
-        
-        Debug.Log("자리가 깨끗하게 치워졌습니다! 이제 새로운 손님을 받을 수 있습니다.");
-
-        // 여기서 쓰레기통으로 쓰레기를 버릴지 접시를 싱크대로 옮길지 결정
-        // TODO: 청소 이펙트 생성, 접시 오브젝트 파괴 / 스테이션 매니저 처리 추가 등
-
-        if(_currentPlayer != null)
-        {
-            Debug.Log("플레이어가 접시를 주웠습니다.");
-            GameObject go = Managers.Resource.Instantiate("Item_BeerEmpty");
-            _currentPlayer.Stacking.PickUpItem(go);
-        }
-    }
-
-    private bool HasMatchingFood(StackingSystem stacking)
-    {
-        if (stacking == null)
-        {
-            return false;
-        }
-        if (currentCustomer == null)
-        {
-            return false;
-        }
-        if(stacking.StackCount <= 0)
-        {
-            return false;
-        }
-        if (currentCustomer.OrderedType != ItemType.Beer)
-        {
-            return false;
-        }
-        // TODO : 리스트의 첫번째 아이템이 주문 타입과 같은지 확인 필요
+        Debug.Log($"좌석 {name} 청소 완료: {currentState}");
         return true;
     }
 
-    private void ServeFood(StackingSystem stacking)
+    public override bool CanInteract(GameObject actor)
     {
-        stacking.PopItem();
-        currentCustomer.OnFoodServed();
-        Debug.Log("음식을 서빙했습니다. 식사를 시작합니다!");
-    }
+        if (!TryGetPlayer(actor, out PlayerController player) || player.Stacking == null)
+            return false;
 
-    public bool CanInteract(GameObject actor)
-    {
-        var player = actor.GetComponent<PlayerController>();
-        if (player == null || player.Stacking == null)
+        // 손님이 식사를 끝낸 뒤에만 청소할 수 있으며, 빈 잔을 담을 자리도 필요하다.
+        if (currentState == SeatState.Dirty)
+            return player.Stacking.CheckListItem(ItemType.Beer_Empty);
+
+        // 서빙은 손님이 실제로 음식 대기 중이고, 손에 주문과 맞는 아이템이 있을 때만 가능하다.
+        if (currentState != SeatState.Occupied ||
+            currentCustomer == null ||
+            currentCustomer.CurrentState != CustomerState.WaitingForFood ||
+            player.Stacking.StackCount <= 0)
         {
             return false;
         }
 
-
-        // 플레이어 손에 맥주를 더 들 수 있는지 확인
-        return player.Stacking.CheckListItem(Define.ItemType.Beer);
+        GameObject topItem = player.Stacking.StackedItems[player.Stacking.StackCount - 1];
+        ItemController item = topItem != null ? topItem.GetComponent<ItemController>() : null;
+        return item != null && item.type == currentCustomer.OrderedType;
     }
-    public void OnUpdateInteract(GameObject actor, float progress)
+
+    public override void OnCompleteInteract(GameObject actor)
     {
-        if (_currentPlayer != null && CurrentState == SeatState.Dirty)
+        if (!TryGetPlayer(actor, out PlayerController player))
+            return;
+
+        if (currentState == SeatState.Dirty)
         {
-            
-            float ratio = interactionDuration > 0f ? Mathf.Clamp01(progress / interactionDuration) : 1f;
+            CleanSeat(player);
+            return;
+        }
 
-
-            if (progress >= interactionDuration)
-            {
-                CleanSeat();
-                progress = 0f;
-            }
+        if (currentState == SeatState.Occupied && currentCustomer != null && CanInteract(actor))
+        {
+            player.Stacking.PopItem();
+            currentCustomer.OnFoodServed();
+            Debug.Log("음식을 서빙했습니다. 식사를 시작합니다!");
         }
     }
-    public void OnCompleteInteract(GameObject actor)
-    {
-        
-    }
+
 }

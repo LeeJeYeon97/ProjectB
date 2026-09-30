@@ -391,9 +391,6 @@ public class EmployeeController : MonoBehaviour
                     workProgressTimer / cleanDuration)
                 : 1f;
 
-        // 테이블 Progress
-        target.SetCleanProgress(ratio);
-
         // 직원 Progress UI
         UpdateProgressUI(ratio);
 

@@ -96,12 +96,6 @@ public class Define
         Occupied,   // 손님이 앉아서 식사/주문 대기 중인 상태
         Dirty       // 손님이 떠난 후 접시 등이 남아 있어 청소(청소 상호작용)가 필요한 상태
     }
-    public enum InterationType
-    {
-        None,
-        Proximity,  // 가까이 가면 상호작용
-        StandOn     // 발판을 밟으면 상호작용
-    }
     public enum EmployeeTaskType
     {
         None,

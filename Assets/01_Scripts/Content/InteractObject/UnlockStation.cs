@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-public class UnlockStation : MonoBehaviour, IInteractable
+public class UnlockStation : InteractableBase
 {
     [Header("투척 주기 및 금액 설정")]
     [Tooltip("돈을 던지는 주기 (초)")]
@@ -25,11 +25,8 @@ public class UnlockStation : MonoBehaviour, IInteractable
     private int _visualPaid = 0;
     private bool _isUnlocked = false;
 
-    public float Duration => throwInterval;
+    public override float Duration => throwInterval;
 
-    [SerializeField] private Define.InterationType interactType;
-
-    public Define.InterationType InteractionType => interactType;
     public void Setup(UnlockAnchor anchor)
     {
         _nodeData = anchor.NodeData;
@@ -49,7 +46,7 @@ public class UnlockStation : MonoBehaviour, IInteractable
         }
     }
 
-    public bool CanInteract(GameObject actor)
+    public override bool CanInteract(GameObject actor)
     {
         if (_isUnlocked || _nodeData == null || _currentPaid >= _targetPrice)
             return false;
@@ -58,12 +55,8 @@ public class UnlockStation : MonoBehaviour, IInteractable
         return player != null && player.money >= throwAmount;
     }
 
-    public void OnStartInteract(GameObject actor) { }
-
-    public void OnUpdateInteract(GameObject actor, float progress) { }
-
     // 발판의 Duration(0.1초) 주기가 완료될 때마다 1번씩 실행
-    public void OnCompleteInteract(GameObject actor)
+    public override void OnCompleteInteract(GameObject actor)
     {
         if (!CanInteract(actor)) return;
 
@@ -102,8 +95,6 @@ public class UnlockStation : MonoBehaviour, IInteractable
             }
         });
     }
-
-    public void OnCancelInteract(GameObject actor) { }
 
     private void CompleteUnlock()
     {
