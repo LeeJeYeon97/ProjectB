@@ -25,13 +25,13 @@ public class SeatStation : InteractableBase
 
     // 좌석의 현재 상태에 따라 플레이어가 수행하는 행동이 달라진다.
     public override float Duration => currentState == SeatState.Dirty ? cleaningDuration : servingDuration;
+
+    // 음식 서빙은 즉시 끝나므로 좌석 말풍선에 작업 진행도를 띄우지 않습니다.
+    protected override bool UsesProgressBubble => currentState == SeatState.Dirty;
     
     public CustomerController currentCustomer;
     public EmployeeController AssignedCleaner { get; set; }
 
-
-    [Header("UI")]
-    [SerializeField] private UI_Bubble uiBubble;
 
     [Header("position")]
     public Transform customerSitPoint; // 손님이 앉을 실제 3D 좌표/회전 기준점
@@ -40,37 +40,8 @@ public class SeatStation : InteractableBase
 
     private void Start()
     {
-        Init();
         UpdateState();
         Managers.Station.RegisterSeat(this);
-    }
-
-    private void Init()
-    {
-        if (uiBubble == null)
-        {
-            uiBubble = GetComponentInChildren<UI_Bubble>(true);
-        }
-        if (uiBubble == null)
-        {
-            GameObject bubblePrefab = Managers.Resource.Load<GameObject>("UI_Bubble");
-#if UNITY_EDITOR
-            if (bubblePrefab == null)
-                bubblePrefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/03_Prefabs/UI/SubItem/UI_Bubble.prefab");
-#endif
-            if (bubblePrefab != null)
-            {
-                GameObject go = Instantiate(bubblePrefab, transform);
-                go.name = "UI_Bubble";
-                uiBubble = go.GetComponent<UI_Bubble>();
-            }
-        }
-        if (uiBubble != null)
-        { 
-            uiBubble.transform.localScale = Vector3.one * 0.01f;
-            uiBubble.gameObject.SetActive(false);
-        }
-
     }
 
     public void SetState(SeatState state)
@@ -109,7 +80,7 @@ public class SeatStation : InteractableBase
             return false;
 
         if (cleaner != null &&
-            (cleaner.Stacking == null || !cleaner.Stacking.CheckListItem(ItemType.Beer_Empty)))
+            (cleaner.Stacking == null || !cleaner.Stacking.CheckListItem(ItemType.Beer_Dirty)))
         {
             return false;
         }
@@ -117,13 +88,17 @@ public class SeatStation : InteractableBase
         if (cleaner != null)
         {
             Vector3 spawnPosition = foodServePoint != null ? foodServePoint.position : transform.position;
-            GameObject emptyBeer = Managers.Resource.Instantiate("Item_BeerEmpty", spawnPosition, Quaternion.identity);
+            GameObject dirtyBeer = Managers.Resource.Instantiate("Item_BeerDirty", spawnPosition, Quaternion.identity);
 
-            if (emptyBeer == null)
+            if (dirtyBeer == null)
                 return false;
 
-            cleaner.Stacking.PickUpItem(emptyBeer);
+            cleaner.Stacking.PickUpItem(dirtyBeer);
         }
+
+        // 플레이어가 직접 청소하든 직원이 청소하든 더러운 접시를 재고에 남깁니다.
+        if (Managers.Dish != null)
+            Managers.Dish.AddDirtyDish();
 
         CurrentState = SeatState.Empty;
         AssignedCleaner = null;
@@ -138,7 +113,7 @@ public class SeatStation : InteractableBase
 
         // 손님이 식사를 끝낸 뒤에만 청소할 수 있으며, 빈 잔을 담을 자리도 필요하다.
         if (currentState == SeatState.Dirty)
-            return player.Stacking.CheckListItem(ItemType.Beer_Empty);
+            return player.Stacking.CheckListItem(ItemType.Beer_Dirty);
 
         // 서빙은 손님이 실제로 음식 대기 중이고, 손에 주문과 맞는 아이템이 있을 때만 가능하다.
         if (currentState != SeatState.Occupied ||
@@ -171,6 +146,11 @@ public class SeatStation : InteractableBase
             currentCustomer.OnFoodServed();
             Debug.Log("음식을 서빙했습니다. 식사를 시작합니다!");
         }
+    }
+
+    protected override void OnInteractionEnded()
+    {
+        UpdateState();
     }
 
 }

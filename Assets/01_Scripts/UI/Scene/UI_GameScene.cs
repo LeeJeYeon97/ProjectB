@@ -15,7 +15,9 @@ public class UI_GameScene : UI_Scene
     }
 
     private TMP_Text _moneyText;
+    private TMP_Text _dishCountText;
     private PlayerController _player;
+    private DishManager _dishManager;
 
     public override void Init()
     {
@@ -33,6 +35,8 @@ public class UI_GameScene : UI_Scene
         }
 
         BindPlayer();
+        CreateDishCountUI();
+        BindDishManager();
     }
 
     private void OnClickHireEmployee()
@@ -95,6 +99,72 @@ public class UI_GameScene : UI_Scene
         }
     }
 
+    /// <summary>
+    /// 화면 왼쪽 위에 접시 수량을 보여주는 간단한 배경과 글자를 만듭니다.
+    /// 프리팹에 별도 오브젝트를 추가하지 않아도 UI_GameScene과 함께 표시됩니다.
+    /// </summary>
+    private void CreateDishCountUI()
+    {
+        // 다시 초기화되는 경우 기존 표시가 있으면 중복 생성하지 않습니다.
+        if (_dishCountText != null)
+            return;
+
+        GameObject panelObject = new GameObject("Panel_DishCount", typeof(RectTransform), typeof(Image));
+        panelObject.transform.SetParent(transform, false);
+
+        // 기준 해상도와 화면 비율이 달라도 왼쪽 위에 고정되도록 앵커를 설정합니다.
+        RectTransform panelRect = panelObject.GetComponent<RectTransform>();
+        panelRect.anchorMin = new Vector2(0f, 1f);
+        panelRect.anchorMax = new Vector2(0f, 1f);
+        panelRect.pivot = new Vector2(0f, 1f);
+        panelRect.anchoredPosition = new Vector2(32f, -105f);
+        panelRect.sizeDelta = new Vector2(340f, 112f);
+
+        // 어두운 반투명 배경으로 게임 화면 위에서도 글자가 잘 보이게 합니다.
+        Image panelImage = panelObject.GetComponent<Image>();
+        panelImage.color = new Color(0.06f, 0.08f, 0.1f, 0.78f);
+        panelImage.raycastTarget = false;
+
+        GameObject textObject = new GameObject("Text_DishCount", typeof(RectTransform), typeof(TextMeshProUGUI));
+        textObject.transform.SetParent(panelObject.transform, false);
+
+        // 글자를 패널 안쪽에 배치하고 두 줄의 재고를 표시할 공간을 확보합니다.
+        RectTransform textRect = textObject.GetComponent<RectTransform>();
+        textRect.anchorMin = Vector2.zero;
+        textRect.anchorMax = Vector2.one;
+        textRect.offsetMin = new Vector2(18f, 12f);
+        textRect.offsetMax = new Vector2(-12f, -12f);
+
+        _dishCountText = textObject.GetComponent<TextMeshProUGUI>();
+        _dishCountText.font = TMP_Settings.defaultFontAsset;
+        _dishCountText.fontSize = 27f;
+        _dishCountText.color = Color.white;
+        _dishCountText.alignment = TextAlignmentOptions.Left;
+        _dishCountText.enableWordWrapping = false;
+        _dishCountText.raycastTarget = false;
+    }
+
+    /// <summary>접시 재고 매니저의 변경 알림을 연결하고 현재 수량을 바로 표시합니다.</summary>
+    private void BindDishManager()
+    {
+        _dishManager = Managers.Dish;
+        if (_dishManager == null)
+            return;
+
+        _dishManager.OnDishCountChanged -= UpdateDishCountText;
+        _dishManager.OnDishCountChanged += UpdateDishCountText;
+        UpdateDishCountText(_dishManager.DirtyDishCount, _dishManager.CleanDishCount);
+    }
+
+    /// <summary>더러운 접시와 깨끗한 접시 수량을 화면에 갱신합니다.</summary>
+    private void UpdateDishCountText(int dirtyDishCount, int cleanDishCount)
+    {
+        if (_dishCountText == null)
+            return;
+
+        _dishCountText.text = $"깨끗한 접시  {cleanDishCount}\n더러운 접시  {dirtyDishCount}";
+    }
+
     public void UpdateMoneyText(int money)
     {
         if (_moneyText != null)
@@ -111,6 +181,12 @@ public class UI_GameScene : UI_Scene
         {
             _player.OnMoneyChanged -= UpdateMoneyText;
             _player = null;
+        }
+
+        if (_dishManager != null)
+        {
+            _dishManager.OnDishCountChanged -= UpdateDishCountText;
+            _dishManager = null;
         }
     }
 }

@@ -43,6 +43,8 @@ public class Managers : MonoBehaviour
     private UnlockManager _unlock;
     private CustomerManager _customer;
     private EmployeeManager _employee;
+    [SerializeField]
+    private DishManager _dish;
 
     [SerializeField]
     private StationManager _station;
@@ -70,6 +72,7 @@ public class Managers : MonoBehaviour
     public static UnlockManager Unlock => Instance._unlock;
     public static CustomerManager Customer => Instance._customer;
     public static EmployeeManager Employee => Instance._employee;
+    public static DishManager Dish => Instance._dish;
     public static StationManager Station => Instance._station;
     // ========================================================== //
 
@@ -118,6 +121,7 @@ public class Managers : MonoBehaviour
             _instance._unlock = new UnlockManager();
             _instance._customer = new CustomerManager();
             _instance._employee = new EmployeeManager();
+            _instance._dish = new DishManager();
             _instance._station = new StationManager();
 
             // Core
@@ -133,6 +137,7 @@ public class Managers : MonoBehaviour
             // Content
             Customer.Init();
             Employee.Init();
+            Dish.Init();
 
             Debug.unityLogger.logEnabled = Debug.isDebugBuild;
             Application.targetFrameRate = 60; 

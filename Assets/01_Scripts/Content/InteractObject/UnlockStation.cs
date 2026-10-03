@@ -27,6 +27,8 @@ public class UnlockStation : InteractableBase
 
     public override float Duration => throwInterval;
 
+    protected override bool UsesProgressBubble => false;
+
     public void Setup(UnlockAnchor anchor)
     {
         _nodeData = anchor.NodeData;

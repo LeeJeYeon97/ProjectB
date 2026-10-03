@@ -19,19 +19,38 @@ public class StackingSystem : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        // 1. 부딪힌 물체의 태그가 "Item"인지, 그리고 가방(리스트)에 자리가 있는지 확인
-        if (other.CompareTag("Item"))
+        // 아이템 외의 물체는 무시하고, 아이템 정보가 없는 오브젝트도 주울 수 없게 합니다.
+        if (!other.CompareTag("Item"))
+            return;
+
+        ItemController item = other.GetComponent<ItemController>();
+        if (item == null)
+            return;
+
+        // 돈처럼 스택에 쌓이지 않는 아이템은 손에 든 물건의 종류나 스택 자리와 상관없이 수집합니다.
+        if (item.StackType == Define.StackType.NoStack)
         {
-            if (CheckListItem(other.gameObject))
-            {
-                PickUpItem(other.gameObject);
-            }
+            PickUpItem(other.gameObject);
+            return;
+        }
+
+        // 스택 아이템만 기존 종류 일치 및 최대 개수 검사를 통과해야 수집합니다.
+        if (CheckListItem(other.gameObject))
+        {
+            PickUpItem(other.gameObject);
         }
     }
 
     public bool CheckListItem(GameObject go)
     {
         if (go == null) return false;
+
+        ItemController item = go.GetComponent<ItemController>();
+        if (item == null)
+        {
+            return false;
+        }
+
         if (_stackedItems.Count >= maxStackCount)
             return false;
 
@@ -47,25 +66,23 @@ public class StackingSystem : MonoBehaviour
                 return false;
             }
         }
-
         return true;
     }
     
-    public bool CheckListItem(Define.ItemType itemType)
+    public bool CheckListItem(Define.ItemType type)
     {
         if (_stackedItems.Count >= maxStackCount)
             return false;
 
-        // 아이템이 있는데 다른 아이템을 주우려는 경우
+        // 스택해야 하는 아이템인데 손에 아이템이 있는데 다른 아이템을 주우려는 경우
         if (_stackedItems.Count > 0)
         {
             ItemController firstItem = _stackedItems[0] != null ? _stackedItems[0].GetComponent<ItemController>() : null;
-            if (firstItem != null && firstItem.type != itemType)
+            if (firstItem != null && firstItem.type != type)
             {
                 return false;
             }
         }
-
         return true;
     }
 
@@ -111,5 +128,22 @@ public class StackingSystem : MonoBehaviour
         Managers.Resource.Destroy(lastItem);
 
         return lastItem;
+    }
+
+    public Define.ItemType GetFirstListItemType()
+    {
+        if (_stackedItems.Count == 0) return Define.ItemType.None;
+        int lastIndex = _stackedItems.Count - 1;
+        GameObject go = _stackedItems[lastIndex];
+
+        if(go == null) return Define.ItemType.None;
+
+        ItemController lastItem = go.GetComponent<ItemController>();
+
+        if (lastItem == null) return Define.ItemType.None;
+
+        return lastItem.type;
+
+        
     }
 }

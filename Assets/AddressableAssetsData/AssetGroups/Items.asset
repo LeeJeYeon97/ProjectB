@@ -21,6 +21,12 @@ MonoBehaviour:
     m_SerializedLabels:
     - Preload
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 67da7afe946fc8f42aae43077198f3d5
+    m_Address: Item_BeerDirty
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Preload
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: db7985689b28bb348b383c3d20110870
     m_Address: Item_Money
     m_ReadOnly: 0
