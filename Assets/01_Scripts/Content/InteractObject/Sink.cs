@@ -21,17 +21,36 @@ public class Sink : InteractableBase
     /// <summary>싱크대에서 설거지를 하는 데 걸리는 기본 시간입니다.</summary>
     public override float Duration => workDuration;
 
+    private void OnEnable()
+    {
+        // 싱크대가 나중에 열려도 이미 쌓인 더러운 접시를 작업 대기열에 올립니다.
+        if (Managers.Instance != null)
+            Managers.Task.RegisterDishWashTask();
+    }
+
+    protected override void OnDisable()
+    {
+        base.OnDisable();
+
+        // 비활성화된 싱크대가 재고 변경 알림을 계속 받지 않게 합니다.
+        if (Managers.Instance != null)
+            Managers.Task.RemoveTasksFor(this);
+    }
+
     /// <summary>깨끗한 잔을 가져가는 동작은 즉시 끝내고, 설거지는 작업 시간을 사용합니다.</summary>
     protected override float GetDuration(GameObject actor)
     {
-        if (TryGetPlayer(actor, out PlayerController player) &&
-            player.Stacking != null && player.Stacking.StackCount == 0 &&
+        if (!TryGetPlayer(actor, out PlayerController player))
+            return Duration;
+
+        if (player.Stacking != null && player.Stacking.StackCount == 0 &&
             Managers.Dish != null && Managers.Dish.CleanDishCount > 0)
         {
             return 0f;
         }
 
-        return workDuration;
+        // 플레이어가 설거지 속도를 올렸다면 실제 작업 시간에도 같은 배율을 적용합니다.
+        return Duration * player.InteractionTimeScale;
     }
 
     /// <summary>시작 시 이미 재고에 기록된 깨끗한 잔을 눈에 보이게 진열합니다.</summary>
@@ -59,9 +78,9 @@ public class Sink : InteractableBase
 
         Define.ItemType heldType = player.Stacking.GetFirstListItemType();
 
-        // 더러운 잔을 실제로 들고 있을 때만 설거지를 시작해 재고와 손의 물건이 함께 바뀌게 합니다.
+        // 플레이어가 직접 씻을 더러운 잔을 들고 있을 때만 설거지를 시작합니다.
         if (heldType == Define.ItemType.Beer_Dirty)
-            return Managers.Dish.DirtyDishCount > 0;
+            return true;
 
         // 빈손이고 깨끗한 잔이 남아 있을 때는 선반에서 잔 하나를 가져갈 수 있습니다.
         return player.Stacking.StackCount == 0 &&
@@ -85,7 +104,29 @@ public class Sink : InteractableBase
             return;
         }
 
-        // 손에 든 더러운 잔 수, 아직 재고에 있는 더러운 잔 수, 설정 수량 중 가장 작은 만큼만 씻습니다.
+        // 플레이어가 들고 있는 더러운 잔은 직원용 공용 재고와 별도로 처리합니다.
+        if (player.Stacking.GetFirstListItemType() == Define.ItemType.Beer_Dirty)
+        {
+            int playerWashAmount = Mathf.Min(processAmount, player.Stacking.StackCount);
+            if (playerWashAmount <= 0)
+                return;
+
+            actorJustWashed = actor;
+            for (int i = 0; i < playerWashAmount; i++)
+            {
+                // 손에 든 더러운 잔을 꺼내 싱크대에 깨끗한 잔으로 진열합니다.
+                GameObject dirtyDish = player.Stacking.StackedItems[player.Stacking.StackCount - 1];
+                Vector3 startPosition = dirtyDish != null ? dirtyDish.transform.position : transform.position;
+                player.Stacking.PopItem();
+                Managers.Dish.AddCleanDishes();
+                AnimateDishToDisplay(startPosition);
+            }
+
+            Debug.Log($"설거지 완료: 플레이어의 더러운 맥주잔 {playerWashAmount}개를 씻었습니다.");
+            return;
+        }
+
+        // 손에 든 잔이 아니라면 직원 설거지와 같은 공용 재고를 처리합니다.
         int washAmount = Mathf.Min(processAmount, player.Stacking.StackCount);
         washAmount = Mathf.Min(washAmount, Managers.Dish.DirtyDishCount);
         if (washAmount <= 0 || player.Stacking.GetFirstListItemType() != Define.ItemType.Beer_Dirty)
@@ -105,6 +146,36 @@ public class Sink : InteractableBase
         }
 
         Debug.Log($"설거지 완료: 깨끗한 맥주잔 {washAmount}개를 싱크대에 진열했습니다.");
+    }
+
+    /// <summary>직원이 들고 온 더러운 잔을 사용해 깨끗한 잔을 싱크대에 진열합니다.</summary>
+    public bool WashForEmployee(StackingSystem employeeStack)
+    {
+        if (employeeStack == null || Managers.Dish == null || Managers.Dish.DirtyDishCount <= 0 ||
+            employeeStack.GetFirstListItemType() != Define.ItemType.Beer_Dirty)
+            return false;
+
+        // 직원이 실제로 들고 온 잔, 공용 재고, 처리 설정 수량을 모두 넘지 않게 합니다.
+        int washAmount = Mathf.Min(processAmount, employeeStack.StackCount);
+        washAmount = Mathf.Min(washAmount, Managers.Dish.DirtyDishCount);
+        if (washAmount <= 0)
+            return false;
+
+        if (!Managers.Dish.WashDirtyDishes(washAmount))
+            return false;
+
+        // 직원 스택에서 더러운 잔을 제거하고 같은 수량의 깨끗한 잔을 진열합니다.
+        for (int i = 0; i < washAmount; i++)
+        {
+            if (employeeStack.GetFirstListItemType() != Define.ItemType.Beer_Dirty)
+                break;
+
+            employeeStack.PopItem();
+            CreateDisplayedDish();
+        }
+
+        Debug.Log($"직원이 들고 온 더러운 잔 {washAmount}개를 씻어 싱크대에 진열했습니다.");
+        return true;
     }
 
     /// <summary>설거지한 캐릭터가 범위를 벗어나면, 다음 방문부터 잔을 가져갈 수 있게 합니다.</summary>

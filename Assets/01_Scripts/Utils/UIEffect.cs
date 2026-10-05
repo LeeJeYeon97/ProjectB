@@ -20,7 +20,7 @@ public static class UIEffect
         if (_coinPrefab == null)
         {
             // Assets/Resources/Prefabs/CoinUI.prefab 경로에서 자동으로 로드합니다.
-            _coinPrefab = Resources.Load<GameObject>("Prefabs/UI/SubItem/UI_Gold");
+            _coinPrefab = Managers.Resource.LoadResource<GameObject>("Prefabs/UI/SubItem/UI_Gold");
             if (_coinPrefab == null)
             {
                 Debug.LogError("[UIEffectUtil] 'Resources/Prefabs/CoinUI' 경로에서 프리팹을 찾을 수 없습니다. 폴더와 이름을 확인해주세요.");
@@ -80,7 +80,7 @@ public static class UIEffect
                 break;
             }
 
-            GameObject coin = Object.Instantiate(_coinPrefab, _canvasTransform);
+            GameObject coin = Managers.Resource.Instantiate(_coinPrefab, _canvasTransform);
             Debug.Log(_canvasTransform.gameObject.name);
             RectTransform coinRect = coin.GetComponent<RectTransform>();
 
@@ -111,7 +111,7 @@ public static class UIEffect
 
             seq.OnComplete(() =>
             {
-                if (coin != null) Object.Destroy(coin);
+                if (coin != null) Managers.Resource.Destroy(coin);
 
                 //  [핵심 방어막 3] 코인이 도착한 시점에 코인 바(_endPoint)가 아직 살아있는지 확인 후 꿀렁임 적용
                 if (_endPoint != null)

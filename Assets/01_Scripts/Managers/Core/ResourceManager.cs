@@ -238,6 +238,20 @@ public class ResourceManager
         return null;
     }
 
+    /// <summary>Resources 폴더 에셋도 리소스 관리자를 거쳐 한 곳에서 불러옵니다.</summary>
+    public T LoadResource<T>(string path) where T : UnityEngine.Object
+    {
+        // 같은 키가 Addressables 캐시에 있으면 경고 없이 바로 반환합니다.
+        if (_resources.TryGetValue(path, out UnityEngine.Object cached))
+            return cached as T;
+
+        // 아직 Addressables에 등록되지 않은 기존 Resources 에셋을 불러옵니다.
+        T resource = Resources.Load<T>(path);
+        if (resource == null)
+            Debug.LogWarning($"[ResourceManager] 리소스를 찾을 수 없습니다: {path}");
+        return resource;
+    }
+
     public T[] LoadAll<T>(string prefix = "") where T : UnityEngine.Object
     {
         List<T> result = new List<T>();
@@ -299,6 +313,41 @@ public class ResourceManager
         GameObject go = UnityEngine.Object.Instantiate(original, parent);
         go.name = original.name;
         return go;
+    }
+
+    /// <summary>풀에 넣으면 안 되는 가구나 배치 미리보기를 원본 복사본으로 생성합니다.</summary>
+    public GameObject InstantiateUnpooled(GameObject original, Transform parent = null)
+    {
+        if (original == null)
+        {
+            Debug.LogWarning("[ResourceManager] 생성할 원본 오브젝트가 없습니다.");
+            return null;
+        }
+
+        GameObject go = UnityEngine.Object.Instantiate(original, parent);
+        go.name = original.name;
+        return go;
+    }
+
+    /// <summary>풀을 사용하지 않고 원하는 위치와 회전으로 오브젝트를 생성합니다.</summary>
+    public GameObject InstantiateUnpooled(GameObject original, Vector3 position, Quaternion rotation, Transform parent = null)
+    {
+        if (original == null)
+        {
+            Debug.LogWarning("[ResourceManager] 생성할 원본 오브젝트가 없습니다.");
+            return null;
+        }
+
+        GameObject go = UnityEngine.Object.Instantiate(original, position, rotation, parent);
+        go.name = original.name;
+        return go;
+    }
+
+    /// <summary>풀링 프리팹도 풀에 반환하지 않고 실제로 제거합니다.</summary>
+    public void DestroyUnpooled(GameObject go)
+    {
+        if (go != null)
+            UnityEngine.Object.Destroy(go);
     }
 
     public GameObject Instantiate(string path, Transform parent = null)

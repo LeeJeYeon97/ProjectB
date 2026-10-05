@@ -126,6 +126,7 @@ public class Define
 
         // 작업대 관련
         Progress,       // 작업 진행도
+        BeerMissing,    // 맥주 기계에 깨끗한 빈 잔이 없음
     }
 }
 

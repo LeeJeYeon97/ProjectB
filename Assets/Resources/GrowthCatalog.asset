@@ -1,0 +1,57 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 61847c69655e7714fa8d9deecd4f3612, type: 3}
+  m_Name: GrowthCatalog
+  m_EditorClassIdentifier: Assembly-CSharp::GrowthCatalog
+  items:
+  - id: player_speed
+    title: "\uD50C\uB808\uC774\uC5B4 \uC774\uB3D9 \uC18D\uB3C4"
+    prices: 64000000fa000000f4010000
+    values:
+    - 0.5
+    - 0.5
+    - 0.5
+  - id: player_stack
+    title: "\uD50C\uB808\uC774\uC5B4 \uC801\uC7AC\uB7C9"
+    prices: 960000002c01000058020000
+    values:
+    - 2
+    - 2
+    - 2
+  - id: player_interact
+    title: "\uC0C1\uD638\uC791\uC6A9 \uC18D\uB3C4"
+    prices: 960000002c01000058020000
+    values:
+    - 0.08
+    - 0.08
+    - 0.08
+  - id: employee_speed
+    title: "\uC9C1\uC6D0 \uC774\uB3D9 \uC18D\uB3C4"
+    prices: c80000009001000020030000
+    values:
+    - 0.4
+    - 0.4
+    - 0.4
+  - id: employee_interact
+    title: "직원 작업 속도"
+    prices: c80000009001000020030000
+    values:
+    - 0.08
+    - 0.08
+    - 0.08
+  - id: machine_capacity
+    title: "\uAE30\uACC4 \uC794 \uBCF4\uAD00\uB7C9"
+    prices: fa000000f4010000e8030000
+    values:
+    - 2
+    - 2
+    - 2

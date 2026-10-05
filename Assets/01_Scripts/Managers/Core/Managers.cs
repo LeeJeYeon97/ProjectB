@@ -43,8 +43,10 @@ public class Managers : MonoBehaviour
     private UnlockManager _unlock;
     private CustomerManager _customer;
     private EmployeeManager _employee;
+    private TaskManager _task;
     [SerializeField]
     private DishManager _dish;
+    private GrowthManager _growth;
 
     [SerializeField]
     private StationManager _station;
@@ -72,7 +74,9 @@ public class Managers : MonoBehaviour
     public static UnlockManager Unlock => Instance._unlock;
     public static CustomerManager Customer => Instance._customer;
     public static EmployeeManager Employee => Instance._employee;
+    public static TaskManager Task => Instance._task;
     public static DishManager Dish => Instance._dish;
+    public static GrowthManager Growth => Instance._growth;
     public static StationManager Station => Instance._station;
     // ========================================================== //
 
@@ -121,7 +125,9 @@ public class Managers : MonoBehaviour
             _instance._unlock = new UnlockManager();
             _instance._customer = new CustomerManager();
             _instance._employee = new EmployeeManager();
+            _instance._task = new TaskManager();
             _instance._dish = new DishManager();
+            _instance._growth = new GrowthManager();
             _instance._station = new StationManager();
 
             // Core
@@ -138,6 +144,7 @@ public class Managers : MonoBehaviour
             Customer.Init();
             Employee.Init();
             Dish.Init();
+            Growth.Init();
 
             Debug.unityLogger.logEnabled = Debug.isDebugBuild;
             Application.targetFrameRate = 60; 
@@ -162,6 +169,7 @@ public class Managers : MonoBehaviour
         _sound.Clear();
         _ui.Clear();
         _employee?.Clear();
+        _task?.Clear();
         if (_coroutine != null)
         {
             _coroutine.StopAllCoroutines();

@@ -588,6 +588,7 @@ GameObject:
   - component: {fileID: 1307933731693418806}
   - component: {fileID: 7629821526453498667}
   - component: {fileID: 3776006066010377630}
+  - component: {fileID: 6113420091234567890}
   m_Layer: 0
   m_Name: Employee
   m_TagString: Untagged
@@ -711,10 +712,28 @@ MonoBehaviour:
   currentState: 0
   availableTasks: 
   currentTask: 0
-  moveSpeed: 3.8
+  moveSpeed: 2
   stoppingDistance: 0.8
-  cleanDuration: 2
+  wanderingEnabled: 1
+  wanderCenter: {fileID: 0}
+  wanderRadius: 8
+  wanderWaitRange: {x: 2, y: 5}
   target: {fileID: 0}
+--- !u!114 &6113420091234567890
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3005606789880545942}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6aa20da47fa3b1540834ca7d8d3a60d2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::StackingSystem
+  stackPoint: {fileID: 2798761976740475944}
+  maxStackCount: 10
+  _stackedItems: []
 --- !u!1 &3076789883995872268
 GameObject:
   m_ObjectHideFlags: 0

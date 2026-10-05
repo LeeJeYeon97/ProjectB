@@ -1,25 +1,7 @@
-using System;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Rendering;
-using static Define;
-using static UnityEngine.Rendering.DebugUI;
 
-[Serializable]
-public class EmployeeTask
-{
-    public EmployeeTaskType Type { get; }
-
-    public SeatStation Target { get; }
-    
-    public EmployeeController AssignedEmployee { get; set; }
-
-    public EmployeeTask(EmployeeTaskType type, SeatStation target = null)
-    {
-        Type = type;
-        Target = target;
-    }
-}
+/// <summary>직원의 고용과 현재 고용된 직원 목록을 관리합니다.</summary>
 public class EmployeeManager
 {
     private GameObject employeePrefab;
@@ -28,23 +10,11 @@ public class EmployeeManager
     public IReadOnlyList<EmployeeController> Employees => employees;
     public int HireCost { get; set; } = 1000;
 
-    private readonly List<EmployeeTask> tasks = new();
-
-    public IReadOnlyList<EmployeeTask> Tasks => tasks;
-
-    public event Action<EmployeeTask> OnTaskCreated;
-
-
     public void Init()
     {
         LoadPrefab();
-        RegisterEvent();
     }
-    private void RegisterEvent()
-    {
-        //Managers.Station.OnRegisterDirtyTable -= CreateTask();
-        //Managers.Station.OnRegisterDirtyTable += CreateTask();
-    }
+
     private void LoadPrefab()
     {
         if (Managers.Resource.IsLoaded)
@@ -116,57 +86,21 @@ public class EmployeeManager
         }
 
         controller.Init();
+        // 예전 공통 업그레이드가 저장되어 있으면 새 직원의 시작 능력치로만 적용합니다.
+        if (Managers.Growth != null)
+            Managers.Growth.ApplyStartingEmployeeStats(controller);
+
         employees.Add(controller);
+
+        // 새 직원이 들어오면 이미 대기 중인 작업도 다시 배정합니다.
+        Managers.Task.AssignWaitingTasks();
 
         Debug.Log($"[EmployeeManager] 신규 직원이 고용되었습니다! (현재 직원 수: {employees.Count})");
         return controller;
     }
 
-    public void CreateTask(EmployeeTaskType type, SeatStation target = null)
-    {
-        EmployeeTask task = new EmployeeTask(type, target);
 
-        tasks.Add(task);
-
-        Debug.Log($"[EmployeeManager] Task 생성 : {type}" );
-        OnTaskCreated?.Invoke(task);
-
-        AssignTask(task);
-    }
-
-    // 작업 할당
-    private void AssignTask(EmployeeTask task)
-    {
-        EmployeeController employee = FindAvailableEmployee(task);
-
-        if (employee == null)
-            return;
-
-        // 작업에 직원 할당
-        task.AssignedEmployee = employee;
-        employee.AssignTask(task);
-    }
-
-    private EmployeeController FindAvailableEmployee(EmployeeTask task)
-    {
-        if (task == null) return null;
-        if (employees.Count <= 0) return null;
-        if (task.AssignedEmployee != null) return null;
-
-        foreach(EmployeeController employee in employees)
-        {
-            if(employee == null) continue;
-
-            // 일 할 수 없는 타입이면 패스
-            if(employee.HasTask(task.Type) == false) continue;
-
-            // 직원이 일을 안하고있으면 리턴
-            if (employee.CurrentState != EmployeeState.Idle) continue;
-
-            return employee;
-        }
-        return null;
-    }
+    /// <summary>고용된 직원 목록을 비워 씬 정리 과정에서 오래된 참조를 남기지 않습니다.</summary>
     public void Clear()
     {
         employees.Clear();

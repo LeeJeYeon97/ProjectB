@@ -66,7 +66,7 @@ public class UnlockStation : InteractableBase
         if (player == null) return;
 
         // 1. 플레이어 돈 차감
-        player.UpdateMoney(-throwAmount);
+        if (!player.TrySpendMoney(throwAmount)) return;
         _currentPaid += throwAmount;
 
         // 2. 날아가는 돈 연출 생성

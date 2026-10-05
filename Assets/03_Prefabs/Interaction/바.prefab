@@ -235,6 +235,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 8107400419869312618}
+  - component: {fileID: 728963336093655713}
   m_Layer: 0
   m_Name: GameObject
   m_TagString: Untagged
@@ -270,6 +271,22 @@ Transform:
   - {fileID: 2560638577338827831}
   m_Father: {fileID: 844176414846448778}
   m_LocalEulerAnglesHint: {x: 0, y: 180, z: 0}
+--- !u!208 &728963336093655713
+NavMeshObstacle:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 473600223588656165}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Shape: 1
+  m_Extents: {x: 5.4, y: 0.5, z: 2.13}
+  m_MoveThreshold: 0.1
+  m_Carve: 1
+  m_CarveOnlyStationary: 1
+  m_Center: {x: 1.03, y: 0, z: -1.53}
+  m_TimeToStationary: 0.5
 --- !u!1 &609696778990779548
 GameObject:
   m_ObjectHideFlags: 0

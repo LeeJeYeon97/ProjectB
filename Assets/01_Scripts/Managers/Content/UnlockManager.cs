@@ -1,6 +1,7 @@
 using DG.Tweening;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.AI;
 using static Define;
 
 public class UnlockManager
@@ -108,7 +109,9 @@ public class UnlockManager
             if (!immediate)
             {
                 targetGo.transform.localScale = Vector3.zero;
-                targetGo.transform.DOScale(Vector3.one, 0.3f).SetEase(Ease.OutBack);
+                targetGo.transform.DOScale(Vector3.one, 0.3f)
+                    .SetEase(Ease.OutBack)
+                    .OnComplete(() => RefreshObstacle(targetGo));
             }
         }
         // A방식: 씬 오브젝트 활성화 (구역 확장)
@@ -124,9 +127,31 @@ public class UnlockManager
                 {
                     // 구역이 해금될 때 "뿅" 하고 커지는 가벼운 연출 적용
                     anchor.TargetSceneObject.transform.localScale = Vector3.zero;
-                    anchor.TargetSceneObject.transform.DOScale(Vector3.one, 0.3f).SetEase(Ease.OutCubic);
+                    anchor.TargetSceneObject.transform.DOScale(Vector3.one, 0.3f)
+                        .SetEase(Ease.OutCubic)
+                        .OnComplete(() => RefreshObstacle(anchor.TargetSceneObject));
                 }
             }
+        }
+    }
+
+    /// <summary>크기 연출이 끝난 뒤 장애물을 다시 켜서 최신 크기로 NavMesh를 깎도록 합니다.</summary>
+    private void RefreshObstacle(GameObject target)
+    {
+        if (target == null)
+            return;
+
+        // 프리팹의 루트나 자식에 붙은 장애물을 모두 갱신해 가구 구조가 달라도 재사용할 수 있게 합니다.
+        NavMeshObstacle[] obstacles = target.GetComponentsInChildren<NavMeshObstacle>(true);
+        foreach (NavMeshObstacle obstacle in obstacles)
+        {
+            // 원래 꺼져 있던 장애물의 활성 상태는 유지합니다.
+            if (obstacle == null || !obstacle.enabled || !obstacle.gameObject.activeInHierarchy)
+                continue;
+
+            // 컴포넌트를 다시 켜면 Unity가 현재 위치와 크기를 기준으로 carve 영역을 다시 계산합니다.
+            obstacle.enabled = false;
+            obstacle.enabled = true;
         }
     }
 

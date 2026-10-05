@@ -204,6 +204,8 @@ public class CustomerController : MonoBehaviour
         {
             Debug.Log("좌석 지정완료");
             assignedSeat.SetState(SeatState.Occupied);
+            // 주문을 기다리는 손님이 앉았으므로 직원 대기열에 서빙 작업을 등록합니다.
+            Managers.Task.CreateTask(EmployeeTaskType.Serving, assignedSeat);
         }
 
         // TODO: 앉는 애니메이션 재생 (Animator.SetTrigger("Sit"))
@@ -280,6 +282,8 @@ public class CustomerController : MonoBehaviour
         if (assignedSeat != null)
         {
             assignedSeat.SetState(SeatState.Dirty);
+            // 손님이 떠난 직후 더러운 좌석을 작업 관리자의 청소 대기열에 등록합니다.
+            Managers.Station.RegisterDirtyTable(assignedSeat);
             assignedSeat.currentCustomer = null;
             assignedSeat = null;
         }

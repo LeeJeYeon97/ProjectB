@@ -20,6 +20,9 @@ public class UI_DynamicJoystick : MonoBehaviour, IPointerDownHandler, IDragHandl
 
     private void Awake()
     {
+        // 터치 영역 캔버스를 게임 UI보다 뒤에 두어 버튼 입력이 먼저 도착하게 합니다.
+        SetTouchCanvas();
+
         if (_joystickRoot != null)
         {
             // CanvasGroup이 없다면 동적으로 추가하여 제어를 유연하게 만듭니다.
@@ -35,6 +38,24 @@ public class UI_DynamicJoystick : MonoBehaviour, IPointerDownHandler, IDragHandl
             _canvasGroup.interactable = false;
             _canvasGroup.blocksRaycasts = false;
         }
+    }
+
+    /// <summary>화면 전체 터치 영역을 버튼 캔버스 뒤에 배치합니다.</summary>
+    private void SetTouchCanvas()
+    {
+        Canvas touchCanvas = GetComponent<Canvas>();
+        Camera uiCamera = Camera.main;
+
+        // 카메라가 없으면 화면 터치 영역을 바꾸지 않고 원래 설정을 유지합니다.
+        if (touchCanvas == null || uiCamera == null)
+            return;
+
+        // 게임 UI도 ScreenSpaceCamera이므로 같은 카메라를 쓰고 더 낮은 정렬 순서로 둡니다.
+        touchCanvas.renderMode = RenderMode.ScreenSpaceCamera;
+        touchCanvas.worldCamera = uiCamera;
+        touchCanvas.planeDistance = 1f;
+        touchCanvas.overrideSorting = true;
+        touchCanvas.sortingOrder = -1;
     }
 
     // 1. 터치하는 순간 호출

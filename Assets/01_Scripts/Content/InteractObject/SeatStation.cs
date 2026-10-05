@@ -31,17 +31,33 @@ public class SeatStation : InteractableBase
     
     public CustomerController currentCustomer;
     public EmployeeController AssignedCleaner { get; set; }
-
+    public bool IsWaitingToServe =>
+        isActiveAndEnabled &&
+        currentState == SeatState.Occupied &&
+        currentCustomer != null &&
+        currentCustomer.CurrentState == CustomerState.WaitingForFood;
 
     [Header("position")]
     public Transform customerSitPoint; // 손님이 앉을 실제 3D 좌표/회전 기준점
     public Transform foodServePoint;   // 음식을 올려놓을 테이블 위 좌표
 
 
-    private void Start()
+    private void OnEnable()
     {
         UpdateState();
         Managers.Station.RegisterSeat(this);
+    }
+
+    /// <summary>좌석이 비활성화되거나 제거될 때 손님 배정 목록에서 해제합니다.</summary>
+    protected override void OnDisable()
+    {
+        base.OnDisable();
+
+        if (Managers.Instance != null)
+        {
+            Managers.Task.RemoveTasksFor(this);
+            Managers.Station.UnregisterSeat(this);
+        }
     }
 
     public void SetState(SeatState state)
@@ -71,10 +87,24 @@ public class SeatStation : InteractableBase
     }
 
     /// <summary>
-    /// Dirty 상태의 좌석을 비운 상태로 되돌립니다.
-    /// 플레이어가 청소한 경우에만 빈 잔을 플레이어 스택에 넣습니다.
+    /// 더러운 좌석을 비우고, 플레이어가 청소하면 더러운 잔을 플레이어 스택에 넣습니다.
     /// </summary>
     public bool CleanSeat(PlayerController cleaner = null)
+    {
+        return CleanSeatInternal(cleaner, null);
+    }
+
+    /// <summary>직원이 좌석을 청소하며 만든 더러운 잔을 직원 스택에 넣습니다.</summary>
+    public bool CleanSeatForEmployee(StackingSystem employeeStack)
+    {
+        if (employeeStack == null || !employeeStack.CheckListItem(ItemType.Beer_Dirty))
+            return false;
+
+        return CleanSeatInternal(null, employeeStack);
+    }
+
+    /// <summary>좌석 청소와 잔 생성을 한 곳에서 처리해 플레이어와 직원의 상태를 맞춥니다.</summary>
+    private bool CleanSeatInternal(PlayerController cleaner, StackingSystem employeeStack)
     {
         if (currentState != SeatState.Dirty)
             return false;
@@ -85,7 +115,7 @@ public class SeatStation : InteractableBase
             return false;
         }
 
-        if (cleaner != null)
+        if (cleaner != null || employeeStack != null)
         {
             Vector3 spawnPosition = foodServePoint != null ? foodServePoint.position : transform.position;
             GameObject dirtyBeer = Managers.Resource.Instantiate("Item_BeerDirty", spawnPosition, Quaternion.identity);
@@ -93,12 +123,21 @@ public class SeatStation : InteractableBase
             if (dirtyBeer == null)
                 return false;
 
-            cleaner.Stacking.PickUpItem(dirtyBeer);
+            if (cleaner != null)
+                cleaner.Stacking.PickUpItem(dirtyBeer);
+            else
+                employeeStack.PickUpItem(dirtyBeer);
         }
 
-        // 플레이어가 직접 청소하든 직원이 청소하든 더러운 접시를 재고에 남깁니다.
-        if (Managers.Dish != null)
+        // 직원이 만든 잔은 실제 스택과 공용 재고에 함께 기록해 설거지 작업이 찾게 합니다.
+        if (employeeStack != null && Managers.Dish != null)
+        {
             Managers.Dish.AddDirtyDish();
+
+            // 직원용 재고가 늘어난 뒤 활성 싱크대에 설거지 작업을 등록합니다.
+            if (Managers.Task != null)
+                Managers.Task.RegisterDishWashTask();
+        }
 
         CurrentState = SeatState.Empty;
         AssignedCleaner = null;
@@ -146,6 +185,19 @@ public class SeatStation : InteractableBase
             currentCustomer.OnFoodServed();
             Debug.Log("음식을 서빙했습니다. 식사를 시작합니다!");
         }
+    }
+
+    /// <summary>직원이 스택에 준비한 맥주를 꺼내 손님에게 서빙합니다.</summary>
+    public bool ServeForEmployee(StackingSystem employeeStack)
+    {
+        if (!IsWaitingToServe || employeeStack == null ||
+            employeeStack.GetFirstListItemType() != ItemType.Beer)
+            return false;
+
+        employeeStack.PopItem();
+        currentCustomer.OnFoodServed();
+        Debug.Log($"직원이 좌석 {name}에 맥주를 서빙했습니다.");
+        return true;
     }
 
     protected override void OnInteractionEnded()

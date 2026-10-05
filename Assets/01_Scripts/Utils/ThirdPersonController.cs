@@ -17,6 +17,7 @@ public class ThirdPersonController : MonoBehaviour
     
     [Tooltip("이동 속도")]
     [SerializeField] private float moveSpeed = 5f;
+    private float growthSpeedBonus;
     
     [Tooltip("캐릭터 회전 속도 (부드럽게 회전하는 보간 감도)")]
     [SerializeField] private float rotationSpeed = 10f;
@@ -93,6 +94,12 @@ public class ThirdPersonController : MonoBehaviour
         UpdateAnimator();
     }
 
+    /// <summary>업그레이드로 얻은 이동 속도 증가량을 즉시 적용합니다.</summary>
+    public void SetGrowthSpeedBonus(float bonus)
+    {
+        growthSpeedBonus = Mathf.Max(0f, bonus);
+    }
+
     private void UpdateAnimator()
     {
         if (animator == null) return;
@@ -131,7 +138,7 @@ public class ThirdPersonController : MonoBehaviour
             Vector3 movementDirection = (cameraForward * input.y + cameraRight * input.x).normalized;
 
             // 중력 및 이동 벡터 계산
-            Vector3 moveVector = movementDirection * moveSpeed;
+            Vector3 moveVector = movementDirection * (moveSpeed + growthSpeedBonus);
             moveVector.y = verticalVelocity;
 
             characterController.Move(moveVector * Time.deltaTime);
@@ -152,7 +159,7 @@ public class ThirdPersonController : MonoBehaviour
             {
                 Vector3 direction = (clickTargetDestination - currentPos).normalized;
 
-                Vector3 moveVector = direction * moveSpeed;
+                Vector3 moveVector = direction * (moveSpeed + growthSpeedBonus);
                 moveVector.y = verticalVelocity;
 
                 characterController.Move(moveVector * Time.deltaTime);

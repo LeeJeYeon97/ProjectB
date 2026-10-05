@@ -12,6 +12,8 @@ public class UI_Bubble : UI_Base
         Image_Food,
         Image_Clean,
         Image_Payment,
+        Image_Beer,
+        Image_BeerEmpty
     }
 
     private Image progressImg;
@@ -74,7 +76,7 @@ public class UI_Bubble : UI_Base
         {
             //case BubbleType.Order:
             case BubbleType.FoodReady:
-                GetImage((int)Images.Image_Food)
+                GetImage((int)Images.Image_Beer)
                     ?.gameObject.SetActive(true);
                 break;
 
@@ -90,6 +92,12 @@ public class UI_Bubble : UI_Base
 
             case BubbleType.Progress:
                 GetImage((int)Images.Image_Progress)
+                    ?.gameObject.SetActive(true);
+                break;
+
+            // 맥주 기계에 깨끗한 빈 잔이 없을 때 전용 그림을 보여줍니다.
+            case BubbleType.BeerMissing:
+                GetImage((int)Images.Image_BeerEmpty)
                     ?.gameObject.SetActive(true);
                 break;
 

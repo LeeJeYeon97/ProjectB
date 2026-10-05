@@ -7,6 +7,18 @@ public class Counter : InteractableBase
     [SerializeField] private GameObject moneyPrefab;      // 돈 프리팹 (Item_Money)
     [SerializeField] private Transform moneySpawnPoint;    // 돈이 스폰될 카운터 상판 좌표
 
+    [Header("돈 쌓기 설정")]
+    [Tooltip("한 줄에 놓을 돈 묶음 수입니다.")]
+    [SerializeField, Min(1)] private int moneyColumns = 3;
+    [Tooltip("한 층에 놓을 줄 수입니다. 가로 칸 × 줄 수를 채우면 위층에 놓습니다.")]
+    [SerializeField, Min(1)] private int moneyRows = 3;
+    [Tooltip("돈 생성 지점 기준의 가로(X), 층 높이(Y), 세로(Z) 간격입니다.")]
+    [SerializeField] private Vector3 moneyGap = new Vector3(0.38f, 0.14f, 0.18f);
+
+    // 이 카운터에 남아 있는 돈만 생성 순서대로 보관합니다.
+    // 실제 금액은 각 돈의 Value에 그대로 두므로 배치가 바뀌어도 금액은 변하지 않습니다.
+    private readonly List<ItemController> moneyItems = new();
+
     [SerializeField] private Transform payPoint; //손님이 돈을 낼 위치
     public Transform PayPoint => payPoint;
 
@@ -17,6 +29,7 @@ public class Counter : InteractableBase
     private readonly Queue<CustomerController> waitingCustomers = new();
 
     public override float Duration => collectDuration;
+    public bool HasWaitingCustomers => waitingCustomers.Count > 0;
 
     protected override void Awake()
     {
@@ -40,7 +53,11 @@ public class Counter : InteractableBase
     public void AddWaitingCustomer(CustomerController customer)
     {
         if (customer != null && !waitingCustomers.Contains(customer))
+        {
             waitingCustomers.Enqueue(customer);
+            // 손님이 결제를 기다리기 시작하면 카운터 수금 작업을 등록합니다.
+            Managers.Task.CreateTask(Define.EmployeeTaskType.Casher, this);
+        }
     }
 
     /// <summary>대기 손님이 있고 플레이어나 직원이 범위에 있을 때 수금을 허용합니다.</summary>
@@ -56,24 +73,91 @@ public class Counter : InteractableBase
         if (!CanInteract(actor))
             return;
 
-        CustomerController customer = waitingCustomers.Dequeue();
-        CreateMoney(customer.payAmount);
-        customer.CompletePayment();
+        CollectForEmployee();
     }
 
-    /// <summary>결제 금액에 맞는 돈 오브젝트를 기존 방식대로 생성합니다.</summary>
+    /// <summary>대기 손님 한 명의 결제를 처리해 플레이어와 직원이 같은 결과를 사용합니다.</summary>
+    public bool CollectForEmployee()
+    {
+        if (!HasWaitingCustomers)
+            return false;
+
+        CustomerController customer = waitingCustomers.Dequeue();
+        if (customer == null || customer.CurrentState != Define.CustomerState.WaitingToPay)
+        {
+            Managers.Task.AssignWaitingTasks();
+            return false;
+        }
+
+        CreateMoney(customer.payAmount);
+        customer.CompletePayment();
+        return true;
+    }
+
+    /// <summary>수집된 돈을 제외하고 남은 돈을 아래층부터 빈틈없이 다시 배치합니다.</summary>
+    private void LateUpdate()
+    {
+        RefreshMoney();
+    }
+
+    /// <summary>카운터를 떠난 돈을 목록에서 빼고, 빈자리가 생겼을 때만 배치를 갱신합니다.</summary>
+    private void RefreshMoney()
+    {
+        bool changed = false;
+        for (int i = moneyItems.Count - 1; i >= 0; i--)
+        {
+            ItemController item = moneyItems[i];
+            // 수집이 시작되면 기존 수집 코드가 부모를 플레이어의 적재 지점으로 바꿉니다.
+            // 따라서 도착 애니메이션이 끝나기 전부터 해당 자리를 비울 수 있습니다.
+            if (item == null || !item.gameObject.activeInHierarchy || item.transform.parent != MoneySpawnPoint)
+            {
+                moneyItems.RemoveAt(i);
+                changed = true;
+            }
+        }
+
+        if (!changed)
+            return;
+
+        for (int i = 0; i < moneyItems.Count; i++)
+            moneyItems[i].transform.localPosition = GetMoneyPosition(i);
+    }
+
+    /// <summary>순번을 가로 칸, 세로 줄, 층으로 나누어 박스 형태의 배치 위치를 계산합니다.</summary>
+    private Vector3 GetMoneyPosition(int index)
+    {
+        // 저장된 설정이 잘못되어도 나눗셈에 0이 들어가지 않도록 보정합니다.
+        int columns = Mathf.Max(1, moneyColumns);
+        int rows = Mathf.Max(1, moneyRows);
+        int column = index % columns;
+        int row = (index / columns) % rows;
+        int layer = (index / columns) / rows;
+
+        // 생성 지점을 바닥 면의 중심으로 사용합니다. 가로부터 채운 뒤 다음 줄, 다음 층으로 갑니다.
+        // 간격은 양수로 보정하여 실수로 음수를 입력해도 아래쪽으로 쌓이지 않게 합니다.
+        return new Vector3(
+            (column - (columns - 1) * 0.5f) * Mathf.Max(0.01f, moneyGap.x),
+            layer * Mathf.Max(0.01f, moneyGap.y),
+            (row - (rows - 1) * 0.5f) * Mathf.Max(0.01f, moneyGap.z));
+    }
+
+    /// <summary>결제 한 건의 금액을 돈 묶음 하나에 저장하고 다음 빈칸에 놓습니다.</summary>
     private void CreateMoney(int amount)
     {
-        Vector3 spawnPos = MoneySpawnPoint.position;
+        // 같은 프레임에 돈을 주웠다면 비워진 자리를 먼저 정리합니다.
+        RefreshMoney();
+        Transform point = MoneySpawnPoint;
+        Vector3 localPosition = GetMoneyPosition(moneyItems.Count);
+        Vector3 spawnPos = point.TransformPoint(localPosition);
 
         GameObject moneyGo = null;
         if (moneyPrefab != null)
         {
-            moneyGo = Managers.Resource.Instantiate(moneyPrefab, spawnPos, Quaternion.identity);
+            moneyGo = Managers.Resource.Instantiate(moneyPrefab, spawnPos, point.rotation, point);
         }
         else
         {
-            moneyGo = Managers.Resource.Instantiate("Item_Money", spawnPos, Quaternion.identity);
+            moneyGo = Managers.Resource.Instantiate("Item_Money", spawnPos, point.rotation, point);
         }
 
         if (moneyGo != null)
@@ -84,6 +168,12 @@ public class Counter : InteractableBase
             if (item != null)
             {
                 item.Value = amount;
+                moneyItems.Add(item);
+
+                // 풀에서 재사용한 돈도 이전 수집 때 꺼진 충돌체를 다시 켜서 주울 수 있게 합니다.
+                Collider moneyCollider = moneyGo.GetComponent<Collider>();
+                if (moneyCollider != null)
+                    moneyCollider.enabled = true;
             }
         }
 
