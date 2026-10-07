@@ -42,7 +42,8 @@ public class Util
 		}
         else
         {
-            foreach (T component in go.GetComponentsInChildren<T>())
+            // 비활성 패널 안의 버튼과 글자도 프리팹에서 미리 연결할 수 있도록 포함합니다.
+            foreach (T component in go.GetComponentsInChildren<T>(true))
             {
                 if (string.IsNullOrEmpty(name) || component.name == name)
                     return component;

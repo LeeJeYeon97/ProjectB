@@ -8,11 +8,26 @@ public class UI_GameScene : UI_Scene
     private enum Texts
     {
         Text_Money,
+        Text_DishCount,
+        Text_EmployeeWorkGrowth,
+        Text_SeatCount,
     }
 
     private enum Buttons
     {
         Button_HireEmployee,
+        Button_Growth,
+        Button_player_speed,
+        Button_player_stack,
+        Button_player_interact,
+        Button_machine_capacity,
+        Button_PlaceChair,
+    }
+
+    private enum Objects
+    {
+        Panel_Growth,
+        Button_EmployeeGrowthTemplate,
     }
 
     private TMP_Text _moneyText;
@@ -24,10 +39,12 @@ public class UI_GameScene : UI_Scene
     private GameObject _growthPanel;
     private readonly Dictionary<string, TMP_Text> _growthTexts = new Dictionary<string, TMP_Text>();
     private Transform _employeeGrowthRoot;
+    private Button _employeeGrowthTemplate;
     private TMP_Text _employeeGrowthTitle;
     private readonly Dictionary<string, Button> _employeeGrowthButtons = new Dictionary<string, Button>();
     private readonly Dictionary<string, TMP_Text> _employeeGrowthLabels = new Dictionary<string, TMP_Text>();
     private TMP_Text _seatCountText;
+    private Button _placeFurnitureButton;
 
     private static readonly string[] GrowthIds =
     {
@@ -38,12 +55,28 @@ public class UI_GameScene : UI_Scene
     public override void Init()
     {
         base.Init();
-        FixCanvasSize();
+        //FixCanvasSize();
 
         Bind<TMP_Text>(typeof(Texts));
         Bind<Button>(typeof(Buttons));
+        Bind<GameObject>(typeof(Objects));
 
         _moneyText = GetTMP((int)Texts.Text_Money);
+        _dishCountText = GetTMP((int)Texts.Text_DishCount);
+        _employeeGrowthTitle = GetTMP((int)Texts.Text_EmployeeWorkGrowth);
+        _seatCountText = GetTMP((int)Texts.Text_SeatCount);
+        _growthPanel = GetObject((int)Objects.Panel_Growth);
+        _furniturePlacement = GetComponent<FurniturePlacementController>();
+        if (_furniturePlacement != null)
+        {
+            _furniturePlacement.OnInventoryChanged -= RefreshFurnitureButtons;
+            _furniturePlacement.OnInventoryChanged += RefreshFurnitureButtons;
+        }
+        GameObject employeeTemplateObject = GetObject((int)Objects.Button_EmployeeGrowthTemplate);
+        _employeeGrowthTemplate = employeeTemplateObject != null
+            ? employeeTemplateObject.GetComponent<Button>()
+            : null;
+        _employeeGrowthRoot = _employeeGrowthTemplate != null ? _employeeGrowthTemplate.transform.parent : null;
 
         Button hireBtn = GetButton((int)Buttons.Button_HireEmployee);
         if (hireBtn != null)
@@ -51,27 +84,54 @@ public class UI_GameScene : UI_Scene
             hireBtn.onClick.AddListener(OnClickHireEmployee);
         }
 
+        Button openGrowthButton = GetButton((int)Buttons.Button_Growth);
+        if (openGrowthButton != null)
+            openGrowthButton.onClick.AddListener(OnClickGrowthPanel);
+
+        BindGrowthButton("player_speed", Buttons.Button_player_speed);
+        BindGrowthButton("player_stack", Buttons.Button_player_stack);
+        BindGrowthButton("player_interact", Buttons.Button_player_interact);
+        BindGrowthButton("machine_capacity", Buttons.Button_machine_capacity);
+
+        Button placeChairButton = GetButton((int)Buttons.Button_PlaceChair);
+        if (placeChairButton != null)
+        {
+            placeChairButton.onClick.AddListener(OnClickBuyChair);
+            TMP_Text buyLabel = placeChairButton.GetComponentInChildren<TMP_Text>(true);
+            if (buyLabel != null)
+                buyLabel.text = "의자 구매";
+            _placeFurnitureButton = CreateFurniturePlaceButton(placeChairButton);
+            RefreshFurnitureButtons();
+        }
+
         BindPlayer();
-        CreateDishCountUI();
         BindDishManager();
-        CreateGrowthUI();
         BindSeatCount();
+        RefreshGrowthUI();
     }
 
-    /// <summary>화면 전체를 덮는 캔버스가 0 크기로 저장된 경우 정상 크기로 복구합니다.</summary>
-    private void FixCanvasSize()
+    /// <summary>프리팹에 미리 배치한 성장 버튼에 해당 업그레이드 동작을 연결합니다.</summary>
+    private void BindGrowthButton(string growthId, Buttons buttonId)
     {
-        RectTransform canvasRect = transform as RectTransform;
-        if (canvasRect == null)
+        Button button = GetButton((int)buttonId);
+        if (button == null)
             return;
 
-        // 화면 전체를 기준으로 늘어나도록 앵커와 여백을 통일합니다.
-        canvasRect.anchorMin = Vector2.zero;
-        canvasRect.anchorMax = Vector2.one;
-        canvasRect.offsetMin = Vector2.zero;
-        canvasRect.offsetMax = Vector2.zero;
-        canvasRect.pivot = new Vector2(0.5f, 0.5f);
-        canvasRect.localScale = Vector3.one;
+        TMP_Text label = button.GetComponentInChildren<TMP_Text>(true);
+        if (label != null)
+            _growthTexts[growthId] = label;
+
+        button.onClick.AddListener(() => OnClickGrowth(growthId));
+    }
+
+    /// <summary>성장 패널을 열거나 닫고 버튼의 현재 상태를 최신 정보로 맞춥니다.</summary>
+    private void OnClickGrowthPanel()
+    {
+        if (_growthPanel == null)
+            return;
+
+        _growthPanel.SetActive(!_growthPanel.activeSelf);
+        RefreshGrowthUI();
     }
 
     private void OnClickHireEmployee()
@@ -132,153 +192,6 @@ public class UI_GameScene : UI_Scene
             _player.OnMoneyChanged += UpdateMoneyText;
             UpdateMoneyText(_player.money);
         }
-    }
-
-    /// <summary>
-    /// 화면 왼쪽 위에 접시 수량을 보여주는 간단한 배경과 글자를 만듭니다.
-    /// 프리팹에 별도 오브젝트를 추가하지 않아도 UI_GameScene과 함께 표시됩니다.
-    /// </summary>
-    private void CreateDishCountUI()
-    {
-        // 다시 초기화되는 경우 기존 표시가 있으면 중복 생성하지 않습니다.
-        if (_dishCountText != null)
-            return;
-
-        GameObject panelObject = new GameObject("Panel_DishCount", typeof(RectTransform), typeof(Image));
-        panelObject.transform.SetParent(transform, false);
-
-        // 기준 해상도와 화면 비율이 달라도 왼쪽 위에 고정되도록 앵커를 설정합니다.
-        RectTransform panelRect = panelObject.GetComponent<RectTransform>();
-        panelRect.anchorMin = new Vector2(0f, 1f);
-        panelRect.anchorMax = new Vector2(0f, 1f);
-        panelRect.pivot = new Vector2(0f, 1f);
-        panelRect.anchoredPosition = new Vector2(32f, -105f);
-        panelRect.sizeDelta = new Vector2(340f, 112f);
-
-        // 어두운 반투명 배경으로 게임 화면 위에서도 글자가 잘 보이게 합니다.
-        Image panelImage = panelObject.GetComponent<Image>();
-        panelImage.color = new Color(0.06f, 0.08f, 0.1f, 0.78f);
-        panelImage.raycastTarget = false;
-
-        GameObject textObject = new GameObject("Text_DishCount", typeof(RectTransform), typeof(TextMeshProUGUI));
-        textObject.transform.SetParent(panelObject.transform, false);
-
-        // 글자를 패널 안쪽에 배치하고 두 줄의 재고를 표시할 공간을 확보합니다.
-        RectTransform textRect = textObject.GetComponent<RectTransform>();
-        textRect.anchorMin = Vector2.zero;
-        textRect.anchorMax = Vector2.one;
-        textRect.offsetMin = new Vector2(18f, 12f);
-        textRect.offsetMax = new Vector2(-12f, -12f);
-
-        _dishCountText = textObject.GetComponent<TextMeshProUGUI>();
-        _dishCountText.font = TMP_Settings.defaultFontAsset;
-        _dishCountText.fontSize = 27f;
-        _dishCountText.color = Color.white;
-        _dishCountText.alignment = TextAlignmentOptions.Left;
-        _dishCountText.enableWordWrapping = false;
-        _dishCountText.raycastTarget = false;
-    }
-
-    /// <summary>업그레이드 버튼과 가구 배치 진입 버튼을 화면에 생성합니다.</summary>
-    private void CreateGrowthUI()
-    {
-        if (_furniturePlacement == null)
-            _furniturePlacement = gameObject.AddComponent<FurniturePlacementController>();
-
-        Button openButton = CreateButton("Button_Growth", transform, "성장", new Vector2(1f, 1f), new Vector2(-115f, -65f), new Vector2(190f, 66f));
-        openButton.onClick.AddListener(() =>
-        {
-            if (_growthPanel != null)
-                _growthPanel.SetActive(!_growthPanel.activeSelf);
-        });
-
-        GameObject panel = new GameObject("Panel_Growth", typeof(RectTransform), typeof(Image), typeof(ScrollRect));
-        panel.transform.SetParent(transform, false);
-        _growthPanel = panel;
-        RectTransform panelRect = panel.GetComponent<RectTransform>();
-        panelRect.anchorMin = new Vector2(1f, 1f);
-        panelRect.anchorMax = new Vector2(1f, 1f);
-        panelRect.pivot = new Vector2(1f, 1f);
-        panelRect.anchoredPosition = new Vector2(-18f, -140f);
-        panelRect.sizeDelta = new Vector2(Mathf.Min(420f, Screen.width - 32f), Mathf.Min(560f, Screen.height - 180f));
-        panel.GetComponent<Image>().color = new Color(0.05f, 0.07f, 0.09f, 0.94f);
-
-        GameObject viewport = new GameObject("Viewport", typeof(RectTransform), typeof(RectMask2D));
-        viewport.transform.SetParent(panel.transform, false);
-        RectTransform viewportRect = viewport.GetComponent<RectTransform>();
-        viewportRect.anchorMin = Vector2.zero;
-        viewportRect.anchorMax = Vector2.one;
-        viewportRect.offsetMin = new Vector2(8f, 8f);
-        viewportRect.offsetMax = new Vector2(-8f, -8f);
-
-        GameObject content = new GameObject("Content", typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
-        content.transform.SetParent(viewport.transform, false);
-        RectTransform contentRect = content.GetComponent<RectTransform>();
-        contentRect.anchorMin = new Vector2(0f, 1f);
-        contentRect.anchorMax = new Vector2(1f, 1f);
-        contentRect.pivot = new Vector2(0.5f, 1f);
-        contentRect.sizeDelta = new Vector2(0f, 0f);
-
-        VerticalLayoutGroup layout = content.GetComponent<VerticalLayoutGroup>();
-        layout.spacing = 7f;
-        layout.padding = new RectOffset(5, 5, 5, 5);
-        layout.childControlHeight = true;
-        layout.childControlWidth = true;
-        layout.childForceExpandHeight = false;
-        layout.childForceExpandWidth = true;
-        ContentSizeFitter fitter = content.GetComponent<ContentSizeFitter>();
-        fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-
-        ScrollRect scroll = panel.GetComponent<ScrollRect>();
-        scroll.viewport = viewportRect;
-        scroll.content = contentRect;
-        scroll.horizontal = false;
-        scroll.vertical = true;
-        scroll.movementType = ScrollRect.MovementType.Clamped;
-
-        foreach (string id in GrowthIds)
-        {
-            Button button = CreateButton("Button_" + id, content.transform, "", Vector2.zero, Vector2.zero, new Vector2(0f, 64f));
-            _growthTexts[id] = button.GetComponentInChildren<TMP_Text>();
-            button.onClick.AddListener(() => OnClickGrowth(id));
-        }
-
-        // 테스트 중 직원마다 다른 작업 속도를 구매할 수 있도록 직원별 버튼 영역을 만듭니다.
-        GameObject employeeRoot = new GameObject(
-            "Panel_EmployeeWorkGrowth",
-            typeof(RectTransform),
-            typeof(VerticalLayoutGroup),
-            typeof(ContentSizeFitter));
-        employeeRoot.transform.SetParent(content.transform, false);
-        _employeeGrowthRoot = employeeRoot.transform;
-
-        VerticalLayoutGroup employeeLayout = employeeRoot.GetComponent<VerticalLayoutGroup>();
-        employeeLayout.spacing = 6f;
-        employeeLayout.childControlHeight = true;
-        employeeLayout.childControlWidth = true;
-        employeeLayout.childForceExpandHeight = false;
-        employeeLayout.childForceExpandWidth = true;
-
-        ContentSizeFitter employeeFitter = employeeRoot.GetComponent<ContentSizeFitter>();
-        employeeFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-        employeeFitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
-
-        _employeeGrowthTitle = CreateLabel(
-            "Text_EmployeeWorkGrowth",
-            _employeeGrowthRoot,
-            "직원별 능력치 (테스트)",
-            22f);
-        LayoutElement employeeTitleLayout = _employeeGrowthTitle.gameObject.AddComponent<LayoutElement>();
-        employeeTitleLayout.preferredHeight = 42f;
-
-        Button chairButton = CreateButton("Button_PlaceChair", content.transform, "의자 배치", Vector2.zero, Vector2.zero, new Vector2(0f, 64f));
-        chairButton.onClick.AddListener(OnClickPlaceChair);
-        _seatCountText = CreateLabel("Text_SeatCount", content.transform, "좌석 0개", 25f);
-        LayoutElement seatLayout = _seatCountText.gameObject.AddComponent<LayoutElement>();
-        seatLayout.preferredHeight = 50f;
-
-        _growthPanel.SetActive(false);
-        RefreshGrowthUI();
     }
 
     /// <summary>구매 단계와 재화 정보를 갱신하고 구매 결과를 한눈에 보이게 표시합니다.</summary>
@@ -383,23 +296,32 @@ public class UI_GameScene : UI_Scene
         if (item == null || item.prices == null || item.values == null)
             return;
 
+        if (_employeeGrowthTemplate == null || _employeeGrowthRoot == null)
+            return;
+
+        //if (_employeeGrowthTitle != null)
+        //    _employeeGrowthTitle.text = employees.Count > 0
+        //        ? "직원별 능력치"
+        //        : "직원별 능력치 (직원을 고용하세요)";
+
         // 직원 목록의 순번과 능력치 이름으로 버튼 키를 만들어 폐기 예정인 Instance ID를 쓰지 않습니다.
         string key = employeeIndex + "_" + growthId;
         currentKeys.Add(key);
 
         if (!_employeeGrowthButtons.TryGetValue(key, out Button button))
         {
-            button = CreateButton(
-                "Button_" + key,
-                _employeeGrowthRoot,
-                "",
-                Vector2.zero,
-                Vector2.zero,
-                new Vector2(0f, 58f));
+            // 직원별로 수가 달라지는 항목은 프리팹의 미리 꾸민 버튼을 복제해 재사용합니다.
+            button = Instantiate(_employeeGrowthTemplate, _employeeGrowthRoot, false);
+            button.gameObject.name = "Button_" + key;
+            button.gameObject.SetActive(true);
 
             _employeeGrowthButtons[key] = button;
-            _employeeGrowthLabels[key] = button.GetComponentInChildren<TMP_Text>();
-            button.onClick.AddListener(() => OnClickEmployeeGrowth(employee, growthId));
+            _employeeGrowthLabels[key] = button.GetComponentInChildren<TMP_Text>(true);
+
+            // 버튼이 만들어질 때의 직원을 저장해 다른 직원에게 잘못 적용되지 않게 합니다.
+            EmployeeController targetEmployee = employee;
+            string targetGrowthId = growthId;
+            button.onClick.AddListener(() => OnClickEmployeeGrowth(targetEmployee, targetGrowthId));
         }
 
         int level = growthId == "employee_speed"
@@ -434,11 +356,73 @@ public class UI_GameScene : UI_Scene
         RefreshEmployeeGrowthUI();
     }
 
-    /// <summary>의자 선택을 배치 모드로 넘기고 구매는 배치를 확정할 때 처리합니다.</summary>
+    /// <summary>의자 구매만 처리해 재고에 넣고 배치 흐름과 분리합니다.</summary>
+    private void OnClickBuyChair()
+    {
+        if (_furniturePlacement == null)
+            return;
+
+        if (!_furniturePlacement.BuyFurniture("chair"))
+        {
+            Debug.LogWarning("의자 구매 실패: 재화와 FurnitureCatalog의 chair 항목을 확인하세요.");
+            return;
+        }
+
+        RefreshFurnitureButtons();
+    }
+
+    /// <summary>구매해 보유 중인 의자를 꺼내 설치하는 모드로 들어갑니다.</summary>
     private void OnClickPlaceChair()
     {
-        if (_furniturePlacement != null && !_furniturePlacement.BeginPlacement("chair"))
-            Debug.LogWarning("의자 배치 실패: FurnitureCatalog의 chair 항목과 프리팹을 확인하세요.");
+        if (_furniturePlacement == null || !_furniturePlacement.BeginPlacement("chair"))
+        {
+            Debug.LogWarning("의자 배치 실패: 구매한 의자가 있는지 확인하세요.");
+            return;
+        }
+
+        // 배치 입력이 성장 패널에 가로막히지 않도록 배치 모드가 시작되면 패널을 닫습니다.
+        if (_growthPanel != null)
+            _growthPanel.SetActive(false);
+    }
+
+    /// <summary>기존 구매 버튼 옆에 별도의 배치 버튼을 만들어 구매와 설치를 분리합니다.</summary>
+    private Button CreateFurniturePlaceButton(Button sourceButton)
+    {
+        GameObject buttonObject = Instantiate(sourceButton.gameObject, sourceButton.transform.parent);
+        buttonObject.name = "Button_PlaceOwnedChair";
+        RectTransform sourceRect = sourceButton.GetComponent<RectTransform>();
+        RectTransform newRect = buttonObject.GetComponent<RectTransform>();
+        newRect.anchoredPosition = sourceRect.anchoredPosition + new Vector2(190f, 0f);
+        Button button = buttonObject.GetComponent<Button>();
+        button.onClick.RemoveAllListeners();
+        button.onClick.AddListener(OnClickPlaceChair);
+        TMP_Text label = buttonObject.GetComponentInChildren<TMP_Text>(true);
+        if (label != null)
+            label.text = "의자 배치";
+        return button;
+    }
+
+    /// <summary>구매한 의자 수를 버튼에 표시하고 재고가 있을 때만 배치 버튼을 켭니다.</summary>
+    private void RefreshFurnitureButtons()
+    {
+        if (_furniturePlacement == null)
+            return;
+        int count = _furniturePlacement.GetInventoryCount("chair");
+        if (_placeFurnitureButton != null)
+        {
+            // 새 의자 설치는 보유 수량이 필요합니다. 기존 의자는 맵에서 직접 눌러 옮깁니다.
+            _placeFurnitureButton.interactable = count > 0;
+            TMP_Text label = _placeFurnitureButton.GetComponentInChildren<TMP_Text>(true);
+            if (label != null)
+                label.text = $"의자 배치 ({count})";
+        }
+    }
+
+    /// <summary>화면이 사라질 때 가구 재고 변경 알림 연결을 정리합니다.</summary>
+    private void OnDestroy()
+    {
+        if (_furniturePlacement != null)
+            _furniturePlacement.OnInventoryChanged -= RefreshFurnitureButtons;
     }
 
     /// <summary>좌석 등록 변경을 구독해 좌석 수 표시를 최신 값으로 맞춥니다.</summary>
@@ -456,64 +440,6 @@ public class UI_GameScene : UI_Scene
     private void OnSeatCountChanged(int count)
     {
         RefreshGrowthUI();
-    }
-
-    /// <summary>공통 버튼 프레임과 글자를 만들어 화면 해상도에 맞게 배치합니다.</summary>
-    private Button CreateButton(string objectName, Transform parent, string text, Vector2 anchor, Vector2 position, Vector2 size)
-    {
-        GameObject buttonObject = new GameObject(objectName, typeof(RectTransform), typeof(Image), typeof(Button), typeof(LayoutElement));
-        buttonObject.transform.SetParent(parent, false);
-        RectTransform rect = buttonObject.GetComponent<RectTransform>();
-        bool arrangedByLayout = parent.GetComponent<LayoutGroup>() != null;
-        if (arrangedByLayout)
-        {
-            // 세로 목록 안에서는 부모 너비를 따라가도록 가로 앵커를 사용합니다.
-            rect.anchorMin = new Vector2(0f, 1f);
-            rect.anchorMax = new Vector2(1f, 1f);
-            rect.pivot = new Vector2(0.5f, 1f);
-            rect.anchoredPosition = Vector2.zero;
-            rect.sizeDelta = new Vector2(0f, size.y);
-        }
-        else
-        {
-            rect.anchorMin = anchor;
-            rect.anchorMax = anchor;
-            rect.pivot = new Vector2(0.5f, 0.5f);
-            rect.anchoredPosition = position;
-            rect.sizeDelta = size;
-        }
-
-        Image image = buttonObject.GetComponent<Image>();
-        image.color = new Color(0.15f, 0.3f, 0.38f, 0.96f);
-        Button button = buttonObject.GetComponent<Button>();
-        button.targetGraphic = image;
-        LayoutElement layout = buttonObject.GetComponent<LayoutElement>();
-        layout.preferredHeight = size.y;
-
-        TMP_Text label = CreateLabel("Text", buttonObject.transform, text, 23f);
-        RectTransform labelRect = label.rectTransform;
-        labelRect.anchorMin = Vector2.zero;
-        labelRect.anchorMax = Vector2.one;
-        labelRect.offsetMin = new Vector2(10f, 4f);
-        labelRect.offsetMax = new Vector2(-10f, -4f);
-        label.alignment = TextAlignmentOptions.Center;
-        label.enableWordWrapping = true;
-        return button;
-    }
-
-    /// <summary>기본 TMP 글자를 만들어 런타임 UI에 붙입니다.</summary>
-    private TMP_Text CreateLabel(string objectName, Transform parent, string text, float fontSize)
-    {
-        GameObject textObject = new GameObject(objectName, typeof(RectTransform), typeof(TextMeshProUGUI));
-        textObject.transform.SetParent(parent, false);
-        TMP_Text label = textObject.GetComponent<TMP_Text>();
-        label.font = TMP_Settings.defaultFontAsset;
-        label.text = text;
-        label.fontSize = fontSize;
-        label.color = Color.white;
-        label.alignment = TextAlignmentOptions.Left;
-        label.raycastTarget = false;
-        return label;
     }
 
     /// <summary>접시 재고 매니저의 변경 알림을 연결하고 현재 수량을 바로 표시합니다.</summary>
@@ -574,5 +500,14 @@ public class UI_GameScene : UI_Scene
             _furniturePlacement.enabled = false;
             _furniturePlacement = null;
         }
+
+        foreach (Button button in _employeeGrowthButtons.Values)
+        {
+            if (button != null)
+                Destroy(button.gameObject);
+        }
+
+        _employeeGrowthButtons.Clear();
+        _employeeGrowthLabels.Clear();
     }
 }

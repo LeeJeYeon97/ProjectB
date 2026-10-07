@@ -6,12 +6,16 @@ using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.Rendering;
 using UnityEngine.UI;
+using DG.Tweening;
+using UnityEngine.SceneManagement;
 
-/// <summary>가구 선택부터 미리보기, 배치 검사, 구매와 저장까지 한 흐름으로 처리합니다.</summary>
+/// <summary>가구 미리보기와 배치, 기존 가구 이동과 배치 정보 저장을 관리합니다.</summary>
 public class FurniturePlacementController : MonoBehaviour
 {
+    public event Action OnInventoryChanged;
     private const string SaveKey = "ProjectB.Furniture.Save";
     private const int SaveVersion = 1;
+    private const string InventorySaveKey = "ProjectB.Furniture.Inventory";
 
     [Header("가구와 바닥 설정")]
     [SerializeField] private FurnitureCatalog catalog;
@@ -30,13 +34,24 @@ public class FurniturePlacementController : MonoBehaviour
     private FurnitureItem selectedItem;
     private Collider placementFloor;
     private ThirdPersonController playerMovement;
+    private UI_DynamicJoystick joystick;
+    private bool joystickWasActive;
     private GameObject placementControls;
     private TMP_Text statusText;
     private Button placeButton;
     private MaterialPropertyBlock colorBlock;
+    private LineRenderer rangeLine;
+    private GameObject movingFurniture;
+    private Vector3 movingStartPosition;
+    private Quaternion movingStartRotation;
+    private bool isMovingFurniture;
+    private readonly List<Renderer> movingRenderers = new List<Renderer>();
+    private readonly Dictionary<string, int> furnitureInventory = new Dictionary<string, int>();
+    private bool inventoryLoaded;
 
     private bool canPlace;
     private bool hasPreviewPosition;
+    private bool usesTouchInput;
     private bool playerMovementWasEnabled;
     private float rotationY;
 
@@ -48,12 +63,29 @@ public class FurniturePlacementController : MonoBehaviour
 
         colorBlock = new MaterialPropertyBlock();
         CreatePlacementControls();
+        LoadFurnitureInventory();
+        // UI가 먼저 만들어졌어도 저장된 재고에 맞춰 배치 버튼을 다시 갱신합니다.
+        OnInventoryChanged?.Invoke();
         LoadPlacedFurniture();
     }
 
     /// <summary>선택한 가구의 위치와 유효 상태를 매 프레임 갱신합니다.</summary>
     private void Update()
     {
+        // 배치 전후 어느 때든 가구를 누르면 새 설치보다 기존 가구 이동을 먼저 처리합니다.
+        if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame && !IsPointerOverUI(-1))
+        {
+            if (TrySelectPlacedFurniture(Mouse.current.position.ReadValue()))
+                return;
+        }
+        if (Touchscreen.current != null && Touchscreen.current.primaryTouch.press.wasPressedThisFrame)
+        {
+            Vector2 touchPosition = Touchscreen.current.primaryTouch.position.ReadValue();
+            int touchId = Touchscreen.current.primaryTouch.touchId.ReadValue();
+            if (!IsPointerOverUI(touchId) && TrySelectPlacedFurniture(touchPosition))
+                return;
+        }
+
         if (selectedItem == null || preview == null)
             return;
 
@@ -88,6 +120,14 @@ public class FurniturePlacementController : MonoBehaviour
     /// <summary>ID에 맞는 가구를 찾아 미리보기를 만들고 배치 모드를 시작합니다.</summary>
     public bool BeginPlacement(string furnitureId)
     {
+        // 새 가구는 구매한 재고가 있을 때만 미리보기를 만듭니다.
+        // 이미 설치된 가구를 직접 눌러 옮기는 기능은 재고와 관계없이 유지합니다.
+        if (GetInventoryCount(furnitureId) <= 0)
+        {
+            SetStatus("배치할 가구가 없습니다. 먼저 구매해 주세요.");
+            return false;
+        }
+
         if (selectedItem != null)
             CancelPlacement();
 
@@ -115,6 +155,7 @@ public class FurniturePlacementController : MonoBehaviour
 
         preview.name = "FurniturePreview";
         preview.transform.localScale = selectedItem.prefab.transform.localScale;
+        preview.transform.rotation = Quaternion.Euler(0f, rotationY, 0f);
         PreparePreview();
 
         // 배치 중 이동 입력이 가구 조작과 겹치지 않게 하고, 끝날 때 원래 상태로 돌립니다.
@@ -127,8 +168,17 @@ public class FurniturePlacementController : MonoBehaviour
             playerMovement.enabled = false;
         }
 
+        // 배치 중에는 이동 조이스틱이 필요 없으므로 터치 영역이 바닥 입력을 가로채지 않게 잠시 숨깁니다.
+        joystick = FindAnyObjectByType<UI_DynamicJoystick>();
+        if (joystick != null)
+        {
+            joystickWasActive = joystick.gameObject.activeSelf;
+            joystick.gameObject.SetActive(false);
+        }
+
         rotationY = 0f;
         hasPreviewPosition = false;
+        usesTouchInput = false;
         placementFloor = null;
         canPlace = false;
         if (placementControls != null)
@@ -136,6 +186,65 @@ public class FurniturePlacementController : MonoBehaviour
 
         UpdatePlacementFeedback();
         return true;
+    }
+
+    /// <summary>가구를 먼저 구매해 재고에 넣고, 실제 배치는 나중에 진행하도록 분리합니다.</summary>
+    public bool BuyFurniture(string furnitureId)
+    {
+        FurnitureItem item = FindItem(furnitureId);
+        PlayerController player = PlayerController.Instance;
+        if (item == null || player == null || !player.TrySpendMoney(item.price))
+        {
+            SetStatus("가구를 구매할 수 없습니다. 재화와 가구 설정을 확인해 주세요.");
+            return false;
+        }
+
+        furnitureInventory[furnitureId] = GetInventoryCount(furnitureId) + 1;
+        SaveFurnitureInventory();
+        OnInventoryChanged?.Invoke();
+        SetStatus($"{item.title} 구매 완료 · 보유 {GetInventoryCount(furnitureId)}개");
+        return true;
+    }
+
+    /// <summary>현재 재고 수를 돌려줘 구매 버튼과 배치 버튼 상태에 활용합니다.</summary>
+    public int GetInventoryCount(string furnitureId)
+    {
+        // UI 초기화가 Start보다 먼저 실행되어도 저장된 재고를 정확히 보여 줍니다.
+        LoadFurnitureInventory();
+        return furnitureInventory.TryGetValue(furnitureId, out int count) ? count : 0;
+    }
+
+    /// <summary>카탈로그에서 ID에 맞는 가구 설정을 찾아옵니다.</summary>
+    private FurnitureItem FindItem(string furnitureId)
+    {
+        return catalog != null && catalog.items != null
+            ? catalog.items.Find(item => item != null && item.id == furnitureId)
+            : null;
+    }
+
+    /// <summary>구매한 가구 수를 재접속 뒤에도 유지합니다.</summary>
+    private void LoadFurnitureInventory()
+    {
+        // 재고를 여러 곳에서 조회해도 저장 데이터를 한 번만 읽습니다.
+        if (inventoryLoaded) return;
+        inventoryLoaded = true;
+
+        if (!PlayerPrefs.HasKey(InventorySaveKey)) return;
+        FurnitureInventoryData data = JsonUtility.FromJson<FurnitureInventoryData>(PlayerPrefs.GetString(InventorySaveKey));
+        if (data == null || data.items == null) return;
+        foreach (FurnitureInventoryItem item in data.items)
+            if (item != null && !string.IsNullOrEmpty(item.id) && item.count > 0)
+                furnitureInventory[item.id] = item.count;
+    }
+
+    /// <summary>현재 보유 중인 가구 수를 저장합니다.</summary>
+    private void SaveFurnitureInventory()
+    {
+        FurnitureInventoryData data = new FurnitureInventoryData();
+        foreach (KeyValuePair<string, int> item in furnitureInventory)
+            data.items.Add(new FurnitureInventoryItem { id = item.Key, count = item.Value });
+        PlayerPrefs.SetString(InventorySaveKey, JsonUtility.ToJson(data));
+        PlayerPrefs.Save();
     }
 
     /// <summary>미리보기에는 보이는 렌더러만 남기고 물리와 동작 컴포넌트를 끕니다.</summary>
@@ -227,11 +336,24 @@ public class FurniturePlacementController : MonoBehaviour
             return;
 
         // UI 버튼을 누르는 동안은 직전 바닥 위치를 유지해 버튼 클릭이 바닥 이동으로 처리되지 않게 합니다.
-        if (IsPointerOverUI(pointerId))
+        // 마우스는 UI 위에서도 위치를 계속 보여주되, 터치는 조작 버튼을 누를 때만 이동을 멈춥니다.
+        if (pointerId >= 0 && IsPointerOverUI(pointerId))
             return;
 
         Ray ray = Camera.main.ScreenPointToRay(pointer);
-        if (!Physics.Raycast(ray, out RaycastHit hit, maxRayDistance, floorMask, QueryTriggerInteraction.Ignore))
+        RaycastHit[] hits = Physics.RaycastAll(ray, maxRayDistance, floorMask, QueryTriggerInteraction.Ignore);
+        Array.Sort(hits, (left, right) => left.distance.CompareTo(right.distance));
+        bool foundFloor = false;
+        RaycastHit hit = default;
+        foreach (RaycastHit candidate in hits)
+        {
+            // 의자나 벽이 먼저 맞더라도 그 뒤에 있는 유효한 바닥까지 확인합니다.
+            if (!IsValidFloorPoint(candidate.point, candidate.normal)) continue;
+            hit = candidate;
+            foundFloor = true;
+            break;
+        }
+        if (!foundFloor)
         {
             placementFloor = null;
             canPlace = false;
@@ -249,7 +371,8 @@ public class FurniturePlacementController : MonoBehaviour
         }
 
         Vector3 position = hit.point + Vector3.up * GetHeightOffset();
-        preview.transform.SetPositionAndRotation(position, Quaternion.Euler(0f, rotationY, 0f));
+        // 회전 트윈이 도는 동안 방향을 매 프레임 덮어쓰지 않고 위치만 갱신합니다.
+        preview.transform.position = position;
         hasPreviewPosition = true;
         canPlace = IsPositionFree(position);
         UpdatePlacementFeedback();
@@ -263,7 +386,7 @@ public class FurniturePlacementController : MonoBehaviour
 
         Vector2 size = GetPlacementSize();
         Vector3 halfSize = new Vector3(size.x * 0.5f, GetPlacementHeight() * 0.5f, size.y * 0.5f);
-        Quaternion rotation = preview.transform.rotation;
+        Quaternion rotation = Quaternion.Euler(0f, rotationY, 0f);
         // 바닥과 맞닿는 면이 겹침으로 잡히지 않도록 검사 상자를 아주 조금 띄웁니다.
         Vector3 checkCenter = position + Vector3.up * (halfSize.y + 0.02f);
 
@@ -280,7 +403,8 @@ public class FurniturePlacementController : MonoBehaviour
 
         foreach (Collider shape in nearby)
         {
-            if (shape == null || shape == placementFloor || shape.transform.IsChildOf(preview.transform))
+            if (shape == null || shape == placementFloor || IsFloorCollider(shape) || shape.transform.IsChildOf(preview.transform) ||
+                (movingFurniture != null && (shape.transform == movingFurniture.transform || shape.transform.IsChildOf(movingFurniture.transform))))
                 continue;
 
             // 사람은 움직이는 대상이므로 설치 불가 장애물로 취급하지 않습니다.
@@ -293,7 +417,7 @@ public class FurniturePlacementController : MonoBehaviour
         }
 
         // 좌석은 상호작용용 트리거를 쓰므로 별도로 검사해 너무 가까운 의자 배치를 막습니다.
-        if (selectedItem.id == "chair" && IsTooCloseToSeat(position))
+        if (!isMovingFurniture && selectedItem.id == "chair" && IsTooCloseToSeat(position))
             return false;
 
         return true;
@@ -320,13 +444,32 @@ public class FurniturePlacementController : MonoBehaviour
             float rayLength = floorHeightTolerance * 2f + 0.2f;
 
             float floorY = position.y - GetHeightOffset();
-            if (!Physics.Raycast(rayStart, Vector3.down, out RaycastHit hit, rayLength, floorMask, QueryTriggerInteraction.Ignore) ||
-                !IsValidFloorPoint(hit.point, hit.normal) ||
-                Mathf.Abs(hit.point.y - floorY) > floorHeightTolerance)
+            RaycastHit[] floorHits = Physics.RaycastAll(rayStart, Vector3.down, rayLength, floorMask, QueryTriggerInteraction.Ignore);
+            bool foundFloor = false;
+            foreach (RaycastHit floorHit in floorHits)
+            {
+                // 여러 바닥 조각이 겹치거나 가구가 시야를 가려도 높이가 맞는 바닥을 찾습니다.
+                if (!IsValidFloorPoint(floorHit.point, floorHit.normal) ||
+                    Mathf.Abs(floorHit.point.y - floorY) > floorHeightTolerance)
+                    continue;
+                foundFloor = true;
+                break;
+            }
+            if (!foundFloor)
                 return false;
         }
 
         return true;
+    }
+
+    /// <summary>배치 높이에 맞닿은 얇은 바닥 콜라이더인지 확인해 장애물 검사에서 제외합니다.</summary>
+    private bool IsFloorCollider(Collider shape)
+    {
+        if (shape == null || (floorMask.value & (1 << shape.gameObject.layer)) == 0)
+            return false;
+
+        Bounds bounds = shape.bounds;
+        return bounds.size.y <= 0.5f && Mathf.Abs(bounds.max.y - floorLevel) <= floorHeightTolerance;
     }
 
     /// <summary>수평에 가까우며 정해진 매장 바닥 높이에 있는 면만 가구 배치 바닥으로 인정합니다.</summary>
@@ -375,7 +518,7 @@ public class FurniturePlacementController : MonoBehaviour
         return selectedItem != null ? selectedItem.heightOffset : 0f;
     }
 
-    /// <summary>유효한 위치와 충분한 재화가 확인된 뒤 실제 가구를 생성하고 저장합니다.</summary>
+    /// <summary>유효한 위치에 보유 가구를 설치하거나 기존 가구를 옮긴 뒤 결과를 저장합니다.</summary>
     private void ConfirmPlacement()
     {
         if (!canPlace || !hasPreviewPosition || selectedItem == null)
@@ -392,33 +535,53 @@ public class FurniturePlacementController : MonoBehaviour
             return;
         }
 
-        PlayerController player = PlayerController.Instance;
-        if (player == null || !player.TrySpendMoney(selectedItem.price))
-        {
-            SetStatus("재화가 부족합니다.");
-            return;
-        }
-
         string furnitureId = selectedItem.id;
         Vector3 position = preview.transform.position;
-        Quaternion rotation = preview.transform.rotation;
-        GameObject placed = Managers.Resource.InstantiateUnpooled(selectedItem.prefab, position, rotation);
+        Quaternion rotation = Quaternion.Euler(0f, rotationY, 0f);
+        GameObject placed = movingFurniture;
+        if (isMovingFurniture)
+        {
+            placed.transform.SetPositionAndRotation(position, rotation);
+        }
+        else
+        {
+            if (GetInventoryCount(furnitureId) <= 0)
+            {
+                SetStatus("배치할 가구가 없습니다. 먼저 구매해 주세요.");
+                return;
+            }
+            placed = Managers.Resource.InstantiateUnpooled(selectedItem.prefab, position, rotation);
+        }
         if (placed == null)
         {
-            // 생성 실패 시 구매 비용을 돌려주기 위한 보상 처리는 게임 재화 API에 맞춰 실행합니다.
-            player.UpdateMoney(selectedItem.price);
-            SetStatus("가구를 설치하지 못했습니다. 재화는 돌려드렸습니다.");
+            SetStatus("가구를 설치하지 못했습니다.");
             return;
         }
 
         placed.name = furnitureId;
+        if (isMovingFurniture)
+            SetMovingRenderersVisible(true);
         FurnitureMarker marker = placed.GetComponent<FurnitureMarker>();
         if (marker == null)
             marker = placed.AddComponent<FurnitureMarker>();
         marker.furnitureId = furnitureId;
-        placedFurniture.Add(placed);
+        if (!isMovingFurniture)
+        {
+            furnitureInventory[furnitureId] = Mathf.Max(0, GetInventoryCount(furnitureId) - 1);
+            SaveFurnitureInventory();
+            OnInventoryChanged?.Invoke();
+        }
+        if (!placedFurniture.Contains(placed))
+            placedFurniture.Add(placed);
         SavePlacedFurniture();
+        placed.transform.DOKill();
+        Vector3 targetScale = selectedItem.prefab.transform.localScale;
+        placed.transform.localScale = targetScale * 0.85f;
+        placed.transform.DOScale(targetScale, 0.22f).SetEase(Ease.OutBack);
 
+        // 취소 정리 단계에서 원래 위치로 되돌리지 않도록 이동 완료 상태를 먼저 끝냅니다.
+        isMovingFurniture = false;
+        movingFurniture = null;
         CancelPlacement();
         SetStatus("가구를 배치했습니다.");
     }
@@ -426,6 +589,11 @@ public class FurniturePlacementController : MonoBehaviour
     /// <summary>배치 모드를 취소하고 미리보기와 입력 잠금을 정리합니다.</summary>
     public void CancelPlacement()
     {
+        if (isMovingFurniture && movingFurniture != null)
+        {
+            movingFurniture.transform.SetPositionAndRotation(movingStartPosition, movingStartRotation);
+            SetMovingRenderersVisible(true);
+        }
         if (preview != null)
         {
             if (Managers.Resource != null)
@@ -444,27 +612,46 @@ public class FurniturePlacementController : MonoBehaviour
         previewRenderers.Clear();
 
         preview = null;
+        movingFurniture = null;
+        isMovingFurniture = false;
         selectedItem = null;
         placementFloor = null;
         hasPreviewPosition = false;
+        usesTouchInput = false;
         canPlace = false;
 
         if (playerMovement != null)
             playerMovement.enabled = playerMovementWasEnabled;
         playerMovement = null;
 
+        if (joystick != null)
+            joystick.gameObject.SetActive(joystickWasActive);
+        joystick = null;
+
         if (placementControls != null)
             placementControls.SetActive(false);
+        if (rangeLine != null)
+            rangeLine.enabled = false;
     }
 
     /// <summary>현재 터치 또는 마우스 좌표와 포인터 ID를 가져옵니다.</summary>
-    private static bool TryReadPointer(out Vector2 pointer, out int pointerId)
+    private bool TryReadPointer(out Vector2 pointer, out int pointerId)
     {
         if (Touchscreen.current != null && Touchscreen.current.primaryTouch.press.isPressed)
         {
+            usesTouchInput = true;
             pointer = Touchscreen.current.primaryTouch.position.ReadValue();
             pointerId = Touchscreen.current.primaryTouch.touchId.ReadValue();
             return true;
+        }
+
+        // 모바일에는 마우스 장치가 함께 잡혀도 손을 뗀 뒤 마지막 터치 위치를 유지합니다.
+        // 편집기에서 터치를 사용한 경우에도 배치 모드가 끝날 때까지 마우스 원점으로 돌아가지 않습니다.
+        if (usesTouchInput || Application.isMobilePlatform)
+        {
+            pointer = Vector2.zero;
+            pointerId = -1;
+            return false;
         }
 
         if (Mouse.current != null)
@@ -519,7 +706,19 @@ public class FurniturePlacementController : MonoBehaviour
             if (item == null || item.prefab == null)
                 continue;
 
-            GameObject placed = Managers.Resource.InstantiateUnpooled(item.prefab, saved.GetPosition(), saved.GetRotation());
+            GameObject placed;
+            if (saved.isSceneFurniture)
+            {
+                // 씬에 원래 있던 가구는 새로 만들지 않고 같은 오브젝트의 위치만 복구합니다.
+                placed = FindSceneFurniture(saved.scenePath);
+                if (placed == null)
+                    continue;
+                placed.transform.SetPositionAndRotation(saved.GetPosition(), saved.GetRotation());
+            }
+            else
+            {
+                placed = Managers.Resource.InstantiateUnpooled(item.prefab, saved.GetPosition(), saved.GetRotation());
+            }
             if (placed == null)
                 continue;
 
@@ -528,6 +727,8 @@ public class FurniturePlacementController : MonoBehaviour
             if (marker == null)
                 marker = placed.AddComponent<FurnitureMarker>();
             marker.furnitureId = item.id;
+            marker.isSceneFurniture = saved.isSceneFurniture;
+            marker.scenePath = saved.scenePath;
             placedFurniture.Add(placed);
         }
     }
@@ -543,7 +744,7 @@ public class FurniturePlacementController : MonoBehaviour
 
             FurnitureMarker marker = placed.GetComponent<FurnitureMarker>();
             if (marker != null)
-                data.items.Add(new FurnitureSaveItem(marker.furnitureId, placed.transform.position, placed.transform.rotation));
+                data.items.Add(new FurnitureSaveItem(marker.furnitureId, placed.transform.position, placed.transform.rotation, marker.isSceneFurniture, marker.scenePath));
         }
 
         PlayerPrefs.SetString(SaveKey, JsonUtility.ToJson(data));
@@ -559,12 +760,13 @@ public class FurniturePlacementController : MonoBehaviour
         if (statusText != null)
         {
             statusText.text = canPlace
-                ? $"{selectedItem.title}  ·  {selectedItem.price:N0}원  ·  설치 가능\n손가락으로 이동하고 버튼으로 배치하세요"
-                : $"{selectedItem.title}  ·  {selectedItem.price:N0}원  ·  설치 불가\n다른 바닥 위치를 선택해 주세요";
+                ? $"{selectedItem.title}  ·  범위 안 · 설치 가능\n보유 {GetInventoryCount(selectedItem.id)}개 · 기존 가구를 눌러 옮길 수도 있습니다"
+                : $"{selectedItem.title}  ·  범위 밖 또는 겹침 · 설치 불가\n보유 가구로 설치하거나 기존 가구를 옮겨 보세요";
         }
 
         if (placeButton != null)
-            placeButton.interactable = canPlace;
+            // 새 가구 설치에는 재고가 필요하고, 기존 가구 이동에는 재고가 필요하지 않습니다.
+            placeButton.interactable = canPlace && (isMovingFurniture || GetInventoryCount(selectedItem.id) > 0);
 
         Color tint = canPlace ? placeColor : blockedColor;
         tint.a = 0.55f;
@@ -588,6 +790,7 @@ public class FurniturePlacementController : MonoBehaviour
                 previewRenderer.SetPropertyBlock(colorBlock, index);
             }
         }
+        UpdateRangeLine();
     }
 
     /// <summary>안내 문구가 이미 만들어져 있으면 즉시 갱신하고, 아니면 다음 배치 UI 갱신에 반영합니다.</summary>
@@ -633,6 +836,7 @@ public class FurniturePlacementController : MonoBehaviour
         placeButton = CreateControlButton("Button_Place", "배치", new Vector2(40f, 16f), ConfirmPlacement);
         CreateControlButton("Button_CancelPlace", "취소", new Vector2(120f, 16f), CancelPlacement);
         placementControls.SetActive(false);
+        CreateRangeLine();
     }
 
     /// <summary>공통 모양의 버튼과 한국어 글자를 만들고 알맞은 동작을 연결합니다.</summary>
@@ -691,9 +895,161 @@ public class FurniturePlacementController : MonoBehaviour
         if (preview == null || !hasPreviewPosition)
             return;
 
-        preview.transform.rotation = Quaternion.Euler(0f, rotationY, 0f);
+        preview.transform.DOKill();
+        preview.transform.DORotate(new Vector3(0f, rotationY, 0f), 0.18f).SetEase(Ease.OutCubic);
         canPlace = IsPositionFree(preview.transform.position);
         UpdatePlacementFeedback();
+    }
+
+    /// <summary>화면에서 가구를 눌렀을 때 기존 배치물을 이동 모드로 불러옵니다.</summary>
+    private bool TrySelectPlacedFurniture(Vector2 pointer)
+    {
+        if (Camera.main == null) return false;
+        Ray ray = Camera.main.ScreenPointToRay(pointer);
+        // 의자의 좌석 콜라이더가 트리거이므로 선택 광선에서는 트리거도 검사합니다.
+        RaycastHit[] hits = Physics.RaycastAll(ray, maxRayDistance, ~0, QueryTriggerInteraction.Collide);
+        Array.Sort(hits, (left, right) => left.distance.CompareTo(right.distance));
+        FurnitureMarker marker = null;
+        SeatStation seat = null;
+        foreach (RaycastHit hit in hits)
+        {
+            // 플레이어, 바닥, 벽 콜라이더는 건너뛰고 화면에서 누른 가구 후보를 찾습니다.
+            marker = hit.collider.GetComponentInParent<FurnitureMarker>();
+            seat = hit.collider.GetComponentInParent<SeatStation>();
+            if (marker != null || seat != null)
+                break;
+        }
+        // 씬에 미리 놓인 의자도 가구로 인식해 같은 이동 흐름에서 편집할 수 있게 합니다.
+        if (marker == null && seat != null)
+        {
+            marker = seat.gameObject.AddComponent<FurnitureMarker>();
+            marker.furnitureId = "chair";
+            marker.isSceneFurniture = true;
+            marker.scenePath = GetScenePath(marker.transform);
+        }
+        if (marker == null) return false;
+        if (selectedItem != null && marker.furnitureId != selectedItem.id)
+            return false;
+        GameObject target = marker.gameObject;
+        if (seat != null &&
+            (seat.currentCustomer != null || seat.CurrentState != Define.SeatState.Empty))
+        {
+            SetStatus("손님이 이용 중인 의자는 옮길 수 없습니다.");
+            return true;
+        }
+        FurnitureItem item = FindItem(marker.furnitureId);
+        if (item == null) return false;
+
+        // 새 의자 미리보기가 이미 켜져 있으면 정리한 다음 누른 가구를 이동 모드로 엽니다.
+        if (selectedItem != null)
+            CancelPlacement();
+
+        movingFurniture = target;
+        movingStartPosition = target.transform.position;
+        movingStartRotation = target.transform.rotation;
+        isMovingFurniture = true;
+        movingRenderers.Clear();
+        movingRenderers.AddRange(target.GetComponentsInChildren<Renderer>(true));
+        SetMovingRenderersVisible(false);
+        selectedItem = item;
+        preview = Managers.Resource.InstantiateUnpooled(item.prefab);
+        if (preview == null)
+        {
+            SetMovingRenderersVisible(true);
+            selectedItem = null;
+            movingFurniture = null;
+            isMovingFurniture = false;
+            return true;
+        }
+        PreparePreview();
+        rotationY = target.transform.eulerAngles.y;
+        preview.transform.SetPositionAndRotation(target.transform.position, target.transform.rotation);
+        hasPreviewPosition = true;
+        canPlace = true;
+        playerMovement = PlayerController.Instance != null ? PlayerController.Instance.GetComponent<ThirdPersonController>() : null;
+        if (playerMovement != null) { playerMovementWasEnabled = playerMovement.enabled; playerMovement.enabled = false; }
+        joystick = FindAnyObjectByType<UI_DynamicJoystick>();
+        if (joystick != null) { joystickWasActive = joystick.gameObject.activeSelf; joystick.gameObject.SetActive(false); }
+        if (placementControls != null) placementControls.SetActive(true);
+        UpdatePlacementFeedback();
+        return true;
+    }
+
+    /// <summary>이동 중인 실제 가구를 숨기거나 다시 보여 중복 렌더링을 막습니다.</summary>
+    private void SetMovingRenderersVisible(bool visible)
+    {
+        foreach (Renderer movingRenderer in movingRenderers)
+            if (movingRenderer != null)
+                movingRenderer.enabled = visible;
+        if (visible)
+            movingRenderers.Clear();
+    }
+
+    /// <summary>현재 씬의 오브젝트를 형제 순번 경로로 기록해 다시 찾을 수 있게 합니다.</summary>
+    private static string GetScenePath(Transform target)
+    {
+        List<int> indices = new List<int>();
+        while (target != null)
+        {
+            indices.Add(target.GetSiblingIndex());
+            target = target.parent;
+        }
+        indices.Reverse();
+        return string.Join("/", indices);
+    }
+
+    /// <summary>저장된 형제 순번 경로를 따라 씬에 이미 있는 가구를 찾습니다.</summary>
+    private static GameObject FindSceneFurniture(string path)
+    {
+        if (string.IsNullOrEmpty(path)) return null;
+        string[] parts = path.Split('/');
+        if (!int.TryParse(parts[0], out int rootIndex)) return null;
+        GameObject[] roots = SceneManager.GetActiveScene().GetRootGameObjects();
+        if (rootIndex < 0 || rootIndex >= roots.Length) return null;
+        Transform current = roots[rootIndex].transform;
+        for (int index = 1; index < parts.Length; index++)
+        {
+            if (!int.TryParse(parts[index], out int childIndex) || childIndex < 0 || childIndex >= current.childCount)
+                return null;
+            current = current.GetChild(childIndex);
+        }
+        return current.gameObject;
+    }
+
+    /// <summary>미리보기 바닥 크기를 선으로 그려서 배치 영역을 한눈에 보여줍니다.</summary>
+    private void CreateRangeLine()
+    {
+        GameObject lineObject = new GameObject("FurniturePlacementRange");
+        lineObject.transform.SetParent(transform, false);
+        rangeLine = lineObject.AddComponent<LineRenderer>();
+        rangeLine.positionCount = 5;
+        rangeLine.loop = false;
+        rangeLine.useWorldSpace = true;
+        rangeLine.startWidth = 0.045f;
+        rangeLine.endWidth = 0.045f;
+        rangeLine.material = new Material(Shader.Find("Sprites/Default"));
+        rangeLine.enabled = false;
+    }
+
+    /// <summary>가구 회전에 맞춰 바닥 사각형과 유효 여부 색을 갱신합니다.</summary>
+    private void UpdateRangeLine()
+    {
+        if (rangeLine == null || preview == null || !hasPreviewPosition) { if (rangeLine != null) rangeLine.enabled = false; return; }
+        Vector2 size = GetPlacementSize();
+        Vector3 center = preview.transform.position - Vector3.up * GetHeightOffset() + Vector3.up * 0.035f;
+        Vector3[] points =
+        {
+            new Vector3(-size.x / 2f, 0f, -size.y / 2f),
+            new Vector3(-size.x / 2f, 0f, size.y / 2f),
+            new Vector3(size.x / 2f, 0f, size.y / 2f),
+            new Vector3(size.x / 2f, 0f, -size.y / 2f),
+            new Vector3(-size.x / 2f, 0f, -size.y / 2f)
+        };
+        for (int i = 0; i < points.Length; i++) rangeLine.SetPosition(i, center + preview.transform.rotation * points[i]);
+        Color color = canPlace ? placeColor : blockedColor;
+        rangeLine.startColor = color;
+        rangeLine.endColor = color;
+        rangeLine.enabled = true;
     }
 
     /// <summary>화면이 닫힐 때 미리보기와 플레이어 입력 잠금을 남기지 않습니다.</summary>
@@ -702,6 +1058,14 @@ public class FurniturePlacementController : MonoBehaviour
         CancelPlacement();
     }
 }
+
+/// <summary>구매했지만 아직 설치하지 않은 가구 수를 저장합니다.</summary>
+[Serializable]
+public class FurnitureInventoryData { public List<FurnitureInventoryItem> items = new List<FurnitureInventoryItem>(); }
+
+/// <summary>가구 ID와 보유 수를 한 항목으로 저장합니다.</summary>
+[Serializable]
+public class FurnitureInventoryItem { public string id; public int count; }
 
 /// <summary>저장 데이터의 버전과 가구 목록을 보관합니다.</summary>
 [Serializable]
@@ -716,14 +1080,19 @@ public class FurnitureSaveData
 public class FurnitureSaveItem
 {
     public string id;
+    public bool isSceneFurniture;
+    public string scenePath;
     public float x, y, z;
     public float qx, qy, qz, qw;
 
     public FurnitureSaveItem() { }
 
-    public FurnitureSaveItem(string itemId, Vector3 position, Quaternion rotation)
+    /// <summary>가구 ID, 월드 좌표와 씬 가구 여부를 저장 항목으로 만듭니다.</summary>
+    public FurnitureSaveItem(string itemId, Vector3 position, Quaternion rotation, bool isSceneItem = false, string objectPath = null)
     {
         id = itemId;
+        isSceneFurniture = isSceneItem;
+        scenePath = objectPath;
         x = position.x;
         y = position.y;
         z = position.z;
