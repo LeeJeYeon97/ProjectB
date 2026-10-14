@@ -58,48 +58,45 @@ public class UI_DynamicJoystick : MonoBehaviour, IPointerDownHandler, IDragHandl
         touchCanvas.sortingOrder = -1;
     }
 
-    // 1. 터치하는 순간 호출
+    /// <summary>화면 터치 시작을 받아 입력 위치를 옮기고 가상 스틱에 전달합니다.</summary>
     public void OnPointerDown(PointerEventData eventData)
     {
         if (_joystickRoot == null || _onScreenStick == null || _canvasGroup == null) return;
 
-        // 터치한 스크린 좌표를 UI 로컬 좌표로 변환
+        // 터치 좌표를 조이스틱 기준의 로컬 좌표로 바꿔 가상 스틱의 시작점을 정합니다.
         Vector2 localPoint;
         RectTransformUtility.ScreenPointToLocalPointInRectangle(
-            transform as RectTransform, // 터치 존 기준
+            transform as RectTransform,
             eventData.position, 
             eventData.pressEventCamera, 
             out localPoint
         );
 
-        // 조이스틱을 터치한 위치로 순간 이동시키고 시각적으로 활성화합니다.
+        // 조이스틱 그림은 계속 투명하게 두고, 실제 입력 기준점만 터치한 곳으로 옮깁니다.
         _joystickRoot.anchoredPosition = localPoint;
-        _canvasGroup.alpha = 1f;
-        _canvasGroup.interactable = true;
-        _canvasGroup.blocksRaycasts = true;
 
-        // 터치 이벤트를 핸들의 OnScreenStick으로 즉시 전달해 드래그가 시작되게 만듭니다.
+        // 터치 이벤트를 OnScreenStick으로 전달해 화면에 보이지 않아도 이동 입력을 만듭니다.
         _onScreenStick.OnPointerDown(eventData);
     }
 
-    // 2. 드래그 중일 때 호출
+    /// <summary>손가락을 움직이는 동안 가상 스틱 입력을 계속 갱신합니다.</summary>
     public void OnDrag(PointerEventData eventData)
     {
-        if (_onScreenStick == null || _canvasGroup == null || _canvasGroup.alpha < 0.1f) return;
+        if (_onScreenStick == null || _canvasGroup == null) return;
 
-        // 드래그 움직임을 핸들의 OnScreenStick으로 계속 토스합니다.
+        // 시각 표시 여부와 관계없이 드래그 좌표를 가상 스틱에 전달합니다.
         _onScreenStick.OnDrag(eventData);
     }
 
-    // 3. 손가락을 떼었을 때 호출
+    /// <summary>손가락을 떼면 가상 스틱 입력을 0으로 돌려 플레이어를 멈춥니다.</summary>
     public void OnPointerUp(PointerEventData eventData)
     {
         if (_onScreenStick == null) return;
 
-        // 터치가 끝나면 핸들이 복귀하도록 이벤트를 전달합니다.
+        // 터치 종료를 전달해 가상 스틱의 입력값을 초기화합니다.
         _onScreenStick.OnPointerUp(eventData);
 
-        // 조이스틱을 다시 숨깁니다.
+        // 투명 상태를 유지하고 조이스틱 그래픽이 터치를 가로채지 않게 합니다.
         if (_canvasGroup != null)
         {
             _canvasGroup.alpha = 0f;

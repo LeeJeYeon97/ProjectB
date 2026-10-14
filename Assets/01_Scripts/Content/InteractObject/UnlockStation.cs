@@ -5,6 +5,7 @@ using TMPro;
 
 public class UnlockStation : InteractableBase
 {
+    protected override Define.InteractionType DefaultInteractionType => Define.InteractionType.Unlock;
     [Header("투척 주기 및 금액 설정")]
     [Tooltip("돈을 던지는 주기 (초)")]
     [SerializeField] private float throwInterval = 0.1f;
@@ -46,6 +47,7 @@ public class UnlockStation : InteractableBase
             uiUnlock.Init();
             uiUnlock.UpdateUI(_visualPaid, _targetPrice, animate: false);
         }
+
     }
 
     public override bool CanInteract(GameObject actor)
@@ -106,11 +108,15 @@ public class UnlockStation : InteractableBase
         // 매니저에 언락 알림
         Managers.Unlock.UnlockNode(_uniqueUnlockID);
 
-        // 카운터 특정 ID 해금 시 오픈 처리 (기존 로직 유지)
-        if (_uniqueUnlockID == "Stool_0")
+        // 첫 구역(Level_0)을 구매하면 가게를 먼저 열어 실제 게임 상태를 반영합니다.
+        if (_uniqueUnlockID == "Level_0")
         {
-            Managers.Game.IsOpen = true;
+            Managers.Game.OpenShop();
         }
+
+        // 노드가 실제로 열린 뒤 행동 종류와 노드 ID를 퀘스트 시스템에 한 번 보고합니다.
+        if (Managers.Quest != null)
+            Managers.Quest.ReportNodeUnlock(_uniqueUnlockID);
 
         // 오브젝트 축소 연출 후 삭제
         transform.DOScale(Vector3.zero, 0.3f)

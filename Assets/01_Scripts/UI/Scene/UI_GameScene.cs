@@ -5,35 +5,8 @@ using UnityEngine.UI;
 
 public class UI_GameScene : UI_Scene
 {
-    private enum Texts
-    {
-        Text_Money,
-        Text_DishCount,
-        Text_EmployeeWorkGrowth,
-        Text_SeatCount,
-    }
-
-    private enum Buttons
-    {
-        Button_HireEmployee,
-        Button_Growth,
-        Button_player_speed,
-        Button_player_stack,
-        Button_player_interact,
-        Button_machine_capacity,
-        Button_PlaceChair,
-    }
-
-    private enum Objects
-    {
-        Panel_Growth,
-        Button_EmployeeGrowthTemplate,
-    }
-
     private TMP_Text _moneyText;
-    private TMP_Text _dishCountText;
     private PlayerController _player;
-    private DishManager _dishManager;
     private StationManager _stationManager;
     private FurniturePlacementController _furniturePlacement;
     private GameObject _growthPanel;
@@ -44,12 +17,13 @@ public class UI_GameScene : UI_Scene
     private readonly Dictionary<string, Button> _employeeGrowthButtons = new Dictionary<string, Button>();
     private readonly Dictionary<string, TMP_Text> _employeeGrowthLabels = new Dictionary<string, TMP_Text>();
     private TMP_Text _seatCountText;
+    private TMP_Text _reviewScoreText;
     private Button _placeFurnitureButton;
+    private UI_Quest _questUI;
 
     private static readonly string[] GrowthIds =
     {
-        "player_speed", "player_stack", "player_interact",
-        "machine_capacity"
+        "player_speed", "player_stack", "player_interact"
     };
 
     public override void Init()
@@ -57,61 +31,72 @@ public class UI_GameScene : UI_Scene
         base.Init();
         //FixCanvasSize();
 
-        Bind<TMP_Text>(typeof(Texts));
-        Bind<Button>(typeof(Buttons));
-        Bind<GameObject>(typeof(Objects));
+        // 프리팹에 미리 놓인 퀘스트 카드를 사용해 화면 중복 생성을 막습니다.
+        _questUI = GetComponentInChildren<UI_Quest>(true);
+        if (_questUI != null)
+            _questUI.Bind(Managers.Quest);
 
-        _moneyText = GetTMP((int)Texts.Text_Money);
-        _dishCountText = GetTMP((int)Texts.Text_DishCount);
-        _employeeGrowthTitle = GetTMP((int)Texts.Text_EmployeeWorkGrowth);
-        _seatCountText = GetTMP((int)Texts.Text_SeatCount);
-        _growthPanel = GetObject((int)Objects.Panel_Growth);
+        Bind<TMP_Text>(typeof(Define.GameSceneTexts));
+        Bind<Button>(typeof(Define.GameSceneButtons));
+        Bind<GameObject>(typeof(Define.GameSceneObjects));
+
+        _moneyText = GetTMP((int)Define.GameSceneTexts.Text_Money);
+        _employeeGrowthTitle = GetTMP((int)Define.GameSceneTexts.Text_EmployeeWorkGrowth);
+        _seatCountText = GetTMP((int)Define.GameSceneTexts.Text_SeatCount);
+        _reviewScoreText = GetTMP((int)Define.GameSceneTexts.Text_ReviewScore);
+        _growthPanel = GetObject((int)Define.GameSceneObjects.Panel_Growth);
         _furniturePlacement = GetComponent<FurniturePlacementController>();
         if (_furniturePlacement != null)
         {
             _furniturePlacement.OnInventoryChanged -= RefreshFurnitureButtons;
             _furniturePlacement.OnInventoryChanged += RefreshFurnitureButtons;
         }
-        GameObject employeeTemplateObject = GetObject((int)Objects.Button_EmployeeGrowthTemplate);
+        GameObject employeeTemplateObject = GetObject((int)Define.GameSceneObjects.Button_EmployeeGrowthTemplate);
         _employeeGrowthTemplate = employeeTemplateObject != null
             ? employeeTemplateObject.GetComponent<Button>()
             : null;
         _employeeGrowthRoot = _employeeGrowthTemplate != null ? _employeeGrowthTemplate.transform.parent : null;
 
-        Button hireBtn = GetButton((int)Buttons.Button_HireEmployee);
+        Button hireBtn = GetButton((int)Define.GameSceneButtons.Button_HireEmployee);
         if (hireBtn != null)
         {
             hireBtn.onClick.AddListener(OnClickHireEmployee);
         }
 
-        Button openGrowthButton = GetButton((int)Buttons.Button_Growth);
+        Button openGrowthButton = GetButton((int)Define.GameSceneButtons.Button_Growth);
         if (openGrowthButton != null)
             openGrowthButton.onClick.AddListener(OnClickGrowthPanel);
 
-        BindGrowthButton("player_speed", Buttons.Button_player_speed);
-        BindGrowthButton("player_stack", Buttons.Button_player_stack);
-        BindGrowthButton("player_interact", Buttons.Button_player_interact);
-        BindGrowthButton("machine_capacity", Buttons.Button_machine_capacity);
+        BindGrowthButton("player_speed", Define.GameSceneButtons.Button_player_speed);
+        BindGrowthButton("player_stack", Define.GameSceneButtons.Button_player_stack);
+        BindGrowthButton("player_interact", Define.GameSceneButtons.Button_player_interact);
+        // 기존 공용 기계 버튼은 기계별 업그레이드 목록으로 대체합니다.
+        Button oldMachineButton = GetButton((int)Define.GameSceneButtons.Button_machine_capacity);
+        if (oldMachineButton != null)
+            oldMachineButton.gameObject.SetActive(false);
 
-        Button placeChairButton = GetButton((int)Buttons.Button_PlaceChair);
+        Button placeChairButton = GetButton((int)Define.GameSceneButtons.Button_PlaceChair);
         if (placeChairButton != null)
         {
             placeChairButton.onClick.AddListener(OnClickBuyChair);
             TMP_Text buyLabel = placeChairButton.GetComponentInChildren<TMP_Text>(true);
             if (buyLabel != null)
                 buyLabel.text = "의자 구매";
-            _placeFurnitureButton = CreateFurniturePlaceButton(placeChairButton);
+            // 배치 버튼은 프리팹에 미리 배치하여 프리팹 모드에서도 화면 구성을 확인합니다.
+            _placeFurnitureButton = GetButton((int)Define.GameSceneButtons.Button_PlaceOwnedChair);
+            if (_placeFurnitureButton != null)
+                _placeFurnitureButton.onClick.AddListener(OnClickPlaceChair);
             RefreshFurnitureButtons();
         }
 
         BindPlayer();
-        BindDishManager();
         BindSeatCount();
+        BindReviewScore();
         RefreshGrowthUI();
     }
 
     /// <summary>프리팹에 미리 배치한 성장 버튼에 해당 업그레이드 동작을 연결합니다.</summary>
-    private void BindGrowthButton(string growthId, Buttons buttonId)
+    private void BindGrowthButton(string growthId, Define.GameSceneButtons buttonId)
     {
         Button button = GetButton((int)buttonId);
         if (button == null)
@@ -171,6 +156,7 @@ public class UI_GameScene : UI_Scene
         {
             BindPlayer();
         }
+
     }
 
     private void BindPlayer()
@@ -217,7 +203,6 @@ public class UI_GameScene : UI_Scene
         }
 
         RefreshEmployeeGrowthUI();
-
         if (_seatCountText != null && Managers.Station != null)
             _seatCountText.text = $"현재 좌석 {Managers.Station.AvailableSeatCount}개";
     }
@@ -371,35 +356,18 @@ public class UI_GameScene : UI_Scene
         RefreshFurnitureButtons();
     }
 
-    /// <summary>구매해 보유 중인 의자를 꺼내 설치하는 모드로 들어갑니다.</summary>
+    /// <summary>구매한 가구 목록을 열고 새 가구 배치나 기존 가구 이동을 시작합니다.</summary>
     private void OnClickPlaceChair()
     {
         if (_furniturePlacement == null || !_furniturePlacement.BeginPlacement("chair"))
         {
-            Debug.LogWarning("의자 배치 실패: 구매한 의자가 있는지 확인하세요.");
+            Debug.LogWarning("의자 배치 모드를 시작하지 못했습니다.");
             return;
         }
 
         // 배치 입력이 성장 패널에 가로막히지 않도록 배치 모드가 시작되면 패널을 닫습니다.
         if (_growthPanel != null)
             _growthPanel.SetActive(false);
-    }
-
-    /// <summary>기존 구매 버튼 옆에 별도의 배치 버튼을 만들어 구매와 설치를 분리합니다.</summary>
-    private Button CreateFurniturePlaceButton(Button sourceButton)
-    {
-        GameObject buttonObject = Instantiate(sourceButton.gameObject, sourceButton.transform.parent);
-        buttonObject.name = "Button_PlaceOwnedChair";
-        RectTransform sourceRect = sourceButton.GetComponent<RectTransform>();
-        RectTransform newRect = buttonObject.GetComponent<RectTransform>();
-        newRect.anchoredPosition = sourceRect.anchoredPosition + new Vector2(190f, 0f);
-        Button button = buttonObject.GetComponent<Button>();
-        button.onClick.RemoveAllListeners();
-        button.onClick.AddListener(OnClickPlaceChair);
-        TMP_Text label = buttonObject.GetComponentInChildren<TMP_Text>(true);
-        if (label != null)
-            label.text = "의자 배치";
-        return button;
     }
 
     /// <summary>구매한 의자 수를 버튼에 표시하고 재고가 있을 때만 배치 버튼을 켭니다.</summary>
@@ -410,11 +378,11 @@ public class UI_GameScene : UI_Scene
         int count = _furniturePlacement.GetInventoryCount("chair");
         if (_placeFurnitureButton != null)
         {
-            // 새 의자 설치는 보유 수량이 필요합니다. 기존 의자는 맵에서 직접 눌러 옮깁니다.
-            _placeFurnitureButton.interactable = count > 0;
+            // 재고가 없어도 기존 의자를 옮길 수 있도록 배치 모드 버튼은 항상 켭니다.
+            _placeFurnitureButton.interactable = true;
             TMP_Text label = _placeFurnitureButton.GetComponentInChildren<TMP_Text>(true);
             if (label != null)
-                label.text = $"의자 배치 ({count})";
+                label.text = count > 0 ? $"의자 배치 ({count})" : "의자 배치";
         }
     }
 
@@ -436,31 +404,33 @@ public class UI_GameScene : UI_Scene
         RefreshGrowthUI();
     }
 
+    /// <summary>가게 전체 리뷰 평균 변경을 구독하고 저장된 현재 점수를 표시합니다.</summary>
+    private void BindReviewScore()
+    {
+        if (Managers.Review == null)
+            return;
+
+        // 화면이 다시 열릴 때 이전 구독이 남지 않도록 먼저 해제한 뒤 한 번만 연결합니다.
+        Managers.Review.OnReviewChanged -= UpdateReviewScoreText;
+        Managers.Review.OnReviewChanged += UpdateReviewScoreText;
+        UpdateReviewScoreText(Managers.Review.AverageStars, Managers.Review.ReviewCount);
+    }
+
+    /// <summary>누적 손님 리뷰의 산술 평균을 5점 만점으로 표시합니다.</summary>
+    private void UpdateReviewScoreText(float averageStars, int reviewCount)
+    {
+        if (_reviewScoreText == null)
+            return;
+
+        _reviewScoreText.text = reviewCount > 0
+            ? $"가게 리뷰  {averageStars:0.00} / 5.00  ({reviewCount:N0}개)"
+            : "가게 리뷰  - / 5.00  (리뷰 없음)";
+    }
+
     /// <summary>좌석 수가 바뀌면 성장 패널의 좌석 정보를 다시 그립니다.</summary>
     private void OnSeatCountChanged(int count)
     {
         RefreshGrowthUI();
-    }
-
-    /// <summary>접시 재고 매니저의 변경 알림을 연결하고 현재 수량을 바로 표시합니다.</summary>
-    private void BindDishManager()
-    {
-        _dishManager = Managers.Dish;
-        if (_dishManager == null)
-            return;
-
-        _dishManager.OnDishCountChanged -= UpdateDishCountText;
-        _dishManager.OnDishCountChanged += UpdateDishCountText;
-        UpdateDishCountText(_dishManager.DirtyDishCount, _dishManager.CleanDishCount);
-    }
-
-    /// <summary>더러운 접시와 깨끗한 접시 수량을 화면에 갱신합니다.</summary>
-    private void UpdateDishCountText(int dirtyDishCount, int cleanDishCount)
-    {
-        if (_dishCountText == null)
-            return;
-
-        _dishCountText.text = $"깨끗한 접시  {cleanDishCount}\n더러운 접시  {dirtyDishCount}";
     }
 
     public void UpdateMoneyText(int money)
@@ -481,17 +451,14 @@ public class UI_GameScene : UI_Scene
             _player = null;
         }
 
-        if (_dishManager != null)
-        {
-            _dishManager.OnDishCountChanged -= UpdateDishCountText;
-            _dishManager = null;
-        }
-
         if (_stationManager != null)
         {
             _stationManager.OnSeatCountChanged -= OnSeatCountChanged;
             _stationManager = null;
         }
+
+        if (Managers.Review != null)
+            Managers.Review.OnReviewChanged -= UpdateReviewScoreText;
 
         if (_furniturePlacement != null)
         {
@@ -509,5 +476,6 @@ public class UI_GameScene : UI_Scene
 
         _employeeGrowthButtons.Clear();
         _employeeGrowthLabels.Clear();
+
     }
 }

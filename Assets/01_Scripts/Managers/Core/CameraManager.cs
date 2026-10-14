@@ -1,96 +1,151 @@
-using System.Collections.Generic;
 using Unity.Cinemachine;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
-public class CameraManager 
+/// <summary>
+/// ì”¬ ì‚¬ì´ì—ì„œ ì¹´ë©”ë¼ ë¦¬ê·¸ë¥¼ ìœ ì§€í•˜ê³  í˜„ì¬ ì”¬ì˜ í”Œë ˆì´ì–´ë¥¼ ë”°ë¼ê°€ê²Œ í•©ë‹ˆë‹¤.
+/// </summary>
+public class CameraManager
 {
-   ////  µñ¼Å³Ê¸®¸¦ »ç¿ëÇÏ¿© Enum Å°°ª ÇÏ³ª·Î ¸ğµç Ä«¸Ş¶ó¸¦ °ü¸®ÇÕ´Ï´Ù.
-   //private Dictionary<Define.CameraType, CinemachineCamera> _cameras = new Dictionary<Define.CameraType, CinemachineCamera>();
-   //
-   ///// <summary>
-   ///// ¾ÀÀÌ ·ÎµåµÇ¾úÀ» ¶§ (¿¹: Managers.Init() µî¿¡¼­) µü ÇÑ ¹ø È£ÃâÇØÁÖ¼¼¿ä.
-   ///// º»ÀÎÀÌ Á÷Á¢ ¾ÀÀ» µÚÁ®¼­ Ä«¸Ş¶óµéÀ» µñ¼Å³Ê¸®¿¡ µî·ÏÇÕ´Ï´Ù.
-   ///// </summary>
-   //public void Init()
-   //{
-   //    _cameras.Clear(); // ¾À Àç½ÃÀÛ ½Ã Áßº¹ µî·Ï ¹æÁö
-   //
-   //    // 1. ¾À¿¡ Á¸ÀçÇÏ´Â ¸ğµç ½Ã³×¸Ó½Å Ä«¸Ş¶ó ÀÚµ¿ °Ë»ö
-   //    CinemachineCamera[] foundCameras = Object.FindObjectsByType<CinemachineCamera>(FindObjectsSortMode.None);
-   //
-   //    // 2. ÀÌ¸§ ±âÁØÀ¸·Î Enum°ú ¸ÅÄªÇÏ¿© µñ¼Å³Ê¸®¿¡ ÀúÀå
-   //    foreach (var cam in foundCameras)
-   //    {
-   //        //  ÁÖÀÇ: À¯´ÏÆ¼ ÇÏÀÌ¾î¶óÅ°(Hierarchy)ÀÇ °ÔÀÓ¿ÀºêÁ§Æ® ÀÌ¸§°ú Á¤È®È÷ ÀÏÄ¡ÇØ¾ß ÇÕ´Ï´Ù!
-   //        switch (cam.gameObject.name)
-   //        {
-   //            case "MainPlayerCamera": // ±âº» Ä«¸Ş¶ó ÀÌ¸§
-   //                _cameras[Define.CameraType.Main] = cam;
-   //                break;
-   //            case "BossCamera": // º¸½º Ä«¸Ş¶ó ÀÌ¸§
-   //                _cameras[Define.CameraType.Boss] = cam;
-   //                break;
-   //        }
-   //    }
-   //
-   //    Debug.Log($"[CameraManager] ¼Â¾÷ ¿Ï·á! µî·ÏµÈ Ä«¸Ş¶ó °³¼ö: {_cameras.Count}°³");
-   //}
-   //
-   ///// <summary>
-   ///// ¿øÇÏ´Â Ä«¸Ş¶ó·Î ºÎµå·´°Ô È­¸éÀ» ÀüÈ¯ÇÕ´Ï´Ù.
-   ///// »ç¿ë ¿¹: Managers.Camera.ChangeCamera(CameraType.Boss);
-   ///// </summary>
-   //public void ChangeCamera(Define.CameraType type)
-   //{
-   //    if (_cameras.Count == 0)
-   //    {
-   //        Debug.LogWarning("[CameraManager] µî·ÏµÈ Ä«¸Ş¶ó°¡ ¾ø½À´Ï´Ù. Init()ÀÌ È£ÃâµÇ¾ú´ÂÁö È®ÀÎÇØÁÖ¼¼¿ä.");
-   //        return;
-   //    }
-   //
-   //    // 1. µñ¼Å³Ê¸®¿¡ ÀÖ´Â ¸ğµç Ä«¸Ş¶óÀÇ ¿ì¼±¼øÀ§¸¦ ÀÏ°ıÀûÀ¸·Î ³·Ãä´Ï´Ù (´Ù ²¨¹ö¸²)
-   //    foreach (var cam in _cameras.Values)
-   //    {
-   //        if (cam != null)
-   //        {
-   //            cam.Priority = INACTIVE_PRIORITY;
-   //        }
-   //    }
-   //
-   //    // 2. ¿äÃ»¹ŞÀº Ä«¸Ş¶ó¸¸ µñ¼Å³Ê¸®¿¡¼­ ²¨³»¼­ ¿ì¼±¼øÀ§¸¦ ³ôÀÔ´Ï´Ù (È­¸é »¯¾î¿À±â)
-   //    if (_cameras.TryGetValue(type, out CinemachineCamera targetCamera))
-   //    {
-   //        targetCamera.Priority = ACTIVE_PRIORITY;
-   //    }
-   //    else
-   //    {
-   //        Debug.LogWarning($"[CameraManager] {type} Ä«¸Ş¶ó¸¦ Ã£À» ¼ö ¾ø½À´Ï´Ù. ÀÌ¸§ÀÌ Æ²·È°Å³ª ¾À¿¡ ¾ø½À´Ï´Ù.");
-   //    }
-   //}
-   //
-   ///// <summary>
-   ///// µî·ÏµÈ ¸ğµç Ä«¸Ş¶óÀÇ ÃßÀû ´ë»ó(Follow)À» ÇÑ ¹ø¿¡ ¼³Á¤ÇÕ´Ï´Ù.
-   ///// ÇÃ·¹ÀÌ¾î°¡ ½ºÆùµÈ Á÷ÈÄ È£ÃâÇØ ÁÖ¼¼¿ä.
-   ///// </summary>
-   //public void SetTarget(Transform targetTransform)
-   //{
-   //    if (_cameras.Count == 0)
-   //    {
-   //        Debug.LogWarning("[CameraManager] Ä«¸Ş¶ó°¡ ¾ø½À´Ï´Ù. Init()ÀÌ ¸ÕÀú È£ÃâµÇ¾ú´ÂÁö È®ÀÎÇÏ¼¼¿ä.");
-   //        return;
-   //    }
-   //
-   //    // µñ¼Å³Ê¸®¿¡ µî·ÏµÈ ¸ğµç Ä«¸Ş¶ó¸¦ ¼øÈ¸ÇÏ¸ç Å¸°ÙÀ» Áã¾îÁİ´Ï´Ù.
-   //    foreach (var cam in _cameras.Values)
-   //    {
-   //        if (cam != null)
-   //        {
-   //            cam.Follow = targetTransform;
-   //            // ¸¸¾à Ä«¸Ş¶ó È¸Àü(LookAt)µµ Å¸°ÙÀ» ºÁ¾ß ÇÑ´Ù¸é ¾Æ·¡ ÄÚµåµµ ÁÖ¼® ÇØÁ¦ÇÏ¼¼¿ä.
-   //            // cam.LookAt = targetTransform; 
-   //        }
-   //    }
-   //
-   //    Debug.Log($"[CameraManager] {_cameras.Count}°³ÀÇ Ä«¸Ş¶ó Å¸°ÙÀÌ {targetTransform.name}(À¸)·Î ¼³Á¤µÇ¾ú½À´Ï´Ù!");
-   //}
+    // Resources í´ë”ì— ì €ì¥í•  ê³µìš© ì¹´ë©”ë¼ í”„ë¦¬íŒ¹ì˜ ê²½ë¡œì…ë‹ˆë‹¤.
+    private const string CameraRigResourceName = "CameraRig";
+
+    // ê³µìš© ì¹´ë©”ë¼ ë¦¬ê·¸ì™€ í”Œë ˆì´ì–´ ì¶”ì  ì¹´ë©”ë¼ë¥¼ ë³´ê´€í•©ë‹ˆë‹¤.
+    private GameObject cameraRig;
+    private CinemachineCamera followCamera;
+    private bool isInitialized;
+
+    /// <summary>
+    /// ì”¬ ì „í™˜ ì•Œë¦¼ì„ í•œ ë²ˆë§Œ êµ¬ë…í•´ ìƒˆ ì”¬ì˜ í”Œë ˆì´ì–´ë¥¼ ìë™ìœ¼ë¡œ ì—°ê²°í•©ë‹ˆë‹¤.
+    /// </summary>
+    public void Init()
+    {
+        if (isInitialized)
+            return;
+
+        SceneManager.sceneLoaded += OnSceneLoaded;
+        SceneManager.sceneUnloaded += OnSceneUnloaded;
+        isInitialized = true;
+    }
+
+    /// <summary>
+    /// í˜„ì¬ í”Œë ˆì´ì–´ë¥¼ ì¹´ë©”ë¼ì˜ ì¶”ì  ëŒ€ìƒìœ¼ë¡œ ì§€ì •í•©ë‹ˆë‹¤.
+    /// í”Œë ˆì´ì–´ê°€ ì—†ëŠ” ê²½ìš°ì—ëŠ” ë‹¤ë¥¸ ì”¬ì˜ ì¹´ë©”ë¼ê°€ ë³´ì´ë„ë¡ ê³µìš© ë¦¬ê·¸ë¥¼ ë•ë‹ˆë‹¤.
+    /// </summary>
+    /// <param name="target">ì¹´ë©”ë¼ê°€ ë”°ë¼ê°ˆ í”Œë ˆì´ì–´ì˜ Transformì…ë‹ˆë‹¤.</param>
+    public void SetTarget(Transform target)
+    {
+        if (target == null)
+        {
+            if (cameraRig != null)
+                cameraRig.SetActive(false);
+
+            return;
+        }
+
+        if (!TryGetCameraRig())
+            return;
+
+        cameraRig.SetActive(true);
+        followCamera.Follow = target;
+    }
+
+    /// <summary>
+    /// ìƒˆ ì”¬ì´ ë¡œë“œë˜ë©´ ê·¸ ì”¬ì— í¬í•¨ëœ í”Œë ˆì´ì–´ë¥¼ ì°¾ì•„ ì¹´ë©”ë¼ì— ì—°ê²°í•©ë‹ˆë‹¤.
+    /// </summary>
+    /// <param name="scene">ë°©ê¸ˆ ë¡œë“œëœ ì”¬ì…ë‹ˆë‹¤.</param>
+    /// <param name="mode">ì”¬ì„ ë¶ˆëŸ¬ì˜¨ ë°©ì‹ì…ë‹ˆë‹¤.</param>
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        PlayerController player = FindPlayer(scene);
+        SetTarget(player != null ? player.transform : null);
+    }
+
+    /// <summary>
+    /// ì”¬ì´ ì–¸ë¡œë“œë˜ë©´ ë‚¨ì•„ ìˆëŠ” í™œì„± ì”¬ì—ì„œ í”Œë ˆì´ì–´ë¥¼ ì°¾ì•„ ì¹´ë©”ë¼ë¥¼ ë‹¤ì‹œ ì—°ê²°í•©ë‹ˆë‹¤.
+    /// </summary>
+    /// <param name="scene">ë°©ê¸ˆ ì–¸ë¡œë“œëœ ì”¬ì…ë‹ˆë‹¤.</param>
+    private void OnSceneUnloaded(Scene scene)
+    {
+        Scene activeScene = SceneManager.GetActiveScene();
+        PlayerController player = FindPlayer(activeScene);
+
+        if (player == null)
+        {
+            for (int index = 0; index < SceneManager.sceneCount; index++)
+            {
+                Scene loadedScene = SceneManager.GetSceneAt(index);
+                player = FindPlayer(loadedScene);
+
+                if (player != null)
+                    break;
+            }
+        }
+
+        SetTarget(player != null ? player.transform : null);
+    }
+
+    /// <summary>
+    /// ì§€ì •í•œ ì”¬ì˜ ì˜¤ë¸Œì íŠ¸ ì•ˆì—ì„œ í”Œë ˆì´ì–´ë¥¼ ì°¾ì•„ ëŒë ¤ì¤ë‹ˆë‹¤.
+    /// </summary>
+    /// <param name="scene">í”Œë ˆì´ì–´ë¥¼ ì°¾ì„ ì”¬ì…ë‹ˆë‹¤.</param>
+    /// <returns>ì”¬ ì•ˆì— í”Œë ˆì´ì–´ê°€ ìˆìœ¼ë©´ ê·¸ ì»´í¬ë„ŒíŠ¸, ì—†ìœ¼ë©´ nullì…ë‹ˆë‹¤.</returns>
+    private PlayerController FindPlayer(Scene scene)
+    {
+        if (!scene.IsValid() || !scene.isLoaded)
+            return null;
+
+        foreach (GameObject rootObject in scene.GetRootGameObjects())
+        {
+            PlayerController player = rootObject.GetComponentInChildren<PlayerController>(true);
+
+            if (player != null)
+                return player;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// ì”¬ì— ìˆëŠ” CameraRigë¥¼ ì°¾ê³ , ì—†ìœ¼ë©´ Resources í”„ë¦¬íŒ¹ìœ¼ë¡œ ë§Œë“­ë‹ˆë‹¤.
+    /// ìƒì„±í•œ ë¦¬ê·¸ëŠ” ì”¬ ì „í™˜ ë’¤ì—ë„ ìœ ì§€í•´ ì¹´ë©”ë¼ ì—°ì¶œì„ ì¬ì‚¬ìš©í•©ë‹ˆë‹¤.
+    /// </summary>
+    /// <returns>ì¶”ì  ì¹´ë©”ë¼ë¥¼ ì‚¬ìš©í•  ìˆ˜ ìˆìœ¼ë©´ trueë¥¼ ë°˜í™˜í•©ë‹ˆë‹¤.</returns>
+    private bool TryGetCameraRig()
+    {
+        if (cameraRig != null && followCamera != null)
+            return true;
+
+        // GameSceneì— ë†“ì¸ í”„ë¦¬íŒ¹ì„ ë¨¼ì € ì°¾ì•„ í¸ì§‘ í™”ë©´ì—ì„œë„ êµ¬ì¡°ë¥¼ í™•ì¸í•  ìˆ˜ ìˆê²Œ í•©ë‹ˆë‹¤.
+        cameraRig = GameObject.Find("CameraRig");
+
+        if (cameraRig == null)
+        {
+            GameObject cameraRigPrefab = Resources.Load<GameObject>(CameraRigResourceName);
+
+            if (cameraRigPrefab == null)
+            {
+                Debug.LogError(
+                    $"[CameraManager] Resources/{CameraRigResourceName}.prefabì„ ì°¾ì„ ìˆ˜ ì—†ìŠµë‹ˆë‹¤.");
+                return false;
+            }
+
+            cameraRig = Object.Instantiate(cameraRigPrefab);
+            cameraRig.name = "CameraRig";
+        }
+
+        followCamera = cameraRig.GetComponentInChildren<CinemachineCamera>(true);
+
+        if (followCamera == null)
+        {
+            Debug.LogError("[CameraManager] CameraRig ì•ˆì— CinemachineCameraê°€ ì—†ìŠµë‹ˆë‹¤.");
+            Object.Destroy(cameraRig);
+            cameraRig = null;
+            return false;
+        }
+
+        // ë¦¬ê·¸ê°€ ì”¬ì— ë†“ì—¬ ìˆê±°ë‚˜ ëŸ°íƒ€ì„ì— ë§Œë“¤ì–´ì ¸ë„ ë‹¤ìŒ ì”¬ê¹Œì§€ ìœ ì§€í•©ë‹ˆë‹¤.
+        Object.DontDestroyOnLoad(cameraRig);
+        return true;
+    }
 }

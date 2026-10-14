@@ -19,10 +19,10 @@ public class SettingManager
     public void Init()
     {
         // 1. 데이터 로드 (저장된 게 없으면 기본값은 True/KR)
-        IsBGMOn = PlayerPrefs.GetInt(Key_BGM, 1) == 1;
-        IsSFXOn = PlayerPrefs.GetInt(Key_SFX, 1) == 1;
-        IsVibrationOn = PlayerPrefs.GetInt(Key_Vibrate, 1) == 1;
-        Language = PlayerPrefs.GetString(Key_Lang, "KR");
+        IsBGMOn = Managers.PlayerPrefs.GetInt(Key_BGM, 1) == 1;
+        IsSFXOn = Managers.PlayerPrefs.GetInt(Key_SFX, 1) == 1;
+        IsVibrationOn = Managers.PlayerPrefs.GetInt(Key_Vibrate, 1) == 1;
+        Language = Managers.PlayerPrefs.GetString(Key_Lang, "KR");
 
         // 2. 초기 로드 시 실제 시스템에 적용
         ApplyAllSettings();
@@ -33,21 +33,21 @@ public class SettingManager
     public void ToggleBGM(bool isOn)
     {
         IsBGMOn = isOn;
-        PlayerPrefs.SetInt(Key_BGM, isOn ? 1 : 0);
+        Managers.PlayerPrefs.SetInt(Key_BGM, isOn ? 1 : 0);
         Managers.Sound.SetBGMVolume(isOn ? 1.0f : 0.0f); // 사운드 매니저와 연동
     }
 
     public void ToggleSFX(bool isOn)
     {
         IsSFXOn = isOn;
-        PlayerPrefs.SetInt(Key_SFX, isOn ? 1 : 0);
+        Managers.PlayerPrefs.SetInt(Key_SFX, isOn ? 1 : 0);
         Managers.Sound.SetSFXVolume(isOn ? 1.0f : 0.0f);// 효과음 매니저 연동 (볼륨 조절 혹은 뮤트 처리)
     }
 
     public void ToggleVibration(bool isOn)
     {
         IsVibrationOn = isOn;
-        PlayerPrefs.SetInt(Key_Vibrate, isOn ? 1 : 0);
+        Managers.PlayerPrefs.SetInt(Key_Vibrate, isOn ? 1 : 0);
 
         // 설정 켰을 때 짧게 한 번 진동 (테스트용)
         if (isOn) Vibrate();
@@ -66,7 +66,7 @@ public class SettingManager
     {
         //// langCode 예: "ko", "en", "ja"
         //Language = langCode;
-        //PlayerPrefs.SetString(Key_Lang, langCode);
+        //Managers.PlayerPrefs.SetString(Key_Lang, langCode);
 
         //// Localization 패키지 실제 적용
         //Locale targetLocale = LocalizationSettings.AvailableLocales.GetLocale(langCode);

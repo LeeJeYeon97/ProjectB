@@ -202,6 +202,10 @@ public class PoolingManager
         // 2. �����ſ� ����(Poolable)�� �ִ��� �Ŵ����� ���� Ȯ���մϴ�.
         if (go.TryGetComponent<Poolable>(out Poolable poolable))
         {
+            // 씬 정리와 소유 객체 비활성화가 연달아 일어나도 같은 인스턴스를 두 번 넣지 않습니다.
+            if (!poolable.IsUsing)
+                return;
+
             string name = go.name;
 
             // ������ �ִµ� �� �ٱ��� ��Ͽ� ���ٸ�? (���� ��Ȳ) -> �׳� �ı�

@@ -31,15 +31,18 @@ public class Managers : MonoBehaviour
     private ResourceManager _resource;
     private SceneManagerEx _scene;
     private SettingManager _setting;
+    private PlayerPrefsManager _playerPrefs;
     private SoundManager _sound;
     private UIManager _ui;
     private UpdateManager _update;
     private WebServerManager _webServer;
-    private CoroutineHelper _coroutine;
+    private QuestManager _quest;
 
     // Content
     [SerializeField]
     private GameManager _game;
+    [SerializeField]
+    private QuestCatalog _questCatalog;
     private UnlockManager _unlock;
     private CustomerManager _customer;
     private EmployeeManager _employee;
@@ -47,6 +50,7 @@ public class Managers : MonoBehaviour
     [SerializeField]
     private DishManager _dish;
     private GrowthManager _growth;
+    private ReviewManager _review;
 
     [SerializeField]
     private StationManager _station;
@@ -63,11 +67,12 @@ public class Managers : MonoBehaviour
     public static ResourceManager Resource => Instance._resource;
     public static SceneManagerEx Scene => Instance._scene;
     public static SettingManager Setting => Instance._setting;
+    public static PlayerPrefsManager PlayerPrefs => Instance._playerPrefs;
     public static SoundManager Sound => Instance._sound;
     public static UIManager UI => Instance._ui;
     public static UpdateManager VersionUpdate => Instance._update;
     public static WebServerManager WebServer => Instance._webServer;
-    public static CoroutineHelper Coroutine => Instance._coroutine;
+    public static QuestManager Quest => Instance._quest;
 
     // Content
     public static GameManager Game => Instance._game;
@@ -77,6 +82,7 @@ public class Managers : MonoBehaviour
     public static TaskManager Task => Instance._task;
     public static DishManager Dish => Instance._dish;
     public static GrowthManager Growth => Instance._growth;
+    public static ReviewManager Review => Instance._review;
     public static StationManager Station => Instance._station;
     // ========================================================== //
 
@@ -114,10 +120,12 @@ public class Managers : MonoBehaviour
             _instance._resource = new ResourceManager();
             _instance._scene = new SceneManagerEx();
             _instance._setting = new SettingManager();
+            _instance._playerPrefs = new PlayerPrefsManager();
             _instance._sound = new SoundManager();
             _instance._ui = new UIManager();
             _instance._update = new UpdateManager();
             _instance._webServer = new WebServerManager();
+            _instance._quest = new QuestManager();
 
 
             // Content
@@ -128,9 +136,11 @@ public class Managers : MonoBehaviour
             _instance._task = new TaskManager();
             _instance._dish = new DishManager();
             _instance._growth = new GrowthManager();
+            _instance._review = new ReviewManager();
             _instance._station = new StationManager();
 
             // Core
+            _instance._camera.Init();
             Pool.Init();
             Resource.Init();
             Sound.Init();
@@ -138,6 +148,7 @@ public class Managers : MonoBehaviour
             Scene.Init();
             UI.Init();
             Setting.Init();
+            Quest.Init(_instance._questCatalog);
 
 
             // Content
@@ -145,16 +156,14 @@ public class Managers : MonoBehaviour
             Employee.Init();
             Dish.Init();
             Growth.Init();
+            Review.Init();
 
             Debug.unityLogger.logEnabled = Debug.isDebugBuild;
             Application.targetFrameRate = 60; 
 
         }
     }
-    public void Test()
-    {
-        Debug.Log("test");
-    }
+
     private void Update()
     {
         Customer.OnUpdate();
@@ -170,9 +179,5 @@ public class Managers : MonoBehaviour
         _ui.Clear();
         _employee?.Clear();
         _task?.Clear();
-        if (_coroutine != null)
-        {
-            _coroutine.StopAllCoroutines();
-        }
     }
 }

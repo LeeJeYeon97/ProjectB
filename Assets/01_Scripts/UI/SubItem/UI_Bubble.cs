@@ -1,23 +1,16 @@
 using UnityEngine;
 using UnityEngine.UI;
 using DG.Tweening;
+using TMPro;
 using static Define;
 
 public class UI_Bubble : UI_Base
 {
-    public enum Images
-    {
-        Image_Bg,
-        Image_Progress,
-        Image_Food,
-        Image_Clean,
-        Image_Payment,
-        Image_Beer,
-        Image_BeerEmpty
-    }
-
     private Image progressImg;
+    private TMP_Text disturbanceText;
     private RectTransform bubbleRect;
+    private Canvas bubbleCanvas;
+    private Transform bubbleAnchor;
     private Vector3 shownScale;
     private Tween bubbleTween;
     private bool isShowing;
@@ -28,6 +21,18 @@ public class UI_Bubble : UI_Base
     [SerializeField] private float showStartScale = 0.65f;
     [SerializeField] private float hideEndScale = 0.75f;
 
+    /// <summary>다른 상호작용 객체가 다시 쓰기 전에 이전 그림과 애니메이션을 정리합니다.</summary>
+    public void ResetForPool()
+    {
+        Init();
+        bubbleTween?.Kill();
+        bubbleTween = null;
+        isShowing = false;
+        HideAll();
+        transform.localScale = shownScale;
+        gameObject.SetActive(false);
+    }
+
     public override void Init()
     {
         if (_init)
@@ -35,21 +40,57 @@ public class UI_Bubble : UI_Base
 
         base.Init();
 
-        Bind<Image>(typeof(Images));
+        Bind<Image>(typeof(Define.BubbleImages));
+        Bind<TMP_Text>(typeof(Define.BubbleTexts));
 
-        progressImg = GetImage((int)Images.Image_Progress);
+        progressImg = GetImage((int)Define.BubbleImages.Image_Progress);
+        disturbanceText = GetTMP((int)Define.BubbleTexts.Text_Disturbance);
         bubbleRect = transform as RectTransform;
+        bubbleCanvas = GetComponent<Canvas>();
         shownScale = transform.localScale;
 
         HideAll();
     }
 
+    /// <summary>말풍선이 화면에서 따라갈 상호작용 오브젝트의 기준점을 연결합니다.</summary>
+    public void SetAnchor(Transform anchor)
+    {
+        bubbleAnchor = anchor;
+    }
+
+    /// <summary>월드 공간 말풍선을 연결된 기준점의 위치에 맞춰 매 프레임 배치합니다.</summary>
+    private void LateUpdate()
+    {
+        // 월드 공간 Canvas를 유지하고, 기준점이 카메라 화면 안에 있을 때만 표시합니다.
+        Camera viewCamera = Camera.main;
+        if (bubbleAnchor == null || viewCamera == null || bubbleCanvas == null)
+        {
+            if (bubbleCanvas != null)
+                bubbleCanvas.enabled = false;
+            return;
+        }
+
+        Vector3 screenPoint = viewCamera.WorldToScreenPoint(bubbleAnchor.position);
+        bool canShow = screenPoint.z > 0f && screenPoint.x >= 0f && screenPoint.x <= Screen.width
+            && screenPoint.y >= 0f && screenPoint.y <= Screen.height;
+
+        // 카메라 뒤쪽이나 화면 밖에 있는 대상은 말풍선만 숨겨 둡니다.
+        bubbleCanvas.enabled = canShow;
+        if (canShow && bubbleRect != null)
+        {
+            bubbleRect.position = bubbleAnchor.position;
+        }
+    }
+
     private void HideAll()
     {
-        foreach (Images image in System.Enum.GetValues(typeof(Images)))
+        foreach (Define.BubbleImages image in System.Enum.GetValues(typeof(Define.BubbleImages)))
         {
             GetImage((int)image)?.gameObject.SetActive(false);
         }
+
+        // 방해 손님 표시용 글자도 다른 말풍선에서는 보이지 않도록 함께 숨깁니다.
+        disturbanceText?.gameObject.SetActive(false);
     }
 
     public void SetBubble(BubbleType type)
@@ -70,35 +111,40 @@ public class UI_Bubble : UI_Base
 
         HideAll();
 
-        GetImage((int)Images.Image_Bg)?.gameObject.SetActive(true);
+        GetImage((int)Define.BubbleImages.Image_Bg)?.gameObject.SetActive(true);
 
         switch (type)
         {
             //case BubbleType.Order:
             case BubbleType.FoodReady:
-                GetImage((int)Images.Image_Beer)
+                GetImage((int)Define.BubbleImages.Image_Beer)
                     ?.gameObject.SetActive(true);
                 break;
 
             case BubbleType.Payment:
-                GetImage((int)Images.Image_Payment)
+                GetImage((int)Define.BubbleImages.Image_Payment)
                     ?.gameObject.SetActive(true);
                 break;
 
             case BubbleType.Cleaning:
-                GetImage((int)Images.Image_Clean)
+                GetImage((int)Define.BubbleImages.Image_Clean)
                     ?.gameObject.SetActive(true);
                 break;
 
             case BubbleType.Progress:
-                GetImage((int)Images.Image_Progress)
+                GetImage((int)Define.BubbleImages.Image_Progress)
                     ?.gameObject.SetActive(true);
                 break;
 
             // 맥주 기계에 깨끗한 빈 잔이 없을 때 전용 그림을 보여줍니다.
             case BubbleType.BeerMissing:
-                GetImage((int)Images.Image_BeerEmpty)
+                GetImage((int)Define.BubbleImages.Image_BeerEmpty)
                     ?.gameObject.SetActive(true);
+                break;
+
+            case BubbleType.Disturbance:
+                // 해결 가능한 손님은 진행 막대 대신 느낌표로 먼저 구분합니다.
+                disturbanceText?.gameObject.SetActive(true);
                 break;
 
             case BubbleType.None:

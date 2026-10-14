@@ -3,6 +3,7 @@ using UnityEngine;
 
 public class Counter : InteractableBase
 {
+    protected override Define.InteractionType DefaultInteractionType => Define.InteractionType.CollectPayment;
     [Header("Money Spawn Settings")]
     [SerializeField] private GameObject moneyPrefab;      // 돈 프리팹 (Item_Money)
     [SerializeField] private Transform moneySpawnPoint;    // 돈이 스폰될 카운터 상판 좌표
@@ -89,7 +90,13 @@ public class Counter : InteractableBase
             return false;
         }
 
-        CreateMoney(customer.payAmount);
+        // 손님이 기다린 시간과 식사 중 방해 기록을 리뷰로 바꾸고, 평판이 반영된 금액을 지급합니다.
+        ReviewResult review = Managers.Review.CreateReview(
+            customer.FoodWaitSeconds,
+            customer.MealInterruptionCount,
+            customer.payAmount,
+            customer.ServedMenuCorrectly);
+        CreateMoney(review.FinalPay);
         customer.CompletePayment();
         return true;
     }

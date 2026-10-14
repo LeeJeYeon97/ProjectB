@@ -1,5 +1,4 @@
 using DG.Tweening;
-using Microsoft.Extensions.Logging.Abstractions;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.AI;
@@ -29,25 +28,56 @@ public class CustomerController : MonoBehaviour
     private Counter targetCounter;
 
     private Animator animator; // 1. 애니메이터 캐싱용 변수 추가
+    private float arrivedAtTime;
+    private float foodWaitSeconds;
+    private int mealInterruptionCount;
+    private CustomerType customerType = CustomerType.Normal;
+    private bool servedMenuCorrectly = true;
+    private CustomerResolve resolveWork;
+    private Coroutine noiseRoutine;
+    private Coroutine queueArrivalRoutine;
+
+    [Header("방해 손님 설정")]
+    [SerializeField, Min(0.5f)] private float noiseRange = 4f;
+    [SerializeField, Min(0.5f)] private float noiseInterval = 3f;
 
 
     [Header("UI")]
-    [SerializeField] private Vector3 uiOffset = new Vector3(0f, 1.8f, 0f);
-    [SerializeField] private UI_Bubble uiBubble;
+    [Tooltip("손님 말풍선이 따라갈 위치입니다. 프리팹 안의 BubbleAnchor를 연결합니다.")]
+    [SerializeField] private Transform bubbleAnchor;
+    private UI_Bubble uiBubble;
 
     [Header("회전 설정")]
     [SerializeField] private float turnDuration = 0.35f;
 
     #region 초기화
 
-    public void Init(Transform entrancePoint, Transform exit)
+    public void Init(Transform entrancePoint, Transform exit, CustomerType type = CustomerType.Normal)
     {
+        // 풀에서 재사용되기 전에 남은 소음 코루틴이 새 손님의 상태에 영향을 주지 않게 합니다.
+        StopNoise();
+
+        // 리뷰 대기 시간은 손님이 가게에 도착한 시점부터 음식이 제공될 때까지 측정합니다.
+        arrivedAtTime = Time.time;
+        foodWaitSeconds = 0f;
+        mealInterruptionCount = 0;
+        customerType = type;
+        orderedType = ItemType.None;
+        servedMenuCorrectly = true;
+        gameObject.name = $"Customer_{customerType}";
+
         if (agent == null) agent = GetComponent<NavMeshAgent>(); // agent 할당 확인
         if (animator == null) animator = GetComponent<Animator>(); // animator 할당 확인
 
-        if (uiBubble != null)
+        // 재사용 손님도 공용 UI 생성 경로를 통해 말풍선을 풀에서 빌립니다.
+        if (uiBubble == null && Managers.Instance != null)
         {
-            uiBubble.gameObject.SetActive(false); // 초기에는 말풍선 비활성화
+            uiBubble = Managers.UI.MakeSubItem<UI_Bubble>(Managers.UI.Root.transform);
+            if (uiBubble != null)
+            {
+                uiBubble.SetAnchor(bubbleAnchor != null ? bubbleAnchor : transform);
+                uiBubble.ResetForPool();
+            }
         }
 
         // 1. Agent 컴포넌트 체크
@@ -77,18 +107,13 @@ public class CustomerController : MonoBehaviour
 
         BindCounter();
 
-        // 3. 정지 해제 및 경로 지정 성공 여부 확인
-        agent.isStopped = false;
-        bool hasPath = agent.SetDestination(entrancePoint.position);
+        // 실제 대기 위치에 도착한 뒤에만 줄 손님의 소음과 해결 작업을 시작합니다.
+        MoveToQueuePoint(entrancePoint);
 
-        if (!hasPath)
-        {
-            Debug.LogError($"[NavMesh] {entrancePoint.name} 위치까지의 경로를 계산할 수 없습니다. 목적지가 NavMesh 구역 내에 있는지 확인하세요.");
-        }
-
-        // 초기 생성 시 입구 대기 위치로 이동
-        agent.destination = entrancePoint.position;
-        StartCoroutine(CoCheckArrivalAtEntrance());
+        // 풀에서 재사용된 손님도 이번 방해 유형과 상태에 맞게 표시를 새로 고칩니다.
+        if (resolveWork == null)
+            resolveWork = GetComponentInChildren<CustomerResolve>(true);
+        resolveWork?.RefreshMark();
     }
 
 
@@ -130,15 +155,52 @@ public class CustomerController : MonoBehaviour
     #region 생성 -> 입구 루틴
 
     // 입구로 가는 코루틴
-    private IEnumerator CoCheckArrivalAtEntrance()
+    private IEnumerator CoCheckArrivalAtEntrance(Transform point)
     {
         yield return CoWaitUntilArrival(0.2f);
 
-        if (CurrentState == CustomerState.WalkEntrance)
+        // 경로가 중간에 끊기거나 에이전트가 비활성화되면 줄에 선 것으로 처리하지 않습니다.
+        Vector3 gap = point != null ? point.position - transform.position : Vector3.zero;
+        gap.y = 0f;
+        if (point != null && agent != null && agent.enabled && agent.isOnNavMesh &&
+            gap.sqrMagnitude <= 0.25f && CurrentState == CustomerState.WalkEntrance)
         {
             CurrentState = CustomerState.WaitingAtEntrance;
+            resolveWork?.RefreshMark();
+
+            // 줄에 도착하기 전에는 소음 피해를 주지 않습니다.
+            if (customerType == CustomerType.QueueNoiser)
+                StartNoise();
         }
+
+        queueArrivalRoutine = null;
     }
+
+    /// <summary>대기열 재정렬을 포함해 줄 위치로 이동하고, 도착 전 상태를 다시 설정합니다.</summary>
+    public void MoveToQueuePoint(Transform point)
+    {
+        if (point == null || agent == null || !agent.enabled || !agent.isOnNavMesh)
+            return;
+
+        // 이전 목적지의 도착 코루틴이 새 위치를 도착한 것으로 처리하지 않게 합니다.
+        if (queueArrivalRoutine != null)
+            StopCoroutine(queueArrivalRoutine);
+
+        StopNoise();
+        CurrentState = CustomerState.WalkEntrance;
+        resolveWork?.RefreshMark();
+        agent.isStopped = false;
+        if (!agent.SetDestination(point.position))
+        {
+            Debug.LogError($"[NavMesh] {point.name} 위치까지의 경로를 계산할 수 없습니다.", this);
+            return;
+        }
+        queueArrivalRoutine = StartCoroutine(CoCheckArrivalAtEntrance(point));
+    }
+
+    /// <summary>맨 앞 손님이 실제로 줄에 도착했고 방해가 해결되었을 때만 착석을 허용합니다.</summary>
+    public bool CanLeaveQueue => CurrentState == CustomerState.WaitingAtEntrance &&
+                                 customerType != CustomerType.QueueNoiser;
     #endregion
 
 
@@ -146,34 +208,21 @@ public class CustomerController : MonoBehaviour
     // 매니저가 손님에게 자리를 지정해 줄 때 호출
     public void AssignSeat(SeatStation seat)
     {
+        if (seat == null || !CanLeaveQueue)
+            return;
+
         assignedSeat = seat;
         assignedSeat.SetState(SeatState.Reserved);
         assignedSeat.currentCustomer = this;
-
-        if (CurrentState != CustomerState.WalkEntrance)
-        {
-            CurrentState = CustomerState.MovingToSeat;
-            if (agent != null)
-            {
-                agent.enabled = true;
-                agent.isStopped = false;
-                agent.SetDestination(seat.customerSitPoint.position);
-            }
-        }
 
         StartCoroutine(CoCheckArrivalAtSeat());
     }
     // 빈 자리로 가는 코루틴
     private IEnumerator CoCheckArrivalAtSeat()
     {
-        // WalkEntrance 상태라면 WaitingAtEntrance 상태가 될 때까지 대기
-        while (CurrentState == CustomerState.WalkEntrance)
-        {
-            yield return null;
-        }
-
         // 입구 도착 후 좌석으로 이동 시작
         CurrentState = CustomerState.MovingToSeat;
+        resolveWork?.RefreshMark();
         if (agent != null && assignedSeat != null && assignedSeat.customerSitPoint != null)
         {
             agent.enabled = true;
@@ -184,10 +233,10 @@ public class CustomerController : MonoBehaviour
         // 목적지 도착 대기
         yield return CoWaitUntilArrival(0.2f);
 
-        // 4. 자리에 착석 및 자동 주문 (음식 대기 상태로 바로 진입)
-        // CurrentState = CustomerState.WaitingToOrder;
-        CurrentState = CustomerState.WaitingForFood;
-        orderedType = ItemType.Beer;
+        // 착석 소음 손님은 소음을 해결하기 전까지 주문을 만들지 않습니다.
+        CurrentState = customerType == CustomerType.SeatNoiser
+            ? CustomerState.WaitingToOrder
+            : CustomerState.WaitingForFood;
 
         if (assignedSeat != null && assignedSeat.customerSitPoint != null)
         {
@@ -204,27 +253,47 @@ public class CustomerController : MonoBehaviour
         {
             Debug.Log("좌석 지정완료");
             assignedSeat.SetState(SeatState.Occupied);
-            // 주문을 기다리는 손님이 앉았으므로 직원 대기열에 서빙 작업을 등록합니다.
-            Managers.Task.CreateTask(EmployeeTaskType.Serving, assignedSeat);
         }
+
+        // 착석 소음형은 자리에 앉은 뒤 주변 손님에게 주기적으로 소란을 피웁니다.
+        if (customerType == CustomerType.SeatNoiser)
+            StartNoise();
+
+        resolveWork?.RefreshMark();
 
         // TODO: 앉는 애니메이션 재생 (Animator.SetTrigger("Sit"))
 
-        if (uiBubble != null)
-        {
-            uiBubble.gameObject.SetActive(true); // 말풍선 활성화
-            uiBubble.SetBubble(Define.BubbleType.FoodReady);
-        }
+        if (CurrentState == CustomerState.WaitingForFood)
+            PlaceOrder();
+        else
+            Debug.Log("[Customer] 착석 소음 손님이 주문 전에 해결을 기다립니다.", this);
+    }
 
+    /// <summary>착석 후 또는 소음 해결 후 주문을 한 번 만들고 서빙 작업을 등록합니다.</summary>
+    private void PlaceOrder()
+    {
+        if (assignedSeat == null || CurrentState != CustomerState.WaitingForFood)
+            return;
+
+        // 주문이 생기기 전에는 메뉴를 정하지 않아 서빙 작업이 시작될 수 없습니다.
+        orderedType = Random.value < 0.5f ? ItemType.Beer : ItemType.TestMeal;
+        uiBubble?.SetBubble(Define.BubbleType.FoodReady);
+        Managers.Task.CreateTask(EmployeeTaskType.Serving, assignedSeat);
         Debug.Log("손님이 자리에 앉아 자동으로 주문을 넣었습니다. (음식 대기 중)");
     }
     #endregion
 
     
     #region 음식받고 음식 먹는 코드
-    public void OnFoodServed()
+    public void OnFoodServed(ItemType servedType)
     {
+        // 음식이 처음 제공될 때까지의 대기 시간을 기록해 리뷰 평가에 전달합니다.
+        foodWaitSeconds = Mathf.Max(0f, Time.time - arrivedAtTime);
+        servedMenuCorrectly = servedType == orderedType;
         CurrentState = CustomerState.Eating;
+
+        if (!servedMenuCorrectly)
+            Debug.LogWarning($"[Customer] 주문과 다른 메뉴를 받았습니다. 주문: {orderedType}, 받은 메뉴: {servedType}");
 
         // 음식을 받으면 음식 그림을 진행 이미지로 바꾸고, 새 식사의 진행도를 0부터 표시합니다.
         if (uiBubble != null)
@@ -235,6 +304,152 @@ public class CustomerController : MonoBehaviour
 
         Debug.Log("밥 먹습니다..");
         StartCoroutine(CoEating());
+    }
+
+    /// <summary>식사 중 방해가 발생했음을 기록해 손님 리뷰에 반영합니다.</summary>
+    public void RegisterMealInterruption()
+    {
+        // 대기줄이나 좌석에 있는 동안만 방해를 기록하고, 일반 손님에게만 적용합니다.
+        if (customerType != CustomerType.Normal || !CanBeAffectedByNoise())
+            return;
+
+        mealInterruptionCount++;
+    }
+
+    /// <summary>리뷰 계산에 사용할 손님의 대기 시간을 돌려줍니다.</summary>
+    public float FoodWaitSeconds => foodWaitSeconds;
+
+    /// <summary>리뷰 계산에 사용할 식사 중 방해 횟수를 돌려줍니다.</summary>
+    public int MealInterruptionCount => mealInterruptionCount;
+
+    /// <summary>받은 메뉴가 주문과 일치했는지 리뷰 계산에 전달합니다.</summary>
+    public bool ServedMenuCorrectly => servedMenuCorrectly;
+
+    /// <summary>정해진 간격으로 소음을 내고 근처 일반 손님에게 방해를 전달합니다.</summary>
+    private IEnumerator CoMakeNoise()
+    {
+        while (CanMakeNoise())
+        {
+            yield return new WaitForSeconds(noiseInterval);
+
+            // 대기줄이나 좌석 상태가 바뀌어 소음 조건을 벗어나면 반복을 끝냅니다.
+            if (!CanMakeNoise())
+                yield break;
+
+            CustomerController[] customers = FindObjectsByType<CustomerController>();
+            float rangeSquared = noiseRange * noiseRange;
+            int disturbedCount = 0;
+
+            // 범위 안에서 대기하거나 식사 중인 일반 손님을 찾아 방해 횟수를 남깁니다.
+            foreach (CustomerController customer in customers)
+            {
+                if (customer == null || customer == this ||
+                    customer.customerType != CustomerType.Normal ||
+                    !customer.CanBeAffectedByNoise())
+                    continue;
+
+                Vector3 offset = customer.transform.position - transform.position;
+                offset.y = 0f;
+                if (offset.sqrMagnitude > rangeSquared)
+                    continue;
+
+                customer.RegisterMealInterruption();
+                disturbedCount++;
+            }
+
+            Debug.Log($"[Customer] {customerType} 손님이 큰 소리를 냈습니다. 영향받은 손님: {disturbedCount}명");
+        }
+    }
+
+    /// <summary>같은 손님에게 소음 반복 작업이 두 번 등록되지 않도록 시작합니다.</summary>
+    private void StartNoise()
+    {
+        StopNoise();
+        noiseRoutine = StartCoroutine(CoMakeNoise());
+    }
+
+    /// <summary>방해 해결이나 손님 재사용 시 남은 소음 반복 작업을 즉시 멈춥니다.</summary>
+    private void StopNoise()
+    {
+        if (noiseRoutine == null)
+            return;
+
+        StopCoroutine(noiseRoutine);
+        noiseRoutine = null;
+    }
+
+    /// <summary>현재 유형과 손님 상태가 소음을 내도 되는 조합인지 확인합니다.</summary>
+    private bool CanMakeNoise()
+    {
+        if (customerType == CustomerType.QueueNoiser)
+            return CurrentState == CustomerState.WaitingAtEntrance;
+
+        if (customerType == CustomerType.SeatNoiser)
+            return assignedSeat != null &&
+                   CurrentState == CustomerState.WaitingToOrder;
+
+        return false;
+    }
+
+    /// <summary>플레이어가 지금 이 손님의 방해 행동을 해결할 수 있는지 확인합니다.</summary>
+    public bool CanResolveDisturbance()
+    {
+        switch (customerType)
+        {
+            case CustomerType.QueueNoiser:
+                return CurrentState == CustomerState.WaitingAtEntrance;
+
+            case CustomerType.SeatNoiser:
+                return assignedSeat != null && CurrentState == CustomerState.WaitingToOrder;
+
+            case CustomerType.SeatHog:
+                // 자리 독점은 식사를 마친 뒤 시작되므로 그 전에는 해결할 수 없습니다.
+                return CurrentState == CustomerState.OccupyingSeat;
+
+            default:
+                return false;
+        }
+    }
+
+    /// <summary>방해 행동을 끝내고 일반 손님으로 돌리며, 자리 독점 중이었다면 계산대로 보냅니다.</summary>
+    public bool ResolveDisturbance()
+    {
+        if (!CanResolveDisturbance())
+            return false;
+
+        CustomerType resolvedType = customerType;
+        bool wasOccupyingSeat = CurrentState == CustomerState.OccupyingSeat;
+
+        // 손님 유형을 바꾸고 소음 반복 작업을 멈춰 주변 손님에게 추가 피해가 생기지 않게 합니다.
+        customerType = CustomerType.Normal;
+        gameObject.name = "Customer_Normal";
+        StopNoise();
+
+        // 착석 소음은 해결이 끝나야 주문과 직원 서빙 작업이 생깁니다.
+        if (resolvedType == CustomerType.SeatNoiser && CurrentState == CustomerState.WaitingToOrder)
+        {
+            CurrentState = CustomerState.WaitingForFood;
+            PlaceOrder();
+        }
+
+        // 식사를 마친 자리 독점 손님은 일반 손님과 같은 계산 및 퇴장 흐름으로 되돌립니다.
+        if (wasOccupyingSeat)
+            BeginPaymentTrip();
+
+        resolveWork?.RefreshMark();
+
+        Debug.Log($"[Customer] 방해 해결 완료: {resolvedType} 손님이 일반 손님으로 바뀌었습니다.", this);
+        return true;
+    }
+
+    /// <summary>소음이 리뷰에 영향을 줄 수 있는 대기 또는 좌석 상태인지 확인합니다.</summary>
+    private bool CanBeAffectedByNoise()
+    {
+        return CurrentState == CustomerState.WalkEntrance ||
+               CurrentState == CustomerState.WaitingAtEntrance ||
+               CurrentState == CustomerState.MovingToSeat ||
+               CurrentState == CustomerState.WaitingForFood ||
+               CurrentState == CustomerState.Eating;
     }
 
     private IEnumerator CoEating()
@@ -263,8 +478,34 @@ public class CustomerController : MonoBehaviour
             uiBubble.SetProgress(1f);
         }
 
-        // 식사 끝, 계산하러 이동 준비
+        // 자리 독점형만 식사를 마친 뒤에도 퇴장하지 않고 좌석을 계속 차지합니다.
+        if (customerType == CustomerType.SeatHog)
+        {
+            CurrentState = CustomerState.OccupyingSeat;
+            resolveWork?.RefreshMark();
+            if (uiBubble != null)
+                uiBubble.Hide();
+
+            Debug.Log("[Customer] 방해 손님이 식사를 마쳤지만 자리를 계속 독점합니다.");
+            yield break;
+        }
+
+        // 식사를 마친 일반 손님은 좌석을 비우고 계산대로 이동합니다.
+        BeginPaymentTrip();
+    }
+
+    /// <summary>식사가 끝난 손님의 좌석을 치우기 대상으로 바꾸고 계산대 이동을 시작합니다.</summary>
+    private void BeginPaymentTrip()
+    {
+        if (CurrentState == CustomerState.MovingToCounter ||
+            CurrentState == CustomerState.WaitingToPay ||
+            CurrentState == CustomerState.Leaving)
+        {
+            return;
+        }
+
         CurrentState = CustomerState.MovingToCounter;
+        resolveWork?.RefreshMark();
 
         // 식사가 끝나면 그림을 유지한 채 말풍선 축소 애니메이션을 재생합니다.
         if (uiBubble != null)
@@ -272,28 +513,8 @@ public class CustomerController : MonoBehaviour
             uiBubble.Hide();
         }
 
-        if (agent != null)
-        {
-            agent.enabled = true;
-            agent.isStopped = false;
-        }
-
-        // 자리를 "치워야 하는 상태"로 전환
-        if (assignedSeat != null)
-        {
-            assignedSeat.SetState(SeatState.Dirty);
-            // 손님이 떠난 직후 더러운 좌석을 작업 관리자의 청소 대기열에 등록합니다.
-            Managers.Station.RegisterDirtyTable(assignedSeat);
-            assignedSeat.currentCustomer = null;
-            assignedSeat = null;
-        }
-
-        if (counterPayPoint != null && agent != null)
-        {
-            agent.SetDestination(counterPayPoint.position);
-        }
-
-        StartCoroutine(CoCheckArrivalAtCounter());
+        // 앉아 있는 동안 꺼 둔 이동 기능을 복구하고 실제 경로가 생긴 뒤 좌석을 비웁니다.
+        StartCoroutine(CoMoveToCounter());
     }
 
     #endregion
@@ -301,10 +522,57 @@ public class CustomerController : MonoBehaviour
 
     #region 값 지불
 
-    // 카운터로 가는 코루틴
-    private IEnumerator CoCheckArrivalAtCounter()
+    /// <summary>좌석에서 계산대까지 유효한 경로를 찾고 실제 도착했을 때 결제를 요청합니다.</summary>
+    private IEnumerator CoMoveToCounter()
     {
-        yield return CoWaitUntilArrival(0.2f);
+        bool seatReleased = false;
+
+        while (CurrentState == CustomerState.MovingToCounter)
+        {
+            // 카운터가 아직 생성되지 않았거나 이동 경로가 막혔으면 잠시 뒤 다시 시도합니다.
+            if (!TryStartCounterMove(out Vector3 destination))
+            {
+                yield return new WaitForSeconds(1f);
+                continue;
+            }
+
+            if (!seatReleased && assignedSeat != null)
+            {
+                // 실제 이동을 시작한 시점에만 좌석을 비우고 청소 작업을 등록합니다.
+                assignedSeat.SetState(SeatState.Dirty);
+                Managers.Station.RegisterDirtyTable(assignedSeat);
+                assignedSeat.currentCustomer = null;
+                assignedSeat = null;
+                seatReleased = true;
+            }
+
+            // 이동이 멈추거나 경로가 끊기면 무한 대기하지 않고 다시 길을 찾습니다.
+            float moveStartedAt = Time.time;
+            while (agent != null && agent.enabled && agent.isOnNavMesh &&
+                   (agent.pathPending || agent.remainingDistance > Mathf.Max(0.2f, agent.stoppingDistance + 0.1f)))
+            {
+                if ((!agent.pathPending && agent.pathStatus != NavMeshPathStatus.PathComplete) ||
+                    Time.time - moveStartedAt > 30f)
+                    break;
+
+                yield return null;
+            }
+
+            // 경로가 중간에 사라져도 계산대 도착으로 간주하지 않습니다.
+            if (agent == null || !agent.enabled || !agent.isOnNavMesh || agent.pathPending ||
+                agent.pathStatus != NavMeshPathStatus.PathComplete ||
+                agent.remainingDistance > Mathf.Max(0.2f, agent.stoppingDistance + 0.1f) ||
+                Vector3.Distance(agent.nextPosition, destination) > 0.5f)
+            {
+                yield return new WaitForSeconds(1f);
+                continue;
+            }
+
+            break;
+        }
+
+        if (CurrentState != CustomerState.MovingToCounter)
+            yield break;
 
         CurrentState = CustomerState.WaitingToPay;
         Debug.Log("카운터에 도착하여 결제를 요청합니다.");
@@ -329,6 +597,36 @@ public class CustomerController : MonoBehaviour
         // 손님은 돈을 내지 않고, 카운터에서 직원이나 플레이어가 수금할 때까지 기다립니다.
         if (targetCounter != null)
             targetCounter.AddWaitingCustomer(this);
+    }
+
+    /// <summary>앉은 위치와 결제 위치를 NavMesh 위로 맞춘 뒤 완전한 이동 경로만 시작합니다.</summary>
+    private bool TryStartCounterMove(out Vector3 destination)
+    {
+        destination = Vector3.zero;
+        BindCounter();
+        if (agent == null || targetCounter == null || counterPayPoint == null ||
+            !NavMesh.SamplePosition(transform.position, out NavMeshHit start, 2f, agent.areaMask) ||
+            !NavMesh.SamplePosition(counterPayPoint.position, out NavMeshHit end, 2f, agent.areaMask))
+        {
+            return false;
+        }
+
+        agent.enabled = true;
+        if (!agent.isOnNavMesh && !agent.Warp(start.position))
+            return false;
+
+        if (!agent.isOnNavMesh)
+            return false;
+
+        // 목표 근처에 도달 가능한 완전한 경로가 없으면 결제 대기 상태로 넘어가지 않습니다.
+        NavMeshPath path = new NavMeshPath();
+        if (!agent.CalculatePath(end.position, path) || path.status != NavMeshPathStatus.PathComplete)
+            return false;
+
+        agent.updateRotation = true;
+        agent.isStopped = false;
+        destination = end.position;
+        return agent.SetDestination(destination);
     }
 
 
@@ -389,6 +687,18 @@ public class CustomerController : MonoBehaviour
 
         Debug.Log("손님이 퇴장하여 오브젝트가 정리됩니다.");
         Managers.Resource.Destroy(gameObject);
+    }
+
+    /// <summary>손님이 풀로 돌아가거나 제거될 때 빌린 공용 말풍선을 풀에 반납합니다.</summary>
+    private void OnDisable()
+    {
+        StopNoise();
+        if (uiBubble != null && Managers.Instance != null)
+        {
+            uiBubble.ResetForPool();
+            Managers.Pool.Release(uiBubble.gameObject);
+        }
+        uiBubble = null;
     }
 
     #endregion

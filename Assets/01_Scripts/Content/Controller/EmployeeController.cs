@@ -59,7 +59,7 @@ public class EmployeeController : MonoBehaviour
     private StackingSystem stacking;
     private EmployeeWander wander;
     private UI_BaseStation progressUI;
-    private BeerMachine sourceMachine;
+    private InteractableBase sourceMachine;
     private ServingStep servingStep;
 
     private float workProgressTimer = 0f;
@@ -326,21 +326,22 @@ public class EmployeeController : MonoBehaviour
             return false;
         }
 
-        // 이미 맥주를 들고 있으면 배달 단계부터 시작하고, 빈손이면 기계 잔을 먼저 예약합니다.
+        // 메뉴를 들고 있으면 배달부터 하고, 빈손이면 기계에서 메뉴를 준비합니다.
         if (task.Type == EmployeeTaskType.Serving)
         {
             if (stacking == null)
                 return false;
 
-            if (stacking.GetFirstListItemType() == Define.ItemType.Beer)
+            Define.ItemType heldMenu = stacking.GetFirstListItemType();
+            if (IsMenuItem(heldMenu))
             {
                 servingStep = ServingStep.DeliverBeer;
             }
-            else if (!stacking.CheckListItem(Define.ItemType.Beer))
+            else if (heldMenu != Define.ItemType.None || !stacking.CheckListItem(Define.ItemType.Beer))
             {
                 return false;
             }
-            else if (BeerMachine.TryStartWorkForEmployee(this, out sourceMachine))
+            else if (InteractableBase.TryStartMachineWorkForEmployee(this, out sourceMachine))
             {
                 servingStep = ServingStep.MakeBeer;
             }
@@ -409,7 +410,7 @@ public class EmployeeController : MonoBehaviour
 
         // 직원이 맡은 기계 점유와 작업 진행 표시를 정리합니다.
         HideProgressUI();
-        BeerMachine.StopWorkForEmployee(this);
+        InteractableBase.StopEmployeeMachineWork(this);
         sourceMachine = null;
         servingStep = ServingStep.None;
         currentEmployeeTask = null;
@@ -504,7 +505,7 @@ public class EmployeeController : MonoBehaviour
 
         // 맥주 생산 업무라면 작업 진행도를 세기 시작하기 전에 기계 출구로 빈 잔을 옮깁니다.
         if (currentTask == EmployeeTaskType.Serving && servingStep == ServingStep.MakeBeer)
-            sourceMachine?.StartBeerProductionForEmployee();
+            sourceMachine?.StartProductionForEmployee();
 
         SetState(EmployeeState.Working);
 
@@ -637,7 +638,7 @@ public class EmployeeController : MonoBehaviour
             if (!UpdateWorkProgress(GetWorkDuration(sourceMachine)))
                 return;
 
-            if (!sourceMachine.ProduceBeerForEmployee(this, stacking))
+            if (!sourceMachine.TryProduceMenu(gameObject, stacking, seat.currentCustomer.OrderedType))
             {
                 CancelTask();
                 return;
@@ -654,7 +655,7 @@ public class EmployeeController : MonoBehaviour
 
         if (servingStep != ServingStep.DeliverBeer ||
             stacking == null ||
-            stacking.GetFirstListItemType() != Define.ItemType.Beer)
+            !IsMenuItem(stacking.GetFirstListItemType()))
         {
             CancelTask();
             return;
@@ -667,6 +668,12 @@ public class EmployeeController : MonoBehaviour
             else
                 CancelTask();
         }
+    }
+
+    /// <summary>직원이 손님에게 전달할 수 있는 메뉴인지 확인합니다.</summary>
+    private static bool IsMenuItem(Define.ItemType itemType)
+    {
+        return itemType == Define.ItemType.Beer || itemType == Define.ItemType.TestMeal;
     }
 
     private void UpdateCashier()
@@ -695,7 +702,13 @@ public class EmployeeController : MonoBehaviour
         if (workTarget == null)
             return 0f;
 
-        return Mathf.Max(0f, workTarget.Duration * interactionTimeScale);
+        float workDuration = workTarget.Duration * interactionTimeScale;
+
+        // 기계마다 정한 최소 제조 시간을 직원 작업에도 동일하게 적용합니다.
+        if (workTarget.InteractionType == Define.InteractionType.ProduceMenu)
+            return Mathf.Max(workTarget.MinimumProductionDuration, workDuration);
+
+        return Mathf.Max(0f, workDuration);
     }
 
     /// <summary>
@@ -728,7 +741,7 @@ public class EmployeeController : MonoBehaviour
 
         // 대상 참조를 비우기 전에 말풍선을 닫아 작업 중 표시가 남지 않게 합니다.
         HideProgressUI();
-        BeerMachine.StopWorkForEmployee(this);
+        InteractableBase.StopEmployeeMachineWork(this);
         sourceMachine = null;
         servingStep = ServingStep.None;
 
@@ -758,7 +771,7 @@ public class EmployeeController : MonoBehaviour
 
         // 취소된 작업도 대상 말풍선과 진행 표시를 바로 정리합니다.
         HideProgressUI();
-        BeerMachine.StopWorkForEmployee(this);
+        InteractableBase.StopEmployeeMachineWork(this);
         sourceMachine = null;
         servingStep = ServingStep.None;
 

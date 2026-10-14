@@ -1,10 +1,18 @@
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.AI;
 using static Define;
 
 public class CustomerManager
 {
+    // 손님 열 명 중 한 명 정도를 세 가지 방해 유형 가운데 하나로 생성합니다.
+    private const float DisturberSpawnChance = 0.1f;
+    private static readonly Define.CustomerType[] DisturberTypes =
+    {
+        Define.CustomerType.QueueNoiser,
+        Define.CustomerType.SeatNoiser,
+        Define.CustomerType.SeatHog
+    };
+
     [Header("Spawn Configuration")]
     public GameObject customerPrefab;       // 손님 프리팹 (Synty 캐릭터 기반)
     public Transform spawnPoint;            // 최초 스폰 위치 (상점 밖)
@@ -74,9 +82,37 @@ public class CustomerManager
             // 입구 대기 대상을 설정하고 대기 대열 끝부분 배치
             int currentQueueIndex = waitingCustomers.Count;
             Transform targetQueuePoint = entranceQueue[currentQueueIndex];
-            customer.Init(targetQueuePoint, exitPoint);
+            Define.CustomerType customerType = Define.CustomerType.Normal;
+            if (Random.value < DisturberSpawnChance)
+            {
+                // 방해 손님은 대기줄 소음, 착석 소음, 자리 독점 중 하나만 맡습니다.
+                int typeIndex = Random.Range(0, DisturberTypes.Length);
+                customerType = DisturberTypes[typeIndex];
+            }
+
+            customer.Init(targetQueuePoint, exitPoint, customerType);
 
             waitingCustomers.Add(customer);
+
+            // 방해 손님은 행동 유형을 함께 출력해 스폰 여부와 종류를 콘솔에서 바로 확인하게 합니다.
+            if (customerType != Define.CustomerType.Normal)
+                Debug.Log($"[CustomerManager] 방해 손님 스폰: {GetCustomerTypeName(customerType)} ({customerType})", customer);
+        }
+    }
+
+    /// <summary>손님 유형을 개발 로그에서 쉽게 알아볼 수 있는 한국어 이름으로 바꿉니다.</summary>
+    private string GetCustomerTypeName(Define.CustomerType customerType)
+    {
+        switch (customerType)
+        {
+            case Define.CustomerType.QueueNoiser:
+                return "대기줄 소음 손님";
+            case Define.CustomerType.SeatNoiser:
+                return "착석 소음 손님";
+            case Define.CustomerType.SeatHog:
+                return "자리 독점 손님";
+            default:
+                return "일반 손님";
         }
     }
 
@@ -86,6 +122,11 @@ public class CustomerManager
 
         // 입구 맨 앞줄에 서 있는 손님 타겟팅
         CustomerController firstInLine = waitingCustomers[0];
+
+        // 앞 손님이 아직 줄 위치로 이동 중이거나 소음을 해결하지 못했다면
+        // 뒤 손님을 포함한 대기열 전체가 그 자리에 머무릅니다.
+        if (firstInLine == null || !firstInLine.CanLeaveQueue)
+            return;
 
         // 비어있는 자리가 있는지 탐색
         SeatStation emptySeat = Managers.Station.FindAvailableSeat();
@@ -106,11 +147,8 @@ public class CustomerManager
         for (int i = 0; i < waitingCustomers.Count; i++)
         {
             // 한 칸씩 앞당긴 대기열 좌표로 재목적지 설정
-            NavMeshAgent agent = waitingCustomers[i].GetComponent<NavMeshAgent>();
-            if (agent != null)
-            {
-                agent.destination = entranceQueue[i].position;
-            }
+            // 재정렬 후 새 줄 위치에 다시 도착해야 대기 완료로 취급합니다.
+            waitingCustomers[i].MoveToQueuePoint(entranceQueue[i]);
         }
     }
 }

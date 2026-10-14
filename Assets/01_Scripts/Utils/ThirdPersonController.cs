@@ -41,6 +41,7 @@ public class ThirdPersonController : MonoBehaviour
     // 캐싱 컴포넌트
     private CharacterController characterController;
     private Animator animator;
+    private StackingSystem stackingSystem;
     private Camera mainCamera;
     
     // 상태 제어 변수
@@ -52,6 +53,7 @@ public class ThirdPersonController : MonoBehaviour
     {
         characterController = GetComponent<CharacterController>();
         animator = GetComponent<Animator>();
+        stackingSystem = GetComponentInChildren<StackingSystem>();
         mainCamera = Camera.main;
         
         if (mainCamera == null)
@@ -110,6 +112,11 @@ public class ThirdPersonController : MonoBehaviour
 
         // Animator의 "Speed" 파라미터에 값을 설정해 줍니다.
         animator.SetFloat("Speed", currentSpeed);
+
+        // 플레이어가 쌓을 수 있는 아이템을 하나 이상 들고 있으면 운반 상태를 켭니다.
+        // 돈처럼 스택에 포함되지 않는 아이템은 운반 애니메이션을 바꾸지 않습니다.
+        bool isCarrying = stackingSystem != null && stackingSystem.StackCount > 0;
+        animator.SetBool("IsCarrying", isCarrying);
     }
 
     private void HandleMovement()

@@ -4,6 +4,8 @@ using UnityEngine;
 
 public class UIManager
 {
+    private UI_MachineUpgrade machineUpgradeUI;
+
     int _order = 10;
 
     Stack<UI_Popup> _popupStack = new Stack<UI_Popup>();
@@ -25,48 +27,78 @@ public class UIManager
     }
     public void Clear()
     {
+        if (machineUpgradeUI != null)
+        {
+            machineUpgradeUI.ResetForPool();
+            Managers.Pool.Release(machineUpgradeUI.gameObject);
+            machineUpgradeUI = null;
+        }
+
         CloseAllPopupUI();
         if(_sceneUI != null)
         {
             Managers.Resource.Destroy(_sceneUI.gameObject);
         }
     }
+
+    /// <summary>ëª¨ë“  ê¸°ê³„ê°€ ëŒë ¤ ì“°ëŠ” ì—…ê·¸ë ˆì´ë“œ í™”ë©´ì„ í’€ì—ì„œ í•œ ë²ˆë§Œ êº¼ëƒ…ë‹ˆë‹¤.</summary>
+    public UI_MachineUpgrade EnsureMachineUpgradeUI()
+    {
+        if (machineUpgradeUI != null)
+            return machineUpgradeUI;
+
+        GameObject prefab = Managers.Resource.Load<GameObject>("UI_MachineUpgrade");
+        if (prefab == null)
+            return null;
+
+        GameObject instance = Managers.Pool.Get(prefab, Root.transform).gameObject;
+        machineUpgradeUI = instance.GetComponent<UI_MachineUpgrade>();
+        if (machineUpgradeUI == null)
+        {
+            Managers.Pool.Release(instance);
+            return null;
+        }
+
+        machineUpgradeUI.Init();
+        machineUpgradeUI.ResetForPool();
+        return machineUpgradeUI;
+    }
     public void SetCanvas(GameObject go, bool sort = true)
     {
         Canvas canvas = Util.GetOrAddComponent<Canvas>(go);
 
-        //  1. UI ¿ÀºêÁ§Æ®¿¡ ºÙ¾îÀÖ´Â ½ºÅ©¸³Æ®(UI_Base)¸¦ Ã£¾Æ¼­, ´ëÇ¥´ÔÀÌ ¼³Á¤ÇÑ ¸ğµå¸¦ ¾Ë¾Æ³À´Ï´Ù.
+        //  1. UI ì˜¤ë¸Œì íŠ¸ì— ë¶™ì–´ìˆëŠ” ìŠ¤í¬ë¦½íŠ¸(UI_Base)ë¥¼ ì°¾ì•„ì„œ, ëŒ€í‘œë‹˜ì´ ì„¤ì •í•œ ëª¨ë“œë¥¼ ì•Œì•„ëƒ…ë‹ˆë‹¤.
         UI_Base uiBase = go.GetComponent<UI_Base>();
-        RenderMode targetMode = RenderMode.ScreenSpaceCamera; // ±âº»°ª
+        RenderMode targetMode = RenderMode.ScreenSpaceCamera; // ê¸°ë³¸ê°’
 
         if (uiBase != null)
         {
-            //targetMode = uiBase.canvasRenderMode; // ÇÁ¸®ÆÕ¿¡¼­ ¼³Á¤ÇÑ °ª °¡Á®¿À±â
+            //targetMode = uiBase.canvasRenderMode; // í”„ë¦¬íŒ¹ì—ì„œ ì„¤ì •í•œ ê°’ ê°€ì ¸ì˜¤ê¸°
         }
 
-        // 2. À¯´ÏÆ¼°¡ ¸Ú´ë·Î ¹Ù²åµç ¸»µç, ¿ì¸®°¡ ¿øÇÏ´Â ¸ğµå·Î °­Á¦ ¼¼ÆÃÇØ¹ö¸³´Ï´Ù!
+        // 2. ìœ ë‹ˆí‹°ê°€ ë©‹ëŒ€ë¡œ ë°”ê¿¨ë“  ë§ë“ , ìš°ë¦¬ê°€ ì›í•˜ëŠ” ëª¨ë“œë¡œ ê°•ì œ ì„¸íŒ…í•´ë²„ë¦½ë‹ˆë‹¤!
         canvas.renderMode = targetMode;
 
-        //  3. Camera ¸ğµå¶ó¸é ¸ŞÀÎ Ä«¸Ş¶ó¸¦ ÂûÄ¬!
+        //  3. Camera ëª¨ë“œë¼ë©´ ë©”ì¸ ì¹´ë©”ë¼ë¥¼ ì°°ì¹µ!
         if (targetMode == RenderMode.ScreenSpaceCamera)
         {
             canvas.worldCamera = Camera.main;
             if (canvas.worldCamera == null)
             {
-                Debug.LogWarning($"[UI ¸Å´ÏÀú] {go.name}¿¡ ÇÒ´çÇÒ MainCamera¸¦ Ã£À» ¼ö ¾ø½À´Ï´Ù.");
+                Debug.LogWarning($"[UI ë§¤ë‹ˆì €] {go.name}ì— í• ë‹¹í•  MainCameraë¥¼ ì°¾ì„ ìˆ˜ ì—†ìŠµë‹ˆë‹¤.");
             }
             else
             {
                 
-                //[Ãß°¡ 1] Ä«¸Ş¶ó°¡ ÇÒ´çµÇ¾ú´Ù¸é, Plane Distance¸¦ ÄÚµå·Î °­Á¦ °íÁ¤! (¸ŞÅ×¿À ¶Õ¸² ¹æÁö)
+                //[ì¶”ê°€ 1] ì¹´ë©”ë¼ê°€ í• ë‹¹ë˜ì—ˆë‹¤ë©´, Plane Distanceë¥¼ ì½”ë“œë¡œ ê°•ì œ ê³ ì •! (ë©”í…Œì˜¤ ëš«ë¦¼ ë°©ì§€)
                 canvas.planeDistance = 1f;
                 
             }
         }
 
         canvas.overrideSorting = true;
-        // [Ãß°¡ 2] ¾Æ±î ¸¸µç "UI" Sorting Layer¸¦ ±âº»°ªÀ¸·Î °­Á¦ ÁöÁ¤!
-        // (¸¸¾à À¯´ÏÆ¼ ¿¡µğÅÍ¿¡¼­ "UI"¶ó´Â ·¹ÀÌ¾î¸¦ ¾È ¸¸µå¼Ì´Ù¸é ÀÌ ÁÙÀº »©¼Åµµ µË´Ï´Ù)
+        // [ì¶”ê°€ 2] ì•„ê¹Œ ë§Œë“  "UI" Sorting Layerë¥¼ ê¸°ë³¸ê°’ìœ¼ë¡œ ê°•ì œ ì§€ì •!
+        // (ë§Œì•½ ìœ ë‹ˆí‹° ì—ë””í„°ì—ì„œ "UI"ë¼ëŠ” ë ˆì´ì–´ë¥¼ ì•ˆ ë§Œë“œì…¨ë‹¤ë©´ ì´ ì¤„ì€ ë¹¼ì…”ë„ ë©ë‹ˆë‹¤)
         //canvas.sortingLayerName = "UI";
 
         if (sort)
@@ -84,9 +116,16 @@ public class UIManager
         if (string.IsNullOrEmpty(name))
             name = typeof(T).Name;
 
-        GameObject go = Managers.Resource.Instantiate($"UI/SubItem/{name}");
+        // ì£¼ì†Œê°€ í”„ë¦¬íŒ¹ ì´ë¦„ìœ¼ë¡œ ë“±ë¡ëœ UIì™€ í´ë” ê²½ë¡œë¡œ ë“±ë¡ëœ UIë¥¼ ëª¨ë‘ ì§€ì›í•©ë‹ˆë‹¤.
+        GameObject prefab = Managers.Resource.Load<GameObject>(name);
+        GameObject go = prefab != null
+            ? Managers.Resource.Instantiate(prefab)
+            : Managers.Resource.Instantiate($"UI/SubItem/{name}");
+        if (go == null)
+            return null;
+
         if (parent != null)
-            go.transform.SetParent(parent);
+            go.transform.SetParent(parent, false);
 
         return Util.GetOrAddComponent<T>(go);
     }
@@ -122,36 +161,36 @@ public class UIManager
         if (_popupStack.Count == 0)
             return;
 
-        // 1. ¸¸¾à ´İÀ¸·Á´Â ÆË¾÷ÀÌ ÃÖ»ó´Ü(Peek)ÀÌ ¾Æ´Ï¶ó¸é?
+        // 1. ë§Œì•½ ë‹«ìœ¼ë ¤ëŠ” íŒì—…ì´ ìµœìƒë‹¨(Peek)ì´ ì•„ë‹ˆë¼ë©´?
         if (_popupStack.Peek() != popup)
         {
-            Debug.Log("ÃÖ»ó´Ü ÆË¾÷ÀÌ ¾Æ´Ï¾î¼­ ½ºÅÃÀ» Àç¹èÄ¡ÇÏ°í °­Á¦ »èÁ¦ÇÕ´Ï´Ù.");
+            Debug.Log("ìµœìƒë‹¨ íŒì—…ì´ ì•„ë‹ˆì–´ì„œ ìŠ¤íƒì„ ì¬ë°°ì¹˜í•˜ê³  ê°•ì œ ì‚­ì œí•©ë‹ˆë‹¤.");
 
-            // StackÀ» ÀÓ½Ã ¸®½ºÆ®·Î º¯È¯ (ToList¸¦ ÇÏ¸é ÃÖ»ó´Ü ¿ä¼Ò°¡ 0¹ø ÀÎµ¦½º¿¡ ¿É´Ï´Ù)
+            // Stackì„ ì„ì‹œ ë¦¬ìŠ¤íŠ¸ë¡œ ë³€í™˜ (ToListë¥¼ í•˜ë©´ ìµœìƒë‹¨ ìš”ì†Œê°€ 0ë²ˆ ì¸ë±ìŠ¤ì— ì˜µë‹ˆë‹¤)
             List<UI_Popup> tempList = System.Linq.Enumerable.ToList(_popupStack);
 
-            // ¸®½ºÆ®¿¡¼­ ÇØ´ç ÆË¾÷À» Ã£¾Æ¼­ Áö¿ò
+            // ë¦¬ìŠ¤íŠ¸ì—ì„œ í•´ë‹¹ íŒì—…ì„ ì°¾ì•„ì„œ ì§€ì›€
             if (tempList.Contains(popup))
             {
                 tempList.Remove(popup);
 
-                // ±âÁ¸ ½ºÅÃÀ» ½Ï ºñ¿ì°í
+                // ê¸°ì¡´ ìŠ¤íƒì„ ì‹¹ ë¹„ìš°ê³ 
                 _popupStack.Clear();
 
-                // ¸®½ºÆ®¸¦ ¿ª¼øÀ¸·Î µÚÁıÀº µÚ ´Ù½Ã ½ºÅÃ¿¡ ½×¾ÆÁÜ (¿ø·¡ ¼ø¼­ º¹±¸)
+                // ë¦¬ìŠ¤íŠ¸ë¥¼ ì—­ìˆœìœ¼ë¡œ ë’¤ì§‘ì€ ë’¤ ë‹¤ì‹œ ìŠ¤íƒì— ìŒ“ì•„ì¤Œ (ì›ë˜ ìˆœì„œ ë³µêµ¬)
                 tempList.Reverse();
                 foreach (UI_Popup p in tempList)
                 {
                     _popupStack.Push(p);
                 }
 
-                // ÆË¾÷ ¿ÀºêÁ§Æ® ÆÄ±«
+                // íŒì—… ì˜¤ë¸Œì íŠ¸ íŒŒê´´
                 Managers.Resource.Destroy(popup.gameObject);
             }
             return;
         }
 
-        // 2. ÃÖ»ó´Ü ÆË¾÷ÀÌ ¸Â´Ù¸é ±âÁ¸ ·ÎÁ÷´ë·Î ´İ±â
+        // 2. ìµœìƒë‹¨ íŒì—…ì´ ë§ë‹¤ë©´ ê¸°ì¡´ ë¡œì§ëŒ€ë¡œ ë‹«ê¸°
         ClosePopupUI();
     }
     public void ClosePopupUI()
