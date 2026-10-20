@@ -1,75 +1,5 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1 &4098524061346462935
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 363212911921651385}
-  - component: {fileID: 3439777004688264978}
-  - component: {fileID: 5872061068495472110}
-  m_Layer: 11
-  m_Name: Zone_LoadCleanDish
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &363212911921651385
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4098524061346462935}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 1.752, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 6066974781437383612}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &3439777004688264978
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4098524061346462935}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 1
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Size: {x: 1, y: 2, z: 2}
-  m_Center: {x: 0, y: 1, z: 0}
---- !u!114 &5872061068495472110
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4098524061346462935}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f87afec77d75f6e43b4da3682398bde3, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::MachineTransferZone
-  transferType: 1
-  sink: {fileID: 0}
-  machine: {fileID: 5732903745136590528}
-  transferInterval: 0.5
 --- !u!1 &5176706264478582435
 GameObject:
   m_ObjectHideFlags: 0
@@ -96,37 +26,6 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: -1.1, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 6066974781437383612}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &6587132025449729982
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 3279531349274807725}
-  m_Layer: 0
-  m_Name: CupDisplayPoint
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &3279531349274807725
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6587132025449729982}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 1.5, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -166,8 +65,6 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 532510816925859904}
-  - {fileID: 3279531349274807725}
-  - {fileID: 363212911921651385}
   - {fileID: 6442186394015049379}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -262,20 +159,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BeerMachine
   interactionType: 1
-  availableMenus: 3
-  machineId: e2571a63b5084a7e9d7fb5ecaa811854
-  upgradeIds:
-  - machine_capacity
-  - machine_speed
-  beerPrefab: {fileID: 6658021417841733508, guid: f766e0d40028a6b438fceaf5b687ffbe, type: 3}
-  testMealPrefab: {fileID: 6658021417841733508, guid: a8ff49cfd8cc451397b49e2f6b122eca, type: 3}
-  testMealChance: 0.35
+  bubbleAnchor: {fileID: 6442186394015049379}
+  recipe: {fileID: 11400000, guid: b2e0954a773c4c47b8498bc23f17a3d1, type: 2}
   spawnPoint: {fileID: 532510816925859904}
-  cupDisplayPoint: {fileID: 3279531349274807725}
-  productionDuration: 1.5
+  transferInterval: 0.5
   dishCount: 1
   maxDishCount: 10
-  bubbleAnchor: {fileID: 6442186394015049379}
 --- !u!1 &9020172399902911650
 GameObject:
   m_ObjectHideFlags: 0

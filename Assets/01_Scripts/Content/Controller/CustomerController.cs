@@ -46,6 +46,7 @@ public class CustomerController : MonoBehaviour
     [Tooltip("손님 말풍선이 따라갈 위치입니다. 프리팹 안의 BubbleAnchor를 연결합니다.")]
     [SerializeField] private Transform bubbleAnchor;
     private UI_Bubble uiBubble;
+    private UI_Bubble hidingBubble;
 
     [Header("회전 설정")]
     [SerializeField] private float turnDuration = 0.35f;
@@ -68,17 +69,6 @@ public class CustomerController : MonoBehaviour
 
         if (agent == null) agent = GetComponent<NavMeshAgent>(); // agent 할당 확인
         if (animator == null) animator = GetComponent<Animator>(); // animator 할당 확인
-
-        // 재사용 손님도 공용 UI 생성 경로를 통해 말풍선을 풀에서 빌립니다.
-        if (uiBubble == null && Managers.Instance != null)
-        {
-            uiBubble = Managers.UI.MakeSubItem<UI_Bubble>(Managers.UI.Root.transform);
-            if (uiBubble != null)
-            {
-                uiBubble.SetAnchor(bubbleAnchor != null ? bubbleAnchor : transform);
-                uiBubble.ResetForPool();
-            }
-        }
 
         // 1. Agent 컴포넌트 체크
         if (agent == null)
@@ -277,7 +267,7 @@ public class CustomerController : MonoBehaviour
 
         // 주문이 생기기 전에는 메뉴를 정하지 않아 서빙 작업이 시작될 수 없습니다.
         orderedType = Random.value < 0.5f ? ItemType.Beer : ItemType.TestMeal;
-        uiBubble?.SetBubble(Define.BubbleType.FoodReady);
+        GetBubble()?.SetBubble(Define.BubbleType.FoodReady);
         Managers.Task.CreateTask(EmployeeTaskType.Serving, assignedSeat);
         Debug.Log("손님이 자리에 앉아 자동으로 주문을 넣었습니다. (음식 대기 중)");
     }
@@ -296,7 +286,7 @@ public class CustomerController : MonoBehaviour
             Debug.LogWarning($"[Customer] 주문과 다른 메뉴를 받았습니다. 주문: {orderedType}, 받은 메뉴: {servedType}");
 
         // 음식을 받으면 음식 그림을 진행 이미지로 바꾸고, 새 식사의 진행도를 0부터 표시합니다.
-        if (uiBubble != null)
+        if (GetBubble() != null)
         {
             uiBubble.SetBubble(Define.BubbleType.Progress);
             uiBubble.SetProgress(0f);
@@ -483,8 +473,7 @@ public class CustomerController : MonoBehaviour
         {
             CurrentState = CustomerState.OccupyingSeat;
             resolveWork?.RefreshMark();
-            if (uiBubble != null)
-                uiBubble.Hide();
+            HideBubble();
 
             Debug.Log("[Customer] 방해 손님이 식사를 마쳤지만 자리를 계속 독점합니다.");
             yield break;
@@ -508,10 +497,7 @@ public class CustomerController : MonoBehaviour
         resolveWork?.RefreshMark();
 
         // 식사가 끝나면 그림을 유지한 채 말풍선 축소 애니메이션을 재생합니다.
-        if (uiBubble != null)
-        {
-            uiBubble.Hide();
-        }
+        HideBubble();
 
         // 앉아 있는 동안 꺼 둔 이동 기능을 복구하고 실제 경로가 생긴 뒤 좌석을 비웁니다.
         StartCoroutine(CoMoveToCounter());
@@ -581,10 +567,7 @@ public class CustomerController : MonoBehaviour
         BindCounter();
 
         // 결제 대기 중임을 결제 이미지로 알리고, 말풍선이 닫혀 있었다면 다시 팝업으로 표시합니다.
-        if (uiBubble != null)
-        {
-            uiBubble.SetBubble(Define.BubbleType.Payment);
-        }
+        GetBubble()?.SetBubble(Define.BubbleType.Payment);
 
         // 도착 후 이동 회전을 끄고, 카운터를 향해 제자리에서 부드럽게 회전합니다.
         if (agent != null)
@@ -637,10 +620,7 @@ public class CustomerController : MonoBehaviour
             return;
 
         CurrentState = CustomerState.Leaving;
-        if (uiBubble != null)
-        {
-            uiBubble.Hide();
-        }
+        HideBubble();
 
         StartCoroutine(CoCheckExit());
     }
@@ -689,16 +669,69 @@ public class CustomerController : MonoBehaviour
         Managers.Resource.Destroy(gameObject);
     }
 
-    /// <summary>손님이 풀로 돌아가거나 제거될 때 빌린 공용 말풍선을 풀에 반납합니다.</summary>
+    /// <summary>표시가 필요한 순간에만 공용 말풍선을 빌려 손님의 기준점에 연결합니다.</summary>
+    private UI_Bubble GetBubble()
+    {
+        if (uiBubble != null)
+            return uiBubble;
+
+        // 닫힘 애니메이션 중 다시 표시해야 하면 새 말풍선을 만들지 않고 같은 것을 사용합니다.
+        if (hidingBubble != null)
+        {
+            uiBubble = hidingBubble;
+            hidingBubble = null;
+            return uiBubble;
+        }
+
+        if (Managers.Instance == null)
+            return null;
+
+        uiBubble = Managers.UI.MakeSubItem<UI_Bubble>();
+        if (uiBubble != null)
+            uiBubble.SetAnchor(bubbleAnchor != null ? bubbleAnchor : transform);
+
+        return uiBubble;
+    }
+
+    /// <summary>말풍선을 닫고 애니메이션이 끝나면 소유 관계를 풀에 돌려줍니다.</summary>
+    private void HideBubble()
+    {
+        if (uiBubble == null)
+            return;
+
+        UI_Bubble bubble = uiBubble;
+        uiBubble = null;
+        hidingBubble = bubble;
+
+        // 손님이 표시 도중 다시 말풍선을 쓰면 이전 닫힘 완료 알림은 반환하지 않습니다.
+        bubble.Hide(() =>
+        {
+            if (hidingBubble != bubble)
+                return;
+
+            hidingBubble = null;
+            ReleaseBubble(bubble);
+        });
+    }
+
+    /// <summary>말풍선의 그림과 애니메이션을 초기화하고 UI 풀에 반납합니다.</summary>
+    private static void ReleaseBubble(UI_Bubble bubble)
+    {
+        if (bubble == null || Managers.Instance == null)
+            return;
+
+        bubble.ResetForPool();
+        Managers.Pool.Release(bubble.gameObject);
+    }
+
+    /// <summary>손님이 풀로 돌아가거나 제거될 때 표시 중인 말풍선도 즉시 반납합니다.</summary>
     private void OnDisable()
     {
         StopNoise();
-        if (uiBubble != null && Managers.Instance != null)
-        {
-            uiBubble.ResetForPool();
-            Managers.Pool.Release(uiBubble.gameObject);
-        }
+        ReleaseBubble(uiBubble);
+        ReleaseBubble(hidingBubble);
         uiBubble = null;
+        hidingBubble = null;
     }
 
     #endregion

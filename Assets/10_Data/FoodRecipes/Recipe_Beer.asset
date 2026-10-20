@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8a834eafa5be6f242af385d9b728a301, type: 3}
+  m_Name: Recipe_Beer
+  m_EditorClassIdentifier: Assembly-CSharp::FoodRecipeData
+  Type: 1
+  FoodName: 맥주
+  Ingredients: []
+  CookingMachineType: 1
+  MenuPrefab: {fileID: 6658021417841733508, guid: f766e0d40028a6b438fceaf5b687ffbe, type: 3}
+  CookingDuration: 1.5
+  Pay: 0

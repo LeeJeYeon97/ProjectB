@@ -3,7 +3,6 @@ using UnityEngine;
 
 public class Counter : InteractableBase
 {
-    protected override Define.InteractionType DefaultInteractionType => Define.InteractionType.CollectPayment;
     [Header("Money Spawn Settings")]
     [SerializeField] private GameObject moneyPrefab;      // 돈 프리팹 (Item_Money)
     [SerializeField] private Transform moneySpawnPoint;    // 돈이 스폰될 카운터 상판 좌표
@@ -32,24 +31,7 @@ public class Counter : InteractableBase
     public override float Duration => collectDuration;
     public bool HasWaitingCustomers => waitingCustomers.Count > 0;
 
-    protected override void Awake()
-    {
-        base.Awake();
-        Managers.Game.Counter = this;
-        if (moneySpawnPoint == null)
-        {
-            var foundPoint = transform.Find("MoneySpawnPoint");
-            if (foundPoint != null)
-            {
-                moneySpawnPoint = foundPoint;
-            }
-            else
-            {
-                moneySpawnPoint = transform;
-            }
-        }
-    }
-
+    
     /// <summary>결제를 기다리는 손님을 카운터 대기 목록에 추가합니다.</summary>
     public void AddWaitingCustomer(CustomerController customer)
     {

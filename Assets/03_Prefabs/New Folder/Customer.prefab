@@ -310,7 +310,7 @@ Transform:
   m_GameObject: {fileID: 2558348687201218471}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.0000026226044, y: 1.997084, z: -0.051309884}
+  m_LocalPosition: {x: -0.0000026226044, y: 2.8, z: -0.051309884}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1097,17 +1097,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CustomerResolve
   interactionType: 0
-  availableMenus: 0
-  machineId: 
-  upgradeIds: []
-  beerPrefab: {fileID: 0}
-  testMealPrefab: {fileID: 0}
-  testMealChance: 0.35
-  spawnPoint: {fileID: 0}
-  cupDisplayPoint: {fileID: 0}
-  productionDuration: 2
-  dishCount: 1
-  maxDishCount: 10
   bubbleAnchor: {fileID: 7718849833976465513}
   customer: {fileID: 4352023981841982129}
   workDuration: 2.5

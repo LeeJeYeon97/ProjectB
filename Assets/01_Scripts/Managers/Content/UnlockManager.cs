@@ -106,18 +106,6 @@ public class UnlockManager
             GameObject targetGo = Managers.Resource.Instantiate(anchor.NodeData.targetPrefab, anchor.SpawnPosition, anchor.SpawnRotation);
             targetGo.name = objName;
 
-            // 해금 앵커의 고정 ID를 기계 저장 ID로 사용해 다시 생성해도 업그레이드가 이어지게 합니다.
-            // 프리팹 종류와 관계없이 공통 업그레이드 연결부가 있으면 해금 ID를 저장 ID로 씁니다.
-            MonoBehaviour[] components = targetGo.GetComponentsInChildren<MonoBehaviour>(true);
-            foreach (MonoBehaviour component in components)
-            {
-                if (component is InteractableBase machine && machine.UpgradeIds.Count > 0)
-                {
-                    machine.SetMachineId(anchor.UniqueID);
-                    break;
-                }
-            }
-
             if (!immediate)
             {
                 targetGo.transform.localScale = Vector3.zero;

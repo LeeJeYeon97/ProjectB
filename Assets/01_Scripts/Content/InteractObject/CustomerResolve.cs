@@ -4,7 +4,6 @@ using UnityEngine;
 [RequireComponent(typeof(SphereCollider))]
 public class CustomerResolve : InteractableBase
 {
-    protected override Define.InteractionType DefaultInteractionType => Define.InteractionType.ResolveCustomer;
     [SerializeField] private CustomerController customer;
     [SerializeField, Min(0.1f)] private float workDuration = 2.5f;
 

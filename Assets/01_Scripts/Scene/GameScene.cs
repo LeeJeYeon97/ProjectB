@@ -41,8 +41,6 @@ public class GameScene : BaseScene
     private void InitUI()
     {
         Managers.UI.ShowSceneUI<UI_GameScene>();
-        // 한 화면만 풀에서 꺼내 두고 모든 기계 탭에서 대상만 바꿔 사용합니다.
-        Managers.UI.EnsureMachineUpgradeUI();
 
         // 씬의 상호작용 객체가 UI 프리팹 로드 전에 활성화됐을 수 있어 상태를 다시 표시합니다.
         foreach (InteractableBase interaction in FindObjectsByType<InteractableBase>(FindObjectsSortMode.None))

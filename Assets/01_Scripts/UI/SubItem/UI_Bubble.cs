@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.UI;
 using DG.Tweening;
@@ -52,16 +53,34 @@ public class UI_Bubble : UI_Base
         HideAll();
     }
 
-    /// <summary>말풍선이 화면에서 따라갈 상호작용 오브젝트의 기준점을 연결합니다.</summary>
+    /// <summary>말풍선을 소유 객체의 기준점 아래로 옮기고 그 위치에 맞춥니다.</summary>
     public void SetAnchor(Transform anchor)
     {
         bubbleAnchor = anchor;
+
+        if (bubbleAnchor == null)
+            return;
+
+        // 공용 UI 루트에서 생성되거나 풀에서 재사용된 말풍선도 실제 소유자의 자식으로 옮깁니다.
+        // 기존 월드 크기를 유지한 채 부모를 바꿔, 서로 다른 객체의 크기 설정에 영향을 받지 않게 합니다.
+        transform.SetParent(bubbleAnchor, true);
+
+        // 기준점 자체가 말풍선의 위치이므로 프리팹의 임시 위치값을 제거합니다.
+        transform.position = bubbleAnchor.position;
+        // 첫 화면에서도 세로 비율이 눌리지 않도록 카메라와 같은 방향을 바라봅니다.
+        Camera viewCamera = Camera.main;
+        transform.rotation = viewCamera != null ? viewCamera.transform.rotation : Quaternion.identity;
     }
 
-    /// <summary>월드 공간 말풍선을 연결된 기준점의 위치에 맞춰 매 프레임 배치합니다.</summary>
+    /// <summary>월드 공간 말풍선의 화면 표시 여부와 방향을 갱신합니다.</summary>
     private void LateUpdate()
     {
-        // 월드 공간 Canvas를 유지하고, 기준점이 카메라 화면 안에 있을 때만 표시합니다.
+        // 부모의 회전이나 풀에서 가져온 RectTransform 위치값과 관계없이 기준점의 월드 위치에 고정합니다.
+        // 카메라 각도가 바뀌어도 말풍선 중심은 항상 소유자의 같은 위치를 따라갑니다.
+        if (bubbleAnchor != null)
+            transform.position = bubbleAnchor.position;
+
+        // 월드 위치를 확정한 뒤 화면 안에 있는지 확인합니다.
         Camera viewCamera = Camera.main;
         if (bubbleAnchor == null || viewCamera == null || bubbleCanvas == null)
         {
@@ -76,9 +95,10 @@ public class UI_Bubble : UI_Base
 
         // 카메라 뒤쪽이나 화면 밖에 있는 대상은 말풍선만 숨겨 둡니다.
         bubbleCanvas.enabled = canShow;
-        if (canShow && bubbleRect != null)
+        if (bubbleRect != null)
         {
-            bubbleRect.position = bubbleAnchor.position;
+            // 월드 공간 Canvas의 정면을 카메라와 나란히 맞춰 비스듬한 투영으로 눌리지 않게 합니다.
+            bubbleRect.rotation = viewCamera.transform.rotation;
         }
     }
 
@@ -170,7 +190,8 @@ public class UI_Bubble : UI_Base
         }
     }
 
-    public void Hide()
+    /// <summary>말풍선을 닫고 실제로 비활성화된 뒤 요청한 완료 동작을 호출합니다.</summary>
+    public void Hide(Action onHidden = null)
     {
         Init();
 
@@ -180,6 +201,8 @@ public class UI_Bubble : UI_Base
         if (!gameObject.activeSelf)
         {
             HideAll();
+            // 이미 닫힌 말풍선도 호출자가 즉시 풀에 반납할 수 있도록 완료를 알립니다.
+            onHidden?.Invoke();
             return;
         }
 
@@ -189,6 +212,8 @@ public class UI_Bubble : UI_Base
             HideAll();
             transform.localScale = Vector3.zero;
             gameObject.SetActive(false);
+            // 애니메이션을 생략한 경우에도 비활성화가 끝난 뒤에만 반환합니다.
+            onHidden?.Invoke();
             return;
         }
 
@@ -203,6 +228,8 @@ public class UI_Bubble : UI_Base
                 transform.localScale = Vector3.zero;
                 gameObject.SetActive(false);
                 bubbleTween = null;
+                // 닫힘 연출이 끝난 시점에 소유자가 말풍선을 풀로 돌려보낼 수 있습니다.
+                onHidden?.Invoke();
             });
     }
 

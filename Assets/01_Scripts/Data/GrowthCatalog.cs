@@ -17,8 +17,6 @@ public class GrowthItem
     public string title;
     public int[] prices;
     public float[] values;
-    [Tooltip("기계별 업그레이드 화면에서만 구매하는 항목인지 설정합니다.")]
-    public bool isMachineUpgrade;
     [Tooltip("다음 단계 효과를 표시하는 문장입니다. 값은 {0} 위치에 들어갑니다.")]
     public string effectFormat = "효과 +{0}";
     [Tooltip("효과 문장에 넣기 전에 단계 값을 곱할 수치입니다.")]

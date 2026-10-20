@@ -70,11 +70,6 @@ public class UI_GameScene : UI_Scene
         BindGrowthButton("player_speed", Define.GameSceneButtons.Button_player_speed);
         BindGrowthButton("player_stack", Define.GameSceneButtons.Button_player_stack);
         BindGrowthButton("player_interact", Define.GameSceneButtons.Button_player_interact);
-        // 기존 공용 기계 버튼은 기계별 업그레이드 목록으로 대체합니다.
-        Button oldMachineButton = GetButton((int)Define.GameSceneButtons.Button_machine_capacity);
-        if (oldMachineButton != null)
-            oldMachineButton.gameObject.SetActive(false);
-
         Button placeChairButton = GetButton((int)Define.GameSceneButtons.Button_PlaceChair);
         if (placeChairButton != null)
         {
@@ -210,7 +205,7 @@ public class UI_GameScene : UI_Scene
     /// <summary>업그레이드별 숫자를 플레이어가 이해하기 쉬운 증가/감소 값으로 표시합니다.</summary>
     private static string FormatGrowthValue(string id, float value)
     {
-        if (id == "player_stack" || id == "machine_capacity")
+        if (id == "player_stack")
             return $"+{Mathf.RoundToInt(value)}개";
         if (id == "player_interact")
             return $"-{value * 100f:0}% 시간";

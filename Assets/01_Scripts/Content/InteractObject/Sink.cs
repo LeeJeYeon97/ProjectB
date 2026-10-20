@@ -4,7 +4,6 @@ using UnityEngine;
 
 public class Sink : InteractableBase
 {
-    protected override Define.InteractionType DefaultInteractionType => Define.InteractionType.WashDish;
 
     [Header("설거지 설정")]
     [SerializeField] private float workDuration = 3.0f;
@@ -15,24 +14,16 @@ public class Sink : InteractableBase
     [SerializeField] private Vector3 cleanDishDisplayOffset = new Vector3(0f, 1f, 0f);
     [SerializeField] private float displayHeight = 0.15f;
 
+    [Header("깨끗한 잔 회수")]
+    [SerializeField, Min(0f)] private float transferInterval = 0.5f;
+
     // 진열 중인 잔 오브젝트를 보관해, 플레이어가 가져갈 때 실제 오브젝트를 넘깁니다.
     private readonly List<GameObject> displayedDishes = new List<GameObject>();
     private int pendingDisplayCount;
-    private float upgradedWorkDuration;
+    private float nextTransferTime;
 
     /// <summary>싱크대에서 설거지를 하는 데 걸리는 기본 시간입니다.</summary>
-    public override float Duration => upgradedWorkDuration > 0f ? upgradedWorkDuration : workDuration;
-
-    /// <summary>해금 앵커가 가진 안정된 ID를 이 싱크대의 저장 ID로 사용합니다.</summary>
-    /// <summary>저장된 작업 속도 단계에 맞춰 설거지에 걸리는 시간을 갱신합니다.</summary>
-    public override void ApplyGrowth()
-    {
-        float reduction = Managers.Growth != null
-            ? Managers.Growth.GetMachineUpgradeValue(MachineId, "sink_work_speed")
-            : 0f;
-
-        upgradedWorkDuration = Mathf.Max(0.1f, workDuration * (1f - Mathf.Clamp01(reduction)));
-    }
+    public override float Duration => workDuration;
 
     protected override void OnEnable()
     {
@@ -46,6 +37,7 @@ public class Sink : InteractableBase
     protected override void OnDisable()
     {
         base.OnDisable();
+        nextTransferTime = 0f;
 
         // 비활성화된 싱크대가 재고 변경 알림을 계속 받지 않게 합니다.
         if (Managers.Instance != null)
@@ -62,18 +54,9 @@ public class Sink : InteractableBase
         return Duration * player.InteractionTimeScale;
     }
 
-    /// <summary>저장 자료와 업그레이드 UI를 연결하고, 재고에 기록된 깨끗한 잔을 진열합니다.</summary>
+    /// <summary>재고에 기록된 깨끗한 잔을 싱크대에 진열합니다.</summary>
     private void Start()
     {
-        if (Managers.Growth != null && !string.IsNullOrEmpty(MachineId))
-        {
-            Managers.Growth.RegisterMachine(this);
-            ApplyGrowth();
-        }
-
-        // 모든 기계가 사용하는 업그레이드 화면을 풀에서 한 번만 준비합니다.
-        Managers.UI?.EnsureMachineUpgradeUI();
-
         if (Managers.Dish == null)
             return;
 
@@ -193,6 +176,25 @@ public class Sink : InteractableBase
         dish.transform.SetParent(null);
         stack.PickUpItem(dish);
         return true;
+    }
+
+    /// <summary>회수 구역에 머무는 플레이어가 잔을 들 수 있으면 진열된 잔을 한 개씩 건넵니다.</summary>
+    protected override void OnTriggerStay(Collider other)
+    {
+        // 공통 범위 상태는 부모가 갱신하고, 여기서는 깨끗한 잔 회수만 처리합니다.
+        base.OnTriggerStay(other);
+
+        if (Time.time < nextTransferTime)
+            return;
+
+        GameObject actor = GetActor(other);
+        if (actor == null)
+            return;
+
+        // 진열 재고와 플레이어의 손 상태는 잔 회수 함수에서 확인합니다.
+        // 실제 이동에 성공했을 때만 다음 잔을 위한 대기 시간을 설정합니다.
+        if (TryTakeCleanDish(actor))
+            nextTransferTime = Time.time + transferInterval;
     }
 
     /// <summary>깨끗한 잔 하나를 싱크대 위에 보이는 오브젝트로 추가합니다.</summary>

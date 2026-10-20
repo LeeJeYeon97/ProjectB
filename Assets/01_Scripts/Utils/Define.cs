@@ -16,40 +16,30 @@ public class Define
         ResolveCustomer
     }
 
-    /// <summary>제조 기계가 만들 수 있는 메뉴를 여러 개 함께 지정합니다.</summary>
-    [System.Flags]
-    public enum MenuType
+    /// <summary>레시피 하나가 나타내는 메뉴의 종류입니다.</summary>
+    public enum FoodType
     {
         None = 0,
         Beer = 1,
-        TestMeal = 2
+        ttuckBokki = 2,
+        Udong = 3,
+        Ramen = 4,
+        Gimbab = 5,
+        OdengTang = 6,
+        EggMali = 7,
+        TobuKimchi = 8,
+        ChickenFoot = 9,
+        KimchiGGigae = 10,
     }
-
-    /// <summary>공용 기계 업그레이드 프리팹의 버튼 이름입니다.</summary>
-    public enum MachineUpgradeButtons
+    public enum FoodIngredientType
     {
-        Button_Close,
-        Button_Capacity,
-        Button_Speed
+        None = 0,
     }
-
-    /// <summary>공용 기계 업그레이드 프리팹의 글자 이름입니다.</summary>
-    public enum MachineUpgradeTexts
+    public enum FoodCookingMachineType
     {
-        Text_Title,
-        Text_CapacityName,
-        Text_CapacityInfo,
-        Text_CapacityPrice,
-        Text_SpeedName,
-        Text_SpeedInfo,
-        Text_SpeedPrice
-    }
+        None = 0,
+        BeerMachine = 1,
 
-    /// <summary>기계 옆의 별도 구역에서 자동으로 처리할 잔 이동 동작입니다.</summary>
-    public enum MachineTransferType
-    {
-        TakeCleanDish,
-        LoadCleanDish,
     }
 
     /// <summary>게임 화면에서 이름으로 연결하는 텍스트 목록입니다.</summary>
@@ -69,7 +59,6 @@ public class Define
         Button_player_speed,
         Button_player_stack,
         Button_player_interact,
-        Button_machine_capacity,
         Button_PlaceChair,
         Button_PlaceOwnedChair,
     }
@@ -119,12 +108,6 @@ public class Define
         LobbyScene,
         LoginScene,
         GameScene,
-    }
-    public enum CameraType
-    {
-        Main,
-        Boss,
-        Burst,
     }
     public enum Sound
     {

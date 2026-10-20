@@ -140,17 +140,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SeatStation
   interactionType: 0
-  availableMenus: 0
-  machineId: 
-  upgradeIds: []
-  beerPrefab: {fileID: 0}
-  testMealPrefab: {fileID: 0}
-  testMealChance: 0.35
-  spawnPoint: {fileID: 0}
-  cupDisplayPoint: {fileID: 0}
-  productionDuration: 2
-  dishCount: 1
-  maxDishCount: 10
   bubbleAnchor: {fileID: 6795824785942741845}
   currentState: 0
   servingDuration: 0

@@ -3,7 +3,6 @@ using static Define;
 
 public class SeatStation : InteractableBase
 {
-    protected override Define.InteractionType DefaultInteractionType => Define.InteractionType.ServeOrCleanSeat;
     [Header("Seat Configuration")]
     [SerializeField]
     private SeatState currentState = SeatState.Empty;

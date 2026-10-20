@@ -324,17 +324,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::UnlockStation
   interactionType: 0
-  availableMenus: 0
-  machineId: 
-  upgradeIds: []
-  beerPrefab: {fileID: 0}
-  testMealPrefab: {fileID: 0}
-  testMealChance: 0.35
-  spawnPoint: {fileID: 0}
-  cupDisplayPoint: {fileID: 0}
-  productionDuration: 2
-  dishCount: 1
-  maxDishCount: 10
   bubbleAnchor: {fileID: 3475452250138086981}
   throwInterval: 0.1
   throwAmount: 10

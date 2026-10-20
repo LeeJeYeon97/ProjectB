@@ -5,7 +5,6 @@ using TMPro;
 
 public class UnlockStation : InteractableBase
 {
-    protected override Define.InteractionType DefaultInteractionType => Define.InteractionType.Unlock;
     [Header("투척 주기 및 금액 설정")]
     [Tooltip("돈을 던지는 주기 (초)")]
     [SerializeField] private float throwInterval = 0.1f;

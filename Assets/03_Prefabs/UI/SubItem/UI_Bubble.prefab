@@ -450,7 +450,6 @@ GameObject:
   - component: {fileID: 4570132977365089024}
   - component: {fileID: 7703428601838847544}
   - component: {fileID: -2311608957072084479}
-  - component: {fileID: 7291332957427270718}
   - component: {fileID: 1864301837388420055}
   m_Layer: 5
   m_Name: UI_Bubble
@@ -557,18 +556,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Poolable
   IsUsing: 0
   IsPooled: 1
---- !u!114 &7291332957427270718
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5239707606777042329}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4d56824867dd517408f70a509961a25c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Billboard
 --- !u!114 &1864301837388420055
 MonoBehaviour:
   m_ObjectHideFlags: 0
