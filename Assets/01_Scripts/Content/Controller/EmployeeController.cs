@@ -57,8 +57,7 @@ public class EmployeeController : MonoBehaviour
     private NavMeshAgent agent;
     private Animator animator;
     private StackingSystem stacking;
-    private EmployeeWander wander;
-    private UI_BaseStation progressUI;
+
     private MenuMachine sourceMachine;
     private ServingStep servingStep;
 
@@ -91,19 +90,7 @@ public class EmployeeController : MonoBehaviour
     public float InteractionTimeScale => interactionTimeScale;
 
     /// <summary>대기 중에 직원이 서성일지 실시간으로 켜거나 끕니다.</summary>
-    public bool WanderingEnabled
-    {
-        get => wander != null && wander.WanderingEnabled;
-        set
-        {
-            if (wander == null)
-                wander = GetComponent<EmployeeWander>();
-
-            if (wander != null)
-                wander.WanderingEnabled = value;
-        }
-    }
-
+    
     /// <summary>직원이 생산한 물건을 담는 공용 스택입니다.</summary>
     public StackingSystem Stacking => stacking;
 
@@ -114,7 +101,6 @@ public class EmployeeController : MonoBehaviour
     {
         InitializeComponents();
         InitializeAgent();
-        InitializeUI();
 
         // 고용 위치를 기준으로 서성임 컴포넌트의 대기와 이동 상태를 초기화합니다.
         //wander.Initialize();
@@ -143,13 +129,6 @@ public class EmployeeController : MonoBehaviour
         if (animator == null)
             animator = GetComponent<Animator>();
 
-        //if (wander == null)
-        //    wander = GetComponent<EmployeeWander>();
-
-        // 오래된 직원 프리팹에도 컴포넌트를 보완해 고용 시 누락으로 멈추지 않게 합니다.
-        //if (wander == null)
-        //    wander = gameObject.AddComponent<EmployeeWander>();
-
         if (stacking == null)
             stacking = GetComponent<StackingSystem>();
 
@@ -169,11 +148,7 @@ public class EmployeeController : MonoBehaviour
                 }
             }
         }
-
-        if (progressUI == null)
-            progressUI = GetComponentInChildren<UI_BaseStation>(true);
     }
-
     private void InitializeAgent()
     {
         if (agent == null)
@@ -221,14 +196,6 @@ public class EmployeeController : MonoBehaviour
             agent.speed = moveSpeed + moveSpeedBonus;
     }
 
-    private void InitializeUI()
-    {
-        if (progressUI != null)
-        {
-            progressUI.SetProgress(0f);
-            progressUI.gameObject.SetActive(false);
-        }
-    }
 
     #endregion
 
@@ -282,8 +249,6 @@ public class EmployeeController : MonoBehaviour
 
     private void UpdateIdle()
     {
-        // 직원이 한가할 때의 NavMesh 이동은 별도 컴포넌트에 맡깁니다.
-        wander?.Tick();
     }
 
     #endregion
@@ -337,7 +302,7 @@ public class EmployeeController : MonoBehaviour
             {
                 servingStep = ServingStep.DeliverBeer;
             }
-            else if (heldMenu != Define.ItemType.None || !stacking.CheckListItem(Define.ItemType.Beer))
+            else if (heldMenu != Define.ItemType.None)
             {
                 return false;
             }
@@ -677,7 +642,7 @@ public class EmployeeController : MonoBehaviour
     /// <summary>직원이 손님에게 전달할 수 있는 메뉴인지 확인합니다.</summary>
     private static bool IsMenuItem(Define.ItemType itemType)
     {
-        return itemType == Define.ItemType.Beer || itemType == Define.ItemType.TestMeal;
+        return true;
     }
 
     private void UpdateCashier()
@@ -814,26 +779,14 @@ public class EmployeeController : MonoBehaviour
                 : target;
         progressTarget?.ShowTaskProgress(ratio);
 
-        // 프리팹에 기존 진행 UI가 연결되어 있으면 함께 갱신해 이전 배치도 호환합니다.
-        if (progressUI != null)
-        {
-            if (!progressUI.gameObject.activeSelf)
-                progressUI.gameObject.SetActive(true);
-
-            progressUI.SetProgress(ratio);
-        }
+       
     }
 
     private void HideProgressUI()
     {
         sourceMachine?.HideTaskProgress();
         target?.HideTaskProgress();
-
-        if (progressUI != null)
-        {
-            progressUI.SetProgress(0f);
-            progressUI.gameObject.SetActive(false);
-        }
+       
     }
 
     #endregion

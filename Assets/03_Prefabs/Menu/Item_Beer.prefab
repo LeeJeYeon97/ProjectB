@@ -137,5 +137,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ItemController
   StackType: 0
   type: 2
+  menuRecipe: {fileID: 11400000, guid: b2e0954a773c4c47b8498bc23f17a3d1, type: 2}
   Value: 0
   itemHeight: 0.5

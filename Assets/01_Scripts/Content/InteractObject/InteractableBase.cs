@@ -6,7 +6,7 @@ using UnityEngine;
 /// </summary>
 public abstract class InteractableBase : MonoBehaviour
 {
-    private static readonly int playerLayer = LayerMask.NameToLayer("Player");
+    private int playerLayer;
 
     [Header("상호작용 종류")]
     [SerializeField] private Define.InteractionType interactionType;
@@ -66,6 +66,10 @@ public abstract class InteractableBase : MonoBehaviour
     protected virtual void OnPlayerStartingInteraction(GameObject actor) { }
 
 
+    private void Awake()
+    {
+        playerLayer = LayerMask.NameToLayer("Player");
+    }
     protected static bool TryGetPlayer(GameObject actor, out PlayerController player)
     {
         player = actor != null ? actor.GetComponent<PlayerController>() : null;
@@ -73,7 +77,7 @@ public abstract class InteractableBase : MonoBehaviour
     }
 
     /// <summary>상호작용 범위에 들어온 콜라이더가 속한 플레이어나 직원을 찾습니다.</summary>
-    protected static GameObject GetActor(Collider other)
+    protected GameObject GetActor(Collider other)
     {
         if (other == null)
             return null;

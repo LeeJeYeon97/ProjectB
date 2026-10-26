@@ -14,11 +14,11 @@ public class FoodIngredient
 [CreateAssetMenu(fileName = "FoodRecipeData", menuName = "Content/FoodRecipeData")]
 public class FoodRecipeData : ScriptableObject
 {
-    [Header("메뉴 타입")]
-    public Define.FoodType Type;
-
     [Header("메뉴 이름")]
     public string FoodName;
+
+    [Header("주문 말풍선 이미지")]
+    public Sprite OrderIcon;
 
     [Header("요구 재료")]
     public List<FoodIngredient> Ingredients = new List<FoodIngredient>();

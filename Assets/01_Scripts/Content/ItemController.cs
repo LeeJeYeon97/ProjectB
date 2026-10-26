@@ -5,6 +5,9 @@ public class ItemController : MonoBehaviour
 {
     public Define.StackType StackType;
     public Define.ItemType type;
+    [Tooltip("메뉴 아이템일 때만 연결하는 제조 레시피입니다.")]
+    [SerializeField] private FoodRecipeData menuRecipe;
+    public FoodRecipeData MenuRecipe => menuRecipe;
     public int Value;
 
 

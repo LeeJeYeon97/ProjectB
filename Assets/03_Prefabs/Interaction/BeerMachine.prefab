@@ -155,16 +155,15 @@ MonoBehaviour:
   m_GameObject: {fileID: 6879786950960892166}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 885fea0b99816754c984f6bf261a1f52, type: 3}
+  m_Script: {fileID: 11500000, guid: 6d971e845fb74e00a6b88c4e5b6693b8, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::BeerMachine
+  m_EditorClassIdentifier: Assembly-CSharp::MenuMachine
   interactionType: 1
   bubbleAnchor: {fileID: 6442186394015049379}
+  type: 1
   recipe: {fileID: 11400000, guid: b2e0954a773c4c47b8498bc23f17a3d1, type: 2}
   spawnPoint: {fileID: 532510816925859904}
-  transferInterval: 0.5
-  dishCount: 1
-  maxDishCount: 10
+  minimumProductionDuration: 0.5
 --- !u!1 &9020172399902911650
 GameObject:
   m_ObjectHideFlags: 0

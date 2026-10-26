@@ -16,91 +16,24 @@ public class Define
         ResolveCustomer
     }
 
-    /// <summary>레시피 하나가 나타내는 메뉴의 종류입니다.</summary>
-    public enum FoodType
-    {
-        None = 0,
-        Beer = 1,
-        ttuckBokki = 2,
-        Udong = 3,
-        Ramen = 4,
-        Gimbab = 5,
-        OdengTang = 6,
-        EggMali = 7,
-        TobuKimchi = 8,
-        ChickenFoot = 9,
-        KimchiGGigae = 10,
-    }
     public enum FoodIngredientType
     {
         None = 0,
+        Water = 1,
+        UdonNoddle = 2,
+        UdonSauce = 3,
     }
     public enum FoodCookingMachineType
     {
         None = 0,
         BeerMachine = 1,
+        UdonMachine = 2,
 
     }
 
-    /// <summary>게임 화면에서 이름으로 연결하는 텍스트 목록입니다.</summary>
-    public enum GameSceneTexts
-    {
-        Text_Money,
-        Text_EmployeeWorkGrowth,
-        Text_SeatCount,
-        Text_ReviewScore,
-    }
+    
 
-    /// <summary>게임 화면에서 이름으로 연결하는 버튼 목록입니다.</summary>
-    public enum GameSceneButtons
-    {
-        Button_HireEmployee,
-        Button_Growth,
-        Button_player_speed,
-        Button_player_stack,
-        Button_player_interact,
-        Button_PlaceChair,
-        Button_PlaceOwnedChair,
-    }
-
-    /// <summary>게임 화면에서 이름으로 연결하는 패널과 복제용 원본 목록입니다.</summary>
-    public enum GameSceneObjects
-    {
-        Panel_Growth,
-        Button_EmployeeGrowthTemplate,
-    }
-
-    /// <summary>퀘스트 UI에서 이름으로 연결할 텍스트 요소입니다.</summary>
-    public enum QuestTexts
-    {
-        Text_QuestTitle,
-        Text_QuestDescription,
-        Text_QuestProgress,
-    }
-
-    /// <summary>퀘스트 UI에서 이름으로 연결할 이미지 요소입니다.</summary>
-    public enum QuestImages
-    {
-        Image_ProgressFill,
-    }
-
-    /// <summary>말풍선 프리팹에서 이름으로 연결할 이미지 요소입니다.</summary>
-    public enum BubbleImages
-    {
-        Image_Bg,
-        Image_Progress,
-        Image_Food,
-        Image_Clean,
-        Image_Payment,
-        Image_Beer,
-        Image_BeerEmpty,
-    }
-
-    /// <summary>말풍선 프리팹에서 이름으로 연결할 글자 요소입니다.</summary>
-    public enum BubbleTexts
-    {
-        Text_Disturbance,
-    }
+    
     
     public enum Scene
     {
@@ -135,19 +68,26 @@ public class Define
     {
         QuarterView,
     }
+    /// <summary>플레이어의 화면 터치와 클릭 이동 방식을 고릅니다.</summary>
+    public enum MovementControlMode
+    {
+        DragOnly,     // 화면 드래그로만 직접 조작합니다.
+        ClickToMove,  // 누른 지점까지 이동합니다.
+        Both          // 직접 조작과 지점 이동을 함께 사용합니다.
+    }
     public enum StackType
     {
         Stack,
         NoStack,
     }
+    /// <summary>플레이어가 들 수 있는 물건의 큰 분류와 기존 잔의 상태를 구별합니다.</summary>
     public enum ItemType
     {
-        None,
-        Money,
-        Beer,
-        Beer_Empty,
-        Beer_Dirty,
-        TestMeal, // 두 번째 메뉴 서빙과 오주문 리뷰를 시험하는 임시 메뉴입니다.
+        None = 0,
+        Money = 1,
+        Menu = 2,          // 메뉴의 이름은 아이템에 연결한 레시피로 구별합니다.
+        Beer_Empty = 3,
+        Beer_Dirty = 4,
     }
 
     /// <summary>퀘스트가 감시할 게임 행동의 종류입니다.</summary>
@@ -196,6 +136,9 @@ public class Define
         Table,
         BeerMachine,
         Sink,
+        Fridge,
+        UdonMachine,
+
 
     }
     public enum CustomerState

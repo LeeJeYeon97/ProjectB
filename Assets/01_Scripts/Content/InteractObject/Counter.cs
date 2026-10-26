@@ -6,6 +6,7 @@ public class Counter : InteractableBase
     [Header("Money Spawn Settings")]
     [SerializeField] private GameObject moneyPrefab;      // 돈 프리팹 (Item_Money)
     [SerializeField] private Transform moneySpawnPoint;    // 돈이 스폰될 카운터 상판 좌표
+    public Transform MoneySpawnPoint => moneySpawnPoint != null ? moneySpawnPoint : transform;
 
     [Header("돈 쌓기 설정")]
     [Tooltip("한 줄에 놓을 돈 묶음 수입니다.")]
@@ -22,16 +23,43 @@ public class Counter : InteractableBase
     [SerializeField] private Transform payPoint; //손님이 돈을 낼 위치
     public Transform PayPoint => payPoint;
 
-    public Transform MoneySpawnPoint => moneySpawnPoint != null ? moneySpawnPoint : transform;
-
     [Header("수금 설정")]
     [SerializeField] private float collectDuration = 0.5f;
-    private readonly Queue<CustomerController> waitingCustomers = new();
-
     public override float Duration => collectDuration;
+
+    private readonly Queue<CustomerController> waitingCustomers = new();
     public bool HasWaitingCustomers => waitingCustomers.Count > 0;
 
-    
+    /// <summary>계산대가 씬에 나타나면 손님 이동에 사용할 계산대로 등록합니다.</summary>
+    protected override void OnEnable()
+    {
+        base.OnEnable();
+
+        if (!Application.isPlaying)
+            return;
+
+        // 해금으로 생성되는 계산대도 손님이 즉시 찾을 수 있도록 현재 인스턴스를 저장합니다.
+        Managers.Game.Counter = this;
+    }
+
+    /// <summary>계산대가 씬에서 사라질 때 이 계산대의 전역 참조를 해제합니다.</summary>
+    protected override void OnDisable()
+    {
+        if (Application.isPlaying)
+        {
+            if (Managers.Instance != null && Managers.Game.Counter == this)
+                Managers.Game.Counter = null;
+        }
+
+        base.OnDisable();
+    }
+
+    /// <summary>수금된 돈을 제외하고 계산대에 남은 돈의 배치를 갱신합니다.</summary>
+    private void LateUpdate()
+    {
+        RefreshMoney();
+    }
+
     /// <summary>결제를 기다리는 손님을 카운터 대기 목록에 추가합니다.</summary>
     public void AddWaitingCustomer(CustomerController customer)
     {
@@ -81,12 +109,6 @@ public class Counter : InteractableBase
         CreateMoney(review.FinalPay);
         customer.CompletePayment();
         return true;
-    }
-
-    /// <summary>수집된 돈을 제외하고 남은 돈을 아래층부터 빈틈없이 다시 배치합니다.</summary>
-    private void LateUpdate()
-    {
-        RefreshMoney();
     }
 
     /// <summary>카운터를 떠난 돈을 목록에서 빼고, 빈자리가 생겼을 때만 배치를 갱신합니다.</summary>

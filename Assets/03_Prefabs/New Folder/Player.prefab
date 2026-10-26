@@ -719,6 +719,7 @@ GameObject:
   - component: {fileID: 4770193205452869628}
   - component: {fileID: 4496450128023759900}
   - component: {fileID: 50522842738626156}
+  - component: {fileID: 6651341963180959442}
   m_Layer: 6
   m_Name: Player
   m_TagString: Player
@@ -726,6 +727,18 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
+--- !u!114 &6651341963180959442
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2814463306196547771}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e775c45b69ab4d6daaf3ca489bb20f5d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ScreenMoveInput
 --- !u!4 &9001271603361203966
 Transform:
   m_ObjectHideFlags: 0

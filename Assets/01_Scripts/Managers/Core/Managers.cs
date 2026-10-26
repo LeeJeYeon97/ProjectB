@@ -163,14 +163,13 @@ public class Managers : MonoBehaviour
 
         }
     }
-
+    private void Awake()
+    {
+        Game.OnAwake();
+    }
     private void Update()
     {
         Customer.OnUpdate();
-    }
-    private void LateUpdate()
-    {
-        Effect.OnLateUpdate();
     }
     public void Clear()
     {

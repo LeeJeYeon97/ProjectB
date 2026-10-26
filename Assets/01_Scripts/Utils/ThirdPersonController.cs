@@ -4,16 +4,9 @@ using UnityEngine.InputSystem;
 [RequireComponent(typeof(CharacterController))]
 public class ThirdPersonController : MonoBehaviour
 {
-    public enum MovementControlMode
-    {
-        JoystickAndWASD, // 가상 조이스틱 및 키보드(WASD) 직접 조작
-        ClickToMove,     // 마우스 클릭 및 터치 탭 목적지 이동
-        Both             // 하이브리드 (직접 조작 입력 시 클릭 이동 자동 취소)
-    }
-
     [Header("Movement Settings")]
     [Tooltip("플레이어 이동 제어 모드를 설정합니다.")]
-    public MovementControlMode controlMode = MovementControlMode.Both;
+    public Define.MovementControlMode controlMode = Define.MovementControlMode.Both;
     
     [Tooltip("이동 속도")]
     [SerializeField] private float moveSpeed = 5f;
@@ -29,7 +22,7 @@ public class ThirdPersonController : MonoBehaviour
     [SerializeField] private LayerMask groundLayer;
 
     [Header("Input System Actions (Decoupled)")]
-    [Tooltip("조이스틱, 키보드 WASD, 게임패드 스틱을 입력받을 Vector2 액션")]
+    [Tooltip("키보드 WASD와 게임패드 스틱을 입력받을 Vector2 액션")]
     [SerializeField] public InputActionProperty moveAction;
 
     [Tooltip("클릭 또는 모바일 화면 탭을 감지할 Button 액션")]
@@ -43,6 +36,7 @@ public class ThirdPersonController : MonoBehaviour
     private Animator animator;
     private StackingSystem stackingSystem;
     private Camera mainCamera;
+    private ScreenMoveInput screenMoveInput;
     
     // 상태 제어 변수
     private Vector3 clickTargetDestination;
@@ -55,6 +49,7 @@ public class ThirdPersonController : MonoBehaviour
         animator = GetComponent<Animator>();
         stackingSystem = GetComponentInChildren<StackingSystem>();
         mainCamera = Camera.main;
+        screenMoveInput = GetComponent<ScreenMoveInput>();
         
         if (mainCamera == null)
         {
@@ -78,6 +73,9 @@ public class ThirdPersonController : MonoBehaviour
 
     private void OnDisable()
     {
+        // 가구 배치처럼 이동을 잠시 끄는 동안 이전 터치가 남지 않게 합니다.
+        screenMoveInput?.Clear();
+
         // 클릭 이벤트 해제
         if (clickAction.action != null)
         {
@@ -122,40 +120,32 @@ public class ThirdPersonController : MonoBehaviour
     private void HandleMovement()
     {
         Vector2 input = Vector2.zero;
-        if (controlMode == MovementControlMode.JoystickAndWASD || controlMode == MovementControlMode.Both)
+        if (controlMode == Define.MovementControlMode.Both)
         {
             input = moveAction.action != null ? moveAction.action.ReadValue<Vector2>() : Vector2.zero;
         }
 
-        // 1. 직접 조작 입력(조이스틱 / WASD)이 들어오는 경우
+        // 현재 모드에서 다른 직접 조작 입력이 없으면 화면 드래그 방향을 사용합니다.
+        if (input.sqrMagnitude <= 0.01f)
+        {
+            if (TryGetScreenDirection(out Vector2 dragDirection))
+                input = dragDirection;
+        }
+
+        // 입력 방향을 카메라 기준의 지면 방향으로 바꿉니다.
         if (input.sqrMagnitude > 0.01f)
         {
-            // 직접 움직이면 이전 클릭 이동 타겟을 즉시 해제합니다.
             hasClickTarget = false;
-
-            // 카메라가 틸트되어 있더라도 지면 평면 기준(XZ)으로 부드럽게 앞/우 벡터를 계산합니다.
             Vector3 cameraForward = mainCamera.transform.forward;
             Vector3 cameraRight = mainCamera.transform.right;
             cameraForward.y = 0f;
             cameraRight.y = 0f;
             cameraForward.Normalize();
             cameraRight.Normalize();
-
-            // 카메라 정렬 반영된 방향 계산
             Vector3 movementDirection = (cameraForward * input.y + cameraRight * input.x).normalized;
-
-            // 중력 및 이동 벡터 계산
-            Vector3 moveVector = movementDirection * (moveSpeed + growthSpeedBonus);
-            moveVector.y = verticalVelocity;
-
-            characterController.Move(moveVector * Time.deltaTime);
-
-            // 이동 방향으로 스무스한 회전
-            Quaternion targetRotation = Quaternion.LookRotation(movementDirection);
-            transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
+            MoveInDirection(movementDirection);
         }
-        // 2. 직접 조작 입력이 없고 클릭 이동 타겟이 존재하는 경우
-        else if (hasClickTarget && (controlMode == MovementControlMode.ClickToMove || controlMode == MovementControlMode.Both))
+        else if (hasClickTarget && (controlMode == Define.MovementControlMode.ClickToMove || controlMode == Define.MovementControlMode.Both))
         {
             Vector3 currentPos = transform.position;
             currentPos.y = clickTargetDestination.y; // 높이 오차 배제
@@ -166,33 +156,64 @@ public class ThirdPersonController : MonoBehaviour
             {
                 Vector3 direction = (clickTargetDestination - currentPos).normalized;
 
-                Vector3 moveVector = direction * (moveSpeed + growthSpeedBonus);
-                moveVector.y = verticalVelocity;
-
-                characterController.Move(moveVector * Time.deltaTime);
-
-                // 목적지 방향으로 스무스한 회전
-                Quaternion targetRotation = Quaternion.LookRotation(direction);
-                transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
+                MoveInDirection(direction);
             }
             else
             {
                 hasClickTarget = false;
+                MoveWithGravity();
             }
         }
-        // 3. 아무 입력이 없을 때는 중력에 의해 떨어지도록 처리
         else
         {
-            // 조건문(if)을 지우고 매 프레임 무조건 중력 방향으로 Move를 호출합니다.
-            // X, Z 값에 0이 들어가므로 characterController.velocity 값이 즉시 0으로 갱신됩니다.
-            characterController.Move(new Vector3(0f, verticalVelocity, 0f) * Time.deltaTime);
+            MoveWithGravity();
         }
+    }
+
+    /// <summary>직접 조작 모드에서만 화면 드래그의 방향을 읽습니다.</summary>
+    private bool TryGetScreenDirection(out Vector2 direction)
+    {
+        direction = Vector2.zero;
+        if (controlMode == Define.MovementControlMode.ClickToMove)
+            return false;
+
+        if (screenMoveInput == null)
+            return false;
+
+        return screenMoveInput.TryGetDirection(out direction);
+    }
+
+    /// <summary>입력 종류와 상관없이 같은 속도와 회전 방식으로 플레이어를 움직입니다.</summary>
+    private void MoveInDirection(Vector3 direction)
+    {
+        Vector3 moveVector = direction * (moveSpeed + growthSpeedBonus);
+        moveVector.y = verticalVelocity;
+        characterController.Move(moveVector * Time.deltaTime);
+
+        Quaternion targetRotation = Quaternion.LookRotation(direction);
+        transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
+    }
+
+    /// <summary>화면 입력이 없거나 목표 지점에 도착하면 수평 이동 없이 중력만 적용합니다.</summary>
+    private void MoveWithGravity()
+    {
+        characterController.Move(new Vector3(0f, verticalVelocity, 0f) * Time.deltaTime);
     }
 
     private void OnClickPerformed(InputAction.CallbackContext context)
     {
-        // 조이스틱 온리 모드이면 클릭 이동 무시
-        if (controlMode == MovementControlMode.JoystickAndWASD) return;
+        // 화면 터치 직접 이동 모드이면 별도의 클릭 이동을 시작하지 않습니다.
+        if (controlMode == Define.MovementControlMode.DragOnly) return;
+
+        // 화면 이동을 사용하는 모드에서는 손을 뗀 뒤 탭 이동이 다시 시작되지 않게 합니다.
+        if (controlMode == Define.MovementControlMode.Both)
+        {
+            if (screenMoveInput != null)
+            {
+                if (context.control.device is Touchscreen)
+                    return;
+            }
+        }
 
         if (pointerPositionAction.action == null) return;
         Vector2 pointerPos = pointerPositionAction.action.ReadValue<Vector2>();

@@ -283,11 +283,8 @@ public class TaskManager
             if (!worker.HasTask(task.Type))
                 continue;
 
-            // 청소 직원은 잔을 담을 자리가 있어야 하고, 설거지 직원은 더러운 잔을 들고 있어야 합니다.
-            if (task.Type == EmployeeTaskType.Cleaning &&
-                (worker.Stacking == null || !worker.Stacking.CheckListItem(Define.ItemType.Beer_Dirty)))
-                continue;
-
+            // 청소에서는 회수 물건을 만들지 않으므로 직원 스택 공간을 확인하지 않습니다.
+            // 설거지 작업은 기존 더러운 잔 재고가 있을 때만 배정합니다.
             if (task.Type == EmployeeTaskType.DishWash && !HasDirtyDish(worker))
                 continue;
 

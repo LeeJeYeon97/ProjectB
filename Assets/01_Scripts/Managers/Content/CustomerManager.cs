@@ -22,6 +22,8 @@ public class CustomerManager
     [Header("Shop Infrastructure")]
     
     private List<CustomerController> waitingCustomers = new List<CustomerController>();
+    // 현재 사용할 수 있는 기계의 레시피만 보관합니다. 같은 메뉴의 기계가 여러 대여도 한 번만 넣습니다.
+    private readonly List<FoodRecipeData> availableRecipes = new List<FoodRecipeData>();
     private float spawnTimer = 0f;
     public float spawnInterval = 7f;        // 스폰 간격
 
@@ -67,6 +69,40 @@ public class CustomerManager
 
         // 2. 비어있는 자리 매칭 시스템
         MatchWaitingCustomersToSeats();
+    }
+
+    /// <summary>씬에서 실제로 사용할 수 있는 메뉴 기계를 찾아 주문 후보를 다시 만듭니다.</summary>
+    public void RefreshAvailableRecipes()
+    {
+        // 저장된 해금 상태를 적용한 뒤 호출해야 잠긴 기계가 주문 후보에 섞이지 않습니다.
+        availableRecipes.Clear();
+        MenuMachine[] machines = UnityEngine.Object.FindObjectsByType<MenuMachine>(FindObjectsSortMode.None);
+
+        foreach (MenuMachine machine in machines)
+        {
+            if (!machine.CanOfferRecipe)
+                continue;
+
+            FoodRecipeData recipe = machine.Recipe;
+            if (availableRecipes.Contains(recipe))
+                continue;
+
+            availableRecipes.Add(recipe);
+        }
+    }
+
+    /// <summary>현재 사용할 수 있는 기계의 레시피 중 손님이 주문할 메뉴 하나를 고릅니다.</summary>
+    public bool TryGetRandomRecipe(out FoodRecipeData recipe)
+    {
+        recipe = null;
+
+        // 해금된 메뉴 기계가 없으면 주문을 만들지 않습니다.
+        if (availableRecipes.Count == 0)
+            return false;
+
+        int index = Random.Range(0, availableRecipes.Count);
+        recipe = availableRecipes[index];
+        return true;
     }
 
     private void TrySpawnCustomer()

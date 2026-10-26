@@ -10,10 +10,16 @@ public class CustomerController : MonoBehaviour
 {
     [Header("State")]
     public CustomerState CurrentState = CustomerState.None;
+    /// <summary>손님이 줄에 도착했고 대기줄 방해 행동이 없을 때만 좌석으로 이동할 수 있습니다.</summary>
+    public bool CanLeaveQueue => CurrentState == CustomerState.WaitingAtEntrance &&
+                                 customerType != CustomerType.QueueNoiser;
 
     [SerializeField]
     private ItemType orderedType;
     public ItemType OrderedType => orderedType;
+
+    // 이 손님의 주문을 레시피 에셋 참조로 기억해 말풍선에 해당 이미지를 전달합니다.
+    private FoodRecipeData orderedRecipe;
 
     [Header("Timers")]
     public float eatingDuration = 5.0f; // 밥 먹는 시간
@@ -30,9 +36,18 @@ public class CustomerController : MonoBehaviour
     private Animator animator; // 1. 애니메이터 캐싱용 변수 추가
     private float arrivedAtTime;
     private float foodWaitSeconds;
+    /// <summary>리뷰 계산에 사용할 손님의 음식 대기 시간을 돌려줍니다.</summary>
+    public float FoodWaitSeconds => foodWaitSeconds;
+
     private int mealInterruptionCount;
+    /// <summary>리뷰 계산에 사용할 식사 중 방해 횟수를 돌려줍니다.</summary>
+    public int MealInterruptionCount => mealInterruptionCount;
+
     private CustomerType customerType = CustomerType.Normal;
     private bool servedMenuCorrectly = true;
+    /// <summary>받은 메뉴가 주문과 일치했는지 리뷰 계산에 전달합니다.</summary>
+    public bool ServedMenuCorrectly => servedMenuCorrectly;
+
     private CustomerResolve resolveWork;
     private Coroutine noiseRoutine;
     private Coroutine queueArrivalRoutine;
@@ -51,8 +66,29 @@ public class CustomerController : MonoBehaviour
     [Header("회전 설정")]
     [SerializeField] private float turnDuration = 0.35f;
 
+    /// <summary>손님의 실제 이동 속도를 애니메이터에 전달합니다.</summary>
+    private void Update()
+    {
+        // 이동 컴포넌트가 아직 준비되지 않았다면 애니메이션 값을 갱신하지 않습니다.
+        if (animator == null || agent == null)
+            return;
+
+        animator.SetFloat("Speed", agent.velocity.magnitude);
+    }
+
+    /// <summary>손님이 풀로 돌아가거나 제거될 때 소음과 말풍선 상태를 정리합니다.</summary>
+    private void OnDisable()
+    {
+        StopNoise();
+        ReleaseBubble(uiBubble);
+        ReleaseBubble(hidingBubble);
+        uiBubble = null;
+        hidingBubble = null;
+    }
+
     #region 초기화
 
+    /// <summary>손님의 주문과 이동 상태를 초기화한 뒤 입구 대기점으로 보냅니다.</summary>
     public void Init(Transform entrancePoint, Transform exit, CustomerType type = CustomerType.Normal)
     {
         // 풀에서 재사용되기 전에 남은 소음 코루틴이 새 손님의 상태에 영향을 주지 않게 합니다.
@@ -64,6 +100,7 @@ public class CustomerController : MonoBehaviour
         mealInterruptionCount = 0;
         customerType = type;
         orderedType = ItemType.None;
+        orderedRecipe = null;
         servedMenuCorrectly = true;
         gameObject.name = $"Customer_{customerType}";
 
@@ -107,6 +144,7 @@ public class CustomerController : MonoBehaviour
     }
 
 
+    /// <summary>현재 활성화된 계산대와 손님 결제 위치를 다시 가져옵니다.</summary>
     private void BindCounter()
     {
         targetCounter = Managers.Game.Counter;
@@ -115,15 +153,6 @@ public class CustomerController : MonoBehaviour
 
     #endregion
 
-    private void Update()
-    {
-        // 3. 매 프레임 에이전트의 실제 속도(velocity)를 애니메이터의 Speed 파라미터에 전달
-        if (animator != null && agent != null)
-        {
-            // 캐릭터가 움직이는 속도를 파라미터로 넘겨주어 IDLE -> WALK 전환을 트리거합니다.
-            animator.SetFloat("Speed", agent.velocity.magnitude);
-        }
-    }
     #region NavMesh 이동 보조 루틴
 
     /// <summary>
@@ -188,9 +217,6 @@ public class CustomerController : MonoBehaviour
         queueArrivalRoutine = StartCoroutine(CoCheckArrivalAtEntrance(point));
     }
 
-    /// <summary>맨 앞 손님이 실제로 줄에 도착했고 방해가 해결되었을 때만 착석을 허용합니다.</summary>
-    public bool CanLeaveQueue => CurrentState == CustomerState.WaitingAtEntrance &&
-                                 customerType != CustomerType.QueueNoiser;
     #endregion
 
 
@@ -265,11 +291,23 @@ public class CustomerController : MonoBehaviour
         if (assignedSeat == null || CurrentState != CustomerState.WaitingForFood)
             return;
 
-        // 주문이 생기기 전에는 메뉴를 정하지 않아 서빙 작업이 시작될 수 없습니다.
-        orderedType = Random.value < 0.5f ? ItemType.Beer : ItemType.TestMeal;
-        GetBubble()?.SetBubble(Define.BubbleType.FoodReady);
+        // 같은 손님에게 주문 요청이 다시 와도 이미 정한 레시피와 이미지를 유지합니다.
+        if (orderedRecipe != null)
+            return;
+
+        // 활성 기계의 레시피에서 한 가지를 고르고, 이번 손님의 주문으로 보관합니다.
+        if (!Managers.Customer.TryGetRandomRecipe(out FoodRecipeData recipe))
+        {
+            Debug.LogWarning("[Customer] 주문 가능한 메뉴가 없습니다.", this);
+            return;
+        }
+
+        orderedRecipe = recipe;
+        // 기존 직원 작업과 서빙 흐름은 메뉴 분류 값을 계속 사용합니다.
+        orderedType = ItemType.Menu;
+        GetBubble()?.SetOrder(orderedRecipe);
         Managers.Task.CreateTask(EmployeeTaskType.Serving, assignedSeat);
-        Debug.Log("손님이 자리에 앉아 자동으로 주문을 넣었습니다. (음식 대기 중)");
+        Debug.Log($"[Customer] {orderedRecipe.FoodName} 주문 완료", this);
     }
     #endregion
 
@@ -305,15 +343,6 @@ public class CustomerController : MonoBehaviour
 
         mealInterruptionCount++;
     }
-
-    /// <summary>리뷰 계산에 사용할 손님의 대기 시간을 돌려줍니다.</summary>
-    public float FoodWaitSeconds => foodWaitSeconds;
-
-    /// <summary>리뷰 계산에 사용할 식사 중 방해 횟수를 돌려줍니다.</summary>
-    public int MealInterruptionCount => mealInterruptionCount;
-
-    /// <summary>받은 메뉴가 주문과 일치했는지 리뷰 계산에 전달합니다.</summary>
-    public bool ServedMenuCorrectly => servedMenuCorrectly;
 
     /// <summary>정해진 간격으로 소음을 내고 근처 일반 손님에게 방해를 전달합니다.</summary>
     private IEnumerator CoMakeNoise()
@@ -587,16 +616,30 @@ public class CustomerController : MonoBehaviour
     {
         destination = Vector3.zero;
         BindCounter();
-        if (agent == null || targetCounter == null || counterPayPoint == null ||
-            !NavMesh.SamplePosition(transform.position, out NavMeshHit start, 2f, agent.areaMask) ||
-            !NavMesh.SamplePosition(counterPayPoint.position, out NavMeshHit end, 2f, agent.areaMask))
-        {
+
+        // 계산대가 아직 열리지 않았다면 현재 자리에 머물고 다음 시도에서 다시 찾습니다.
+        if (agent == null)
             return false;
-        }
+
+        if (targetCounter == null)
+            return false;
+
+        if (counterPayPoint == null)
+            return false;
+
+        // 손님 위치와 계산대 위치를 각각 NavMesh 위의 실제 이동 지점으로 맞춥니다.
+        if (!NavMesh.SamplePosition(transform.position, out NavMeshHit start, 2f, agent.areaMask))
+            return false;
+
+        if (!NavMesh.SamplePosition(counterPayPoint.position, out NavMeshHit end, 2f, agent.areaMask))
+            return false;
 
         agent.enabled = true;
-        if (!agent.isOnNavMesh && !agent.Warp(start.position))
-            return false;
+        if (!agent.isOnNavMesh)
+        {
+            if (!agent.Warp(start.position))
+                return false;
+        }
 
         if (!agent.isOnNavMesh)
             return false;
@@ -722,16 +765,6 @@ public class CustomerController : MonoBehaviour
 
         bubble.ResetForPool();
         Managers.Pool.Release(bubble.gameObject);
-    }
-
-    /// <summary>손님이 풀로 돌아가거나 제거될 때 표시 중인 말풍선도 즉시 반납합니다.</summary>
-    private void OnDisable()
-    {
-        StopNoise();
-        ReleaseBubble(uiBubble);
-        ReleaseBubble(hidingBubble);
-        uiBubble = null;
-        hidingBubble = null;
     }
 
     #endregion

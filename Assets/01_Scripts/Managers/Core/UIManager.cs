@@ -4,8 +4,6 @@ using UnityEngine;
 
 public class UIManager
 {
-    private UI_MachineUpgrade machineUpgradeUI;
-
     int _order = 10;
 
     Stack<UI_Popup> _popupStack = new Stack<UI_Popup>();
@@ -27,12 +25,6 @@ public class UIManager
     }
     public void Clear()
     {
-        if (machineUpgradeUI != null)
-        {
-            machineUpgradeUI.ResetForPool();
-            Managers.Pool.Release(machineUpgradeUI.gameObject);
-            machineUpgradeUI = null;
-        }
 
         CloseAllPopupUI();
         if(_sceneUI != null)
@@ -41,28 +33,6 @@ public class UIManager
         }
     }
 
-    /// <summary>모든 기계가 돌려 쓰는 업그레이드 화면을 풀에서 한 번만 꺼냅니다.</summary>
-    public UI_MachineUpgrade EnsureMachineUpgradeUI()
-    {
-        if (machineUpgradeUI != null)
-            return machineUpgradeUI;
-
-        GameObject prefab = Managers.Resource.Load<GameObject>("UI_MachineUpgrade");
-        if (prefab == null)
-            return null;
-
-        GameObject instance = Managers.Pool.Get(prefab, Root.transform).gameObject;
-        machineUpgradeUI = instance.GetComponent<UI_MachineUpgrade>();
-        if (machineUpgradeUI == null)
-        {
-            Managers.Pool.Release(instance);
-            return null;
-        }
-
-        machineUpgradeUI.Init();
-        machineUpgradeUI.ResetForPool();
-        return machineUpgradeUI;
-    }
     public void SetCanvas(GameObject go, bool sort = true)
     {
         Canvas canvas = Util.GetOrAddComponent<Canvas>(go);
@@ -148,7 +118,7 @@ public class UIManager
         if (string.IsNullOrEmpty(name))
             name = typeof(T).Name;
 
-        GameObject go = Managers.Resource.Instantiate($"UI/Popup/{name}");
+        GameObject go = Managers.Resource.Instantiate(name);
         T popup = Util.GetOrAddComponent<T>(go);
         _popupStack.Push(popup);
 

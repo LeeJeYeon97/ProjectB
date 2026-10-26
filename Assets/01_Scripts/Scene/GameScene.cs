@@ -30,6 +30,9 @@ public class GameScene : BaseScene
         // 씬에 배치된 해금 대상부터 복원해 손님이 이동할 시설을 준비합니다.
         Managers.Unlock.Init();
 
+        // 해금 복원이 끝난 뒤 실제로 켜진 기계의 레시피만 주문 후보로 등록합니다.
+        Managers.Customer.RefreshAvailableRecipes();
+
         // 시작 설비가 이미 놓인 매장은 별도 구매 과정 없이 곧바로 영업을 시작합니다.
         // 기존 씬은 기본값이 꺼짐이므로 기존 해금 순서를 그대로 사용합니다.
         if (openOnStart)

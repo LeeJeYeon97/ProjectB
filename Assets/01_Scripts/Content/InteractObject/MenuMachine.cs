@@ -1,35 +1,43 @@
 using UnityEngine;
 
-/// <summary>단일 레시피 제조와 메뉴 생성처럼 메뉴 제조 기계가 공통으로 사용하는 기능입니다.</summary>
-public abstract class MenuMachine : InteractableBase
+/// <summary>연결한 레시피를 읽고 메뉴 완성품을 만드는 기계입니다.</summary>
+public class MenuMachine : InteractableBase
 {
+    [Header("메뉴 머신 타입")]
+    [SerializeField] private Define.FoodCookingMachineType type;
+
     [Header("제조 레시피")]
     [SerializeField] private FoodRecipeData recipe;
+    /// <summary>이 기계가 사용하는 레시피를 외부에서 확인합니다.</summary>
+    public FoodRecipeData Recipe => recipe;
+    /// <summary>기계가 실제로 켜져 있고 레시피와 완성품 설정이 올바른지 확인합니다.</summary>
+    public bool CanOfferRecipe => isActiveAndEnabled && IsRecipeReady(recipe);
+    /// <summary>현재 레시피에서 설정한 제조 시간을 반환합니다.</summary>
+    public override float Duration => GetProductionDuration();
 
     [Header("메뉴 생성 위치")]
     [SerializeField] private Transform spawnPoint;
 
+    [Header("제조 시간")]
+    [Tooltip("이 기계에서 메뉴 하나를 만드는 데 필요한 최소 시간입니다.")]
+    [SerializeField, Min(0.1f)] private float minimumProductionDuration = 0.1f;
+    /// <summary>기계별로 설정한 최소 제조 시간을 반환합니다.</summary>
+    public float MinimumProductionDuration => minimumProductionDuration;
+
     private GameObject machineWorkingActor;
-
-    /// <summary>기계 종류별로 설정한 최소 제조 시간을 반환합니다.</summary>
-    public virtual float MinimumProductionDuration => 0.1f;
-
-    /// <summary>현재 레시피의 제조 시간을 반환합니다.</summary>
-    public override float Duration => GetProductionDuration();
-
-    /// <summary>이 기계가 사용하는 단일 레시피를 외부에서 확인할 수 있게 합니다.</summary>
-    public FoodRecipeData Recipe => recipe;
-
     /// <summary>현재 메뉴 제조 작업을 맡은 플레이어나 직원을 반환합니다.</summary>
     public GameObject MachineWorkingActor => machineWorkingActor;
 
-    /// <summary>특정 제조 기계에 별도 재고 조건이 있을 때 작업 가능 여부를 반환합니다.</summary>
-    protected virtual bool HasProductionStock => true;
+    private IIngredientStock ingredientStock;
 
-    /// <summary>메뉴 생성이 성공한 뒤 기계별 재고를 반영할 수 있게 합니다.</summary>
-    protected virtual void OnMenuProduced() { }
+    /// <summary>기계가 비활성화되면 현재 작업자를 정리합니다.</summary>
+    protected override void OnDisable()
+    {
+        ClearMachineWork();
+        base.OnDisable();
+    }
 
-    /// <summary>설정된 단일 레시피와 플레이어 스택의 제조 가능 여부를 확인합니다.</summary>
+    /// <summary>레시피 설정과 플레이어가 같은 메뉴를 더 들 수 있는지 확인합니다.</summary>
     public override bool CanInteract(GameObject actor)
     {
         if (!TryGetPlayer(actor, out PlayerController player))
@@ -38,26 +46,14 @@ public abstract class MenuMachine : InteractableBase
         if (player.Stacking == null)
             return false;
 
-        if (!HasProductionStock)
-            return false;
-
-        Define.ItemType heldItemType = player.Stacking.GetFirstListItemType();
-        if (heldItemType != Define.ItemType.None)
-        {
-            if (!CanProduceMenu(heldItemType))
-                return false;
-
-            return player.Stacking.CheckListItem(heldItemType);
-        }
-
         if (!IsRecipeReady(recipe))
             return false;
 
-        ItemController menuItem = recipe.MenuPrefab.GetComponent<ItemController>();
-        if (menuItem == null)
+        // 재고 공급처가 아직 없으면 모든 재료가 있다고 가정합니다.
+        if (ingredientStock != null && !ingredientStock.HasIngredients(recipe.Ingredients))
             return false;
 
-        return player.Stacking.CheckListItem(menuItem.type);
+        return player.Stacking.CanHoldMenu(recipe);
     }
 
     /// <summary>플레이어가 기계 사용을 시작하면 이 기계의 레시피 작업을 맡습니다.</summary>
@@ -121,20 +117,34 @@ public abstract class MenuMachine : InteractableBase
         return Mathf.Max(MinimumProductionDuration, baseDuration);
     }
 
-    /// <summary>아이템 프리팹의 종류와 일치하는 제조 레시피가 있는지 확인합니다.</summary>
-    public bool CanProduceMenu(Define.ItemType itemType)
+    /// <summary>
+    /// 재료 확인과 차감을 맡을 재고를 연결합니다.
+    /// 현재는 연결하지 않아 재료를 무제한으로 사용하고, 나중에 통합 또는 기계별 재고를 연결할 수 있습니다.
+    /// </summary>
+    public void SetIngredientStock(IIngredientStock stock)
     {
-        if (itemType == Define.ItemType.None || !IsRecipeReady(recipe))
-            return false;
-
-        ItemController menuItem = recipe.MenuPrefab.GetComponent<ItemController>();
-        return menuItem != null && menuItem.type == itemType;
+        ingredientStock = stock;
     }
 
-    /// <summary>레시피 에셋과 결과 프리팹, 프리팹의 아이템 설정이 모두 있는지 확인합니다.</summary>
-    private static bool IsRecipeReady(FoodRecipeData recipe)
+    /// <summary>완성품이 메뉴 분류이고 이 기계의 레시피 연결이 올바른지 확인합니다.</summary>
+    public bool CanProduceMenu(Define.ItemType itemType)
+    {
+        if (itemType != Define.ItemType.Menu)
+            return false;
+
+        return IsRecipeReady(recipe);
+    }
+
+    /// <summary>기계 종류, 레시피 재료, 완성품 프리팹의 연결이 올바른지 확인합니다.</summary>
+    private bool IsRecipeReady(FoodRecipeData recipe)
     {
         if (recipe == null)
+            return false;
+
+        if (type == Define.FoodCookingMachineType.None)
+            return false;
+
+        if (recipe.CookingMachineType != type)
             return false;
 
         if (recipe.MenuPrefab == null)
@@ -144,19 +154,38 @@ public abstract class MenuMachine : InteractableBase
         if (menuItem == null)
             return false;
 
-        return menuItem.type != Define.ItemType.None;
+        if (menuItem.type != Define.ItemType.Menu)
+            return false;
+
+        if (menuItem.MenuRecipe != recipe)
+            return false;
+
+        // 요구 재료 목록은 레시피가 소유합니다. 현재 재고 수량은 아직 검사하지 않습니다.
+        if (recipe.Ingredients == null)
+            return false;
+
+        foreach (FoodIngredient ingredient in recipe.Ingredients)
+        {
+            if (ingredient == null)
+                return false;
+
+            if (ingredient.Type == Define.FoodIngredientType.None)
+                return false;
+
+            if (ingredient.Amount <= 0)
+                return false;
+        }
+
+        return true;
     }
 
-    /// <summary>직원에게 제조 재고가 있고 작업할 수 있는 메뉴 기계를 배정합니다.</summary>
+    /// <summary>직원이 사용할 수 있는 메뉴 기계인지 확인하고 작업자를 기록합니다.</summary>
     public bool TryStartMachineWorkForEmployee(EmployeeController employee, Define.ItemType menuType)
     {
         if (employee == null)
             return false;
 
         if (machineWorkingActor != null)
-            return false;
-
-        if (!HasProductionStock)
             return false;
 
         if (!isActiveAndEnabled)
@@ -233,21 +262,16 @@ public abstract class MenuMachine : InteractableBase
         if (!isActiveAndEnabled)
             return false;
 
-        if (!HasProductionStock)
-            return false;
-
         if (!IsRecipeReady(recipe))
             return false;
 
-        ItemController recipeItem = recipe.MenuPrefab.GetComponent<ItemController>();
-        Define.ItemType heldItemType = stack.GetFirstListItemType();
-        if (heldItemType != Define.ItemType.None && heldItemType != recipeItem.type)
+        if (ingredientStock != null && !ingredientStock.HasIngredients(recipe.Ingredients))
             return false;
 
-        if (requestedType != Define.ItemType.None && requestedType != recipeItem.type)
+        if (requestedType != Define.ItemType.None && requestedType != Define.ItemType.Menu)
             return false;
 
-        if (!stack.CheckListItem(recipeItem.type))
+        if (!stack.CanHoldMenu(recipe))
             return false;
 
         Vector3 spawnPosition = spawnPoint != null ? spawnPoint.position : transform.position;
@@ -256,8 +280,15 @@ public abstract class MenuMachine : InteractableBase
         if (menu == null)
             return false;
 
+        // 생성 중 재고가 바뀌었을 수도 있으므로 모든 재료의 일괄 차감에 실패하면 완성품을 되돌립니다.
+        if (ingredientStock != null && !ingredientStock.TryUseIngredients(recipe.Ingredients))
+        {
+            Managers.Resource.Destroy(menu);
+            return false;
+        }
+
+        // 재고 공급처를 연결하지 않은 현재 단계에서는 재료가 충분하다고 가정하고 완성품을 전달합니다.
         stack.PickUpItem(menu);
-        OnMenuProduced();
 
         if (actor.GetComponent<PlayerController>() == null)
         {
@@ -274,13 +305,6 @@ public abstract class MenuMachine : InteractableBase
         }
 
         return true;
-    }
-
-    /// <summary>비활성화될 때 현재 기계 점유 정보와 잔 전달 대기 시간을 정리합니다.</summary>
-    protected override void OnDisable()
-    {
-        ClearMachineWork();
-        base.OnDisable();
     }
 
     /// <summary>기계가 꺼질 때 작업 예약 정보를 비웁니다.</summary>

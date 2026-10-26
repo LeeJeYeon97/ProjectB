@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8a834eafa5be6f242af385d9b728a301, type: 3}
+  m_Name: Recipe_Udon
+  m_EditorClassIdentifier: Assembly-CSharp::FoodRecipeData
+  FoodName: "\uC6B0\uB3D9"
+  Ingredients:
+  - Type: 1
+    Amount: 1
+  - Type: 2
+    Amount: 1
+  - Type: 3
+    Amount: 1
+  CookingMachineType: 2
+  MenuPrefab: {fileID: 6658021417841733508, guid: a8ff49cfd8cc451397b49e2f6b122eca, type: 3}
+  CookingDuration: 1.5
+  Pay: 20

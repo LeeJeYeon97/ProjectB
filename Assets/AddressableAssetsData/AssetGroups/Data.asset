@@ -15,14 +15,20 @@ MonoBehaviour:
   m_GroupName: Data
   m_GUID: 719e7c5211d19524a88f934b6da7601b
   m_SerializeEntries:
-  - m_GUID: 3387c7b098e67dd4b9d11baf4caf15eb
-    m_Address: Data_BeerMachine
+  - m_GUID: 17a601b4ba4bbe549b4b48331c19a4d9
+    m_Address: Data_UnlockNode_Fridge
     m_ReadOnly: 0
     m_SerializedLabels:
     - Preload
     FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 8e3ef8e26fa3629448fed9d8793cede6
-    m_Address: Data_UnlockNode_Zone_Kitchen.asset
+  - m_GUID: 24b0045439abc8c418ef111cc5922ae1
+    m_Address: Data_UnlockNode_Stool.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Preload
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 3387c7b098e67dd4b9d11baf4caf15eb
+    m_Address: Data_BeerMachine
     m_ReadOnly: 0
     m_SerializedLabels:
     - Preload

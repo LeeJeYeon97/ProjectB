@@ -12,8 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8a834eafa5be6f242af385d9b728a301, type: 3}
   m_Name: Recipe_Beer
   m_EditorClassIdentifier: Assembly-CSharp::FoodRecipeData
-  Type: 1
   FoodName: 맥주
+  OrderIcon: {fileID: 21300000, guid: cb399f8782b047e0a2b4d160d060b529, type: 3}
   Ingredients: []
   CookingMachineType: 1
   MenuPrefab: {fileID: 6658021417841733508, guid: f766e0d40028a6b438fceaf5b687ffbe, type: 3}

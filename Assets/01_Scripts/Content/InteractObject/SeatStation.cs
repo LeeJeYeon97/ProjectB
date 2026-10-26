@@ -3,6 +3,8 @@ using static Define;
 
 public class SeatStation : InteractableBase
 {
+    #region 변수와 프로퍼티
+
     [Header("Seat Configuration")]
     [SerializeField]
     private SeatState currentState = SeatState.Empty;
@@ -41,6 +43,9 @@ public class SeatStation : InteractableBase
     public Transform customerSitPoint; // 손님이 앉을 실제 3D 좌표/회전 기준점
     public Transform foodServePoint;   // 음식을 올려놓을 테이블 위 좌표
 
+    #endregion
+
+    #region Unity 제공 함수
 
     protected override void OnEnable()
     {
@@ -61,6 +66,10 @@ public class SeatStation : InteractableBase
         }
     }
 
+    #endregion
+
+    #region 좌석 상태
+
     public void SetState(SeatState state)
     {
         CurrentState = state;
@@ -77,35 +86,31 @@ public class SeatStation : InteractableBase
     /// <summary>공용 말풍선 프리팹이 로드된 뒤 현재 좌석 상태를 다시 표시합니다.</summary>
     public override void RefreshStatusBubble() => UpdateState();
 
-    /// <summary>
-    /// 더러운 좌석을 비우고, 플레이어가 청소하면 더러운 잔을 플레이어 스택에 넣습니다.
-    /// </summary>
+    #endregion
+
+    #region 좌석 청소
+
+    /// <summary>플레이어가 더러운 좌석을 청소해 다시 사용할 수 있는 자리로 바꿉니다.</summary>
     public bool CleanSeat(PlayerController cleaner = null)
     {
         return CleanSeatInternal(cleaner, null);
     }
 
-    /// <summary>직원이 좌석을 청소하며 만든 더러운 잔을 직원 스택에 넣습니다.</summary>
+    /// <summary>직원이 더러운 좌석을 청소합니다. 현재는 회수 물건을 만들지 않습니다.</summary>
     public bool CleanSeatForEmployee(StackingSystem employeeStack)
     {
-        if (employeeStack == null || !employeeStack.CheckListItem(ItemType.Beer_Dirty))
-            return false;
-
         return CleanSeatInternal(null, employeeStack);
     }
 
-    /// <summary>좌석 청소와 잔 생성을 한 곳에서 처리해 플레이어와 직원의 상태를 맞춥니다.</summary>
+    /// <summary>청소가 끝난 좌석 상태를 비우고, 플레이어와 직원이 같은 결과를 사용합니다.</summary>
     private bool CleanSeatInternal(PlayerController cleaner, StackingSystem employeeStack)
     {
         if (currentState != SeatState.Dirty)
             return false;
 
-        if (cleaner != null &&
-            (cleaner.Stacking == null || !cleaner.Stacking.CheckListItem(ItemType.Beer_Dirty)))
-        {
-            return false;
-        }
-
+        // 회수 물건을 다시 사용할 때는 서빙한 레시피에 맞는 식기를 생성하도록 바꿉니다.
+        // 현재는 맥주잔 생성과 직원용 설거지 재고 반영을 모두 중단합니다.
+        /*
         if (cleaner != null || employeeStack != null)
         {
             Vector3 spawnPosition = foodServePoint != null ? foodServePoint.position : transform.position;
@@ -120,15 +125,14 @@ public class SeatStation : InteractableBase
                 employeeStack.PickUpItem(dirtyBeer);
         }
 
-        // 직원이 만든 잔은 실제 스택과 공용 재고에 함께 기록해 설거지 작업이 찾게 합니다.
         if (employeeStack != null && Managers.Dish != null)
         {
             Managers.Dish.AddDirtyDish();
 
-            // 직원용 재고가 늘어난 뒤 활성 싱크대에 설거지 작업을 등록합니다.
             if (Managers.Task != null)
                 Managers.Task.RegisterDishWashTask();
         }
+        */
 
         CurrentState = SeatState.Empty;
         AssignedCleaner = null;
@@ -136,14 +140,21 @@ public class SeatStation : InteractableBase
         return true;
     }
 
+    #endregion
+
+    #region 상호작용과 서빙
+
     public override bool CanInteract(GameObject actor)
     {
-        if (!TryGetPlayer(actor, out PlayerController player) || player.Stacking == null)
+        if (!TryGetPlayer(actor, out PlayerController player))
             return false;
 
-        // 손님이 식사를 끝낸 뒤에만 청소할 수 있으며, 빈 잔을 담을 자리도 필요하다.
+        // 청소할 때 회수 물건을 만들지 않으므로 스택 공간 없이도 자리를 비울 수 있습니다.
         if (currentState == SeatState.Dirty)
-            return player.Stacking.CheckListItem(ItemType.Beer_Dirty);
+            return true;
+
+        if (player.Stacking == null)
+            return false;
 
         // 테스트를 위해 손님이 음식을 기다리는 동안 두 메뉴를 모두 서빙할 수 있게 합니다.
         if (currentState != SeatState.Occupied ||
@@ -206,7 +217,7 @@ public class SeatStation : InteractableBase
     /// <summary>손님에게 서빙할 수 있는 메뉴 아이템인지 확인합니다.</summary>
     private static bool IsMenuItem(ItemType itemType)
     {
-        return itemType == ItemType.Beer || itemType == ItemType.TestMeal;
+        return true;
     }
 
     protected override void OnInteractionEnded()
@@ -214,4 +225,5 @@ public class SeatStation : InteractableBase
         UpdateState();
     }
 
+    #endregion
 }

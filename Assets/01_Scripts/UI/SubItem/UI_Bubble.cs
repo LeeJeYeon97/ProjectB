@@ -6,8 +6,26 @@ using TMPro;
 using static Define;
 
 public class UI_Bubble : UI_Base
-{
+{/// <summary>말풍선 프리팹에서 이름으로 연결할 이미지 요소입니다.</summary>
+    public enum Images
+    {
+        Image_Bg,
+        Image_Progress,
+        Image_Food,
+        Image_Clean,
+        Image_Payment,
+        Image_Beer,
+        Image_BeerEmpty,
+    }
+
+    /// <summary>말풍선 프리팹에서 이름으로 연결할 글자 요소입니다.</summary>
+    public enum Texts
+    {
+        Text_Disturbance,
+    }
     private Image progressImg;
+    private Image foodImg;
+    private Sprite defaultFoodIcon;
     private TMP_Text disturbanceText;
     private RectTransform bubbleRect;
     private Canvas bubbleCanvas;
@@ -22,7 +40,6 @@ public class UI_Bubble : UI_Base
     [SerializeField] private float showStartScale = 0.65f;
     [SerializeField] private float hideEndScale = 0.75f;
 
-    /// <summary>다른 상호작용 객체가 다시 쓰기 전에 이전 그림과 애니메이션을 정리합니다.</summary>
     public void ResetForPool()
     {
         Init();
@@ -30,6 +47,9 @@ public class UI_Bubble : UI_Base
         bubbleTween = null;
         isShowing = false;
         HideAll();
+        // 풀로 돌려보낼 때 직전 손님의 메뉴 그림을 남기지 않습니다.
+        if (foodImg != null)
+            foodImg.sprite = defaultFoodIcon;
         transform.localScale = shownScale;
         gameObject.SetActive(false);
     }
@@ -41,11 +61,14 @@ public class UI_Bubble : UI_Base
 
         base.Init();
 
-        Bind<Image>(typeof(Define.BubbleImages));
-        Bind<TMP_Text>(typeof(Define.BubbleTexts));
+        BindImage(typeof(Images));
+        BindText(typeof(Texts));
 
-        progressImg = GetImage((int)Define.BubbleImages.Image_Progress);
-        disturbanceText = GetTMP((int)Define.BubbleTexts.Text_Disturbance);
+        progressImg = GetImage((int)Images.Image_Progress);
+        foodImg = GetImage((int)Images.Image_Food);
+        if (foodImg != null)
+            defaultFoodIcon = foodImg.sprite;
+        disturbanceText = GetText((int)Texts.Text_Disturbance);
         bubbleRect = transform as RectTransform;
         bubbleCanvas = GetComponent<Canvas>();
         shownScale = transform.localScale;
@@ -104,7 +127,7 @@ public class UI_Bubble : UI_Base
 
     private void HideAll()
     {
-        foreach (Define.BubbleImages image in System.Enum.GetValues(typeof(Define.BubbleImages)))
+        foreach (Images image in System.Enum.GetValues(typeof(Images)))
         {
             GetImage((int)image)?.gameObject.SetActive(false);
         }
@@ -131,34 +154,33 @@ public class UI_Bubble : UI_Base
 
         HideAll();
 
-        GetImage((int)Define.BubbleImages.Image_Bg)?.gameObject.SetActive(true);
+        GetImage((int)Images.Image_Bg)?.gameObject.SetActive(true);
 
         switch (type)
         {
             //case BubbleType.Order:
             case BubbleType.FoodReady:
-                GetImage((int)Define.BubbleImages.Image_Beer)
-                    ?.gameObject.SetActive(true);
+                foodImg?.gameObject.SetActive(true);
                 break;
 
             case BubbleType.Payment:
-                GetImage((int)Define.BubbleImages.Image_Payment)
+                GetImage((int)Images.Image_Payment)
                     ?.gameObject.SetActive(true);
                 break;
 
             case BubbleType.Cleaning:
-                GetImage((int)Define.BubbleImages.Image_Clean)
+                GetImage((int)Images.Image_Clean)
                     ?.gameObject.SetActive(true);
                 break;
 
             case BubbleType.Progress:
-                GetImage((int)Define.BubbleImages.Image_Progress)
+                GetImage((int)Images.Image_Progress)
                     ?.gameObject.SetActive(true);
                 break;
 
             // 맥주 기계에 깨끗한 빈 잔이 없을 때 전용 그림을 보여줍니다.
             case BubbleType.BeerMissing:
-                GetImage((int)Define.BubbleImages.Image_BeerEmpty)
+                GetImage((int)Images.Image_BeerEmpty)
                     ?.gameObject.SetActive(true);
                 break;
 
@@ -178,6 +200,24 @@ public class UI_Bubble : UI_Base
             isShowing = true;
             PlayShow();
         }
+    }
+
+    /// <summary>주문한 레시피의 이미지를 공용 음식 이미지 요소에 표시합니다.</summary>
+    public void SetOrder(FoodRecipeData recipe)
+    {
+        SetBubble(BubbleType.FoodReady);
+
+        if (foodImg == null)
+            return;
+
+        // 레시피에 이미지가 없으면 프리팹에 지정된 기본 음식 이미지를 사용합니다.
+        if (recipe == null || recipe.OrderIcon == null)
+        {
+            foodImg.sprite = defaultFoodIcon;
+            return;
+        }
+
+        foodImg.sprite = recipe.OrderIcon;
     }
 
     public void SetProgress(float ratio)

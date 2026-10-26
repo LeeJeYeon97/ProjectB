@@ -124,14 +124,10 @@ public class QuestManager
         {
             case Define.ItemType.Money:
                 return Define.QuestTargetType.Money;
-            case Define.ItemType.Beer:
-                return Define.QuestTargetType.Beer;
             case Define.ItemType.Beer_Empty:
                 return Define.QuestTargetType.EmptyBeer;
             case Define.ItemType.Beer_Dirty:
                 return Define.QuestTargetType.DirtyBeer;
-            case Define.ItemType.TestMeal:
-                return Define.QuestTargetType.TestMeal;
             default:
                 return Define.QuestTargetType.Unknown;
         }

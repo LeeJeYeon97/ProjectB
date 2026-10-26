@@ -43,8 +43,6 @@ public class FurniturePlacementController : MonoBehaviour
     private FurnitureItem selectedItem;
     private Collider placementFloor;
     private ThirdPersonController playerMovement;
-    private UI_DynamicJoystick joystick;
-    private bool joystickWasActive;
     private GameObject placementControls;
     private GameObject inventoryPanel;
     private TMP_Text statusText;
@@ -322,14 +320,6 @@ public class FurniturePlacementController : MonoBehaviour
         {
             playerMovementWasEnabled = playerMovement.enabled;
             playerMovement.enabled = false;
-        }
-
-        // 터치 조이스틱이 바닥 입력을 가로채지 않도록 이동 모드 동안 숨깁니다.
-        joystick = FindAnyObjectByType<UI_DynamicJoystick>();
-        if (joystick != null)
-        {
-            joystickWasActive = joystick.gameObject.activeSelf;
-            joystick.gameObject.SetActive(false);
         }
 
         if (placementControls != null)
@@ -778,10 +768,6 @@ public class FurniturePlacementController : MonoBehaviour
             playerMovement.enabled = playerMovementWasEnabled;
         playerMovement = null;
 
-        if (joystick != null)
-            joystick.gameObject.SetActive(joystickWasActive);
-        joystick = null;
-
         if (placementControls != null)
             placementControls.SetActive(false);
         if (inventoryPanel != null)
@@ -1144,11 +1130,6 @@ public class FurniturePlacementController : MonoBehaviour
         {
             playerMovement = PlayerController.Instance != null ? PlayerController.Instance.GetComponent<ThirdPersonController>() : null;
             if (playerMovement != null) { playerMovementWasEnabled = playerMovement.enabled; playerMovement.enabled = false; }
-        }
-        if (joystick == null)
-        {
-            joystick = FindAnyObjectByType<UI_DynamicJoystick>();
-            if (joystick != null) { joystickWasActive = joystick.gameObject.activeSelf; joystick.gameObject.SetActive(false); }
         }
         if (placementControls != null) placementControls.SetActive(true);
         UpdatePlacementFeedback();

@@ -50,34 +50,65 @@ public class StackingSystem : MonoBehaviour
 
     public bool CheckListItem(GameObject go)
     {
-        if (go == null) return false;
+        if (go == null)
+            return false;
 
         ItemController item = go.GetComponent<ItemController>();
         if (item == null)
-        {
             return false;
-        }
 
         if (_stackedItems.Count >= CurrentMaxStackCount)
             return false;
 
-        ItemController newItem = go.GetComponent<ItemController>();
-        if (newItem == null) return false;
-
-        // 아이템이 있는데 다른 아이템을 주우려는 경우
+        // 같은 큰 분류의 아이템이어도 메뉴라면 연결된 레시피까지 비교합니다.
         if (_stackedItems.Count > 0)
         {
             ItemController firstItem = _stackedItems[0] != null ? _stackedItems[0].GetComponent<ItemController>() : null;
-            if (firstItem != null && firstItem.type != newItem.type)
-            {
+            if (firstItem == null)
                 return false;
-            }
+
+            if (firstItem.type != item.type)
+                return false;
+
+            if (item.type == Define.ItemType.Menu)
+                return item.MenuRecipe != null && firstItem.MenuRecipe == item.MenuRecipe;
         }
+
+        if (item.type == Define.ItemType.Menu && item.MenuRecipe == null)
+            return false;
+
         return true;
+    }
+
+    /// <summary>메뉴를 만들기 전에 플레이어 스택에 같은 레시피의 메뉴를 더 올릴 수 있는지 확인합니다.</summary>
+    public bool CanHoldMenu(FoodRecipeData menuRecipe)
+    {
+        if (menuRecipe == null)
+            return false;
+
+        if (_stackedItems.Count >= CurrentMaxStackCount)
+            return false;
+
+        if (_stackedItems.Count == 0)
+            return true;
+
+        ItemController firstItem = _stackedItems[0] != null ? _stackedItems[0].GetComponent<ItemController>() : null;
+        if (firstItem == null)
+            return false;
+
+        // 메뉴라는 분류만 같아도 우동과 맥주는 서로 다른 스택으로 취급합니다.
+        if (firstItem.type != Define.ItemType.Menu)
+            return false;
+
+        return firstItem.MenuRecipe == menuRecipe;
     }
     
     public bool CheckListItem(Define.ItemType type)
     {
+        // 메뉴는 ItemType만으로 개별 종류를 구별할 수 없으므로 레시피를 받는 전용 함수를 사용합니다.
+        if (type == Define.ItemType.Menu)
+            return false;
+
         if (_stackedItems.Count >= CurrentMaxStackCount)
             return false;
 

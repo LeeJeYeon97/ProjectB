@@ -5,6 +5,19 @@ using UnityEngine.UI;
 /// <summary>프리팹에 배치된 요소를 연결해 현재 퀘스트를 표시합니다.</summary>
 public class UI_Quest : UI_Base
 {
+    /// <summary>퀘스트 UI에서 이름으로 연결할 텍스트 요소입니다.</summary>
+    public enum QuestTexts
+    {
+        Text_QuestTitle,
+        Text_QuestDescription,
+        Text_QuestProgress,
+    }
+
+    /// <summary>퀘스트 UI에서 이름으로 연결할 이미지 요소입니다.</summary>
+    public enum QuestImages
+    {
+        Image_ProgressFill,
+    }
     private TMP_Text _titleText;
     private TMP_Text _descriptionText;
     private TMP_Text _progressText;
@@ -21,13 +34,13 @@ public class UI_Quest : UI_Base
             return;
 
         base.Init();
-        Bind<TMP_Text>(typeof(Define.QuestTexts));
-        Bind<UnityEngine.UI.Image>(typeof(Define.QuestImages));
+        Bind<TMP_Text>(typeof(QuestTexts));
+        Bind<UnityEngine.UI.Image>(typeof(QuestImages));
 
-        _titleText = GetTMP((int)Define.QuestTexts.Text_QuestTitle);
-        _descriptionText = GetTMP((int)Define.QuestTexts.Text_QuestDescription);
-        _progressText = GetTMP((int)Define.QuestTexts.Text_QuestProgress);
-        _progressFill = GetImage((int)Define.QuestImages.Image_ProgressFill);
+        _titleText = GetText((int)QuestTexts.Text_QuestTitle);
+        _descriptionText = GetText((int)QuestTexts.Text_QuestDescription);
+        _progressText = GetText((int)QuestTexts.Text_QuestProgress);
+        _progressFill = GetImage((int)QuestImages.Image_ProgressFill);
         _progressFillRect = _progressFill != null ? _progressFill.rectTransform : null;
         _progressBarRect = _progressFillRect != null ? _progressFillRect.parent as RectTransform : null;
 

@@ -10,9 +10,6 @@ public class PlayerController : BaseController
     public int money = 100;
     public event Action<int> OnMoneyChanged;
 
-    public float throwInterval = 0.1f; // 0.1초마다 1번씩 돈을 날림
-    public int throwAmount = 1;       // 한 번에 1원(또는 지정된 금액)씩 날림
-
     public StackingSystem Stacking;
     [SerializeField] private float baseInteractionTimeScale = 1f;
     private float interactionTimeScale = 1f;

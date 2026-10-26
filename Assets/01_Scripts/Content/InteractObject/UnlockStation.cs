@@ -5,60 +5,142 @@ using TMPro;
 
 public class UnlockStation : InteractableBase
 {
+    [Header("씬에 배치한 해금 설정")]
+    [SerializeField] private UnlockNodeData nodeData;
+
+    [Header("해금할 대상")]
+    [SerializeField] private Define.UnlockType unlockType = Define.UnlockType.SpawnPrefab;
+    [SerializeField] private GameObject targetSceneObject;
+    [SerializeField] private Transform targetSpawnPoint;
+
     [Header("투척 주기 및 금액 설정")]
     [Tooltip("돈을 던지는 주기 (초)")]
     [SerializeField] private float throwInterval = 0.1f;
-    [Tooltip("한 번 던질 때 날아가는 금액")]
-    [SerializeField] private int throwAmount = 10;
+    [Tooltip("전체 금액을 나누어 던질 목표 횟수")]
+    [Min(1)] [SerializeField] private int targetThrowCount = 10;
+    [Tooltip("한 번에 던질 금액을 맞추는 최소 단위")]
+    [Min(1)] [SerializeField] private int minimumThrowAmount = 10;
 
     [Header("연출")]
     [SerializeField] private GameObject moneyPrefab;
     [SerializeField] private Transform dropPoint;
 
     [Header("전용 UI")]
-    [SerializeField] private UI_UnlockStation uiUnlock;
+    [SerializeField] private Image fillImage;
+    [SerializeField] private TMP_Text progressText;
+    [SerializeField] private Transform uiContainer;
+
+    [Header("UI 튕김 연출")]
+    [SerializeField] private float punchScaleRatio = 0.2f;
+    [SerializeField] private float punchDuration = 0.2f;
 
     private string _uniqueUnlockID;
     private UnlockNodeData _nodeData;
     private int _targetPrice;
+    private int _moneyPerThrow;
     private int _currentPaid = 0;
     private int _visualPaid = 0;
     private bool _isUnlocked = false;
+    private Vector3 _initialScale = Vector3.one;
+    private Vector3 _initialStationScale = Vector3.one;
+    private Tween _bounceTween;
 
+    // 데이터와 ID를 모두 지정한 발판만 해금 관리 대상으로 등록합니다.
+    public bool HasSettings => nodeData != null && nodeData.HasID;
+    public string UniqueID => nodeData != null ? nodeData.UniqueID : null;
+    public string PrerequisiteID => nodeData != null ? nodeData.PrerequisiteID : null;
+    public UnlockNodeData NodeData => nodeData;
+    public Define.UnlockType UnlockType => unlockType;
+    public GameObject TargetSceneObject => targetSceneObject;
+    public Vector3 SpawnPosition => targetSpawnPoint != null ? targetSpawnPoint.position : transform.position;
+    public Quaternion SpawnRotation => targetSpawnPoint != null ? targetSpawnPoint.rotation : transform.rotation;
+    public int Price => nodeData != null ? nodeData.Price : 0;
     public override float Duration => throwInterval;
 
     protected override bool UsesProgressBubble => false;
 
-    public void Setup(UnlockAnchor anchor)
+    /// <summary>
+    /// 발판이 비활성화되면 진행 중인 UI 크기 연출을 정리하고 상호작용 상태를 해제합니다.
+    /// </summary>
+    protected override void OnDisable()
     {
-        _nodeData = anchor.NodeData;
-        _targetPrice = anchor.Price;
-        _uniqueUnlockID = anchor.UniqueID;
+        KillBounce();
+        // 조건 변화로 다시 표시될 때 프리팹의 원래 크기가 유지되도록 복원합니다.
+        transform.localScale = _initialStationScale;
+        base.OnDisable();
+    }
+
+    /// <summary>
+    /// 발판이 실제로 배치된 위치와 해금 대상이 생성될 위치를 씬에서 표시합니다.
+    /// </summary>
+    private void OnDrawGizmos()
+    {
+        if (nodeData == null)
+        {
+            return;
+        }
+
+        Gizmos.color = Color.green;
+        Gizmos.DrawWireSphere(transform.position, 0.4f);
+
+        if (targetSpawnPoint != null)
+        {
+            Gizmos.color = Color.blue;
+            Gizmos.DrawLine(transform.position, targetSpawnPoint.position);
+        }
+    }
+
+    /// <summary>
+    /// 씬에 배치된 발판의 해금 정보를 읽고 금액 표시를 초기 상태로 되돌립니다.
+    /// </summary>
+    public void Setup()
+    {
+        // 발판에 연결된 데이터 에셋에서 가격과 ID를 읽습니다.
+        _nodeData = nodeData;
+        _targetPrice = Price;
+        _moneyPerThrow = CalculateThrowAmount();
+        _uniqueUnlockID = UniqueID;
         _currentPaid = 0;
         _visualPaid = 0;
         _isUnlocked = false;
+        _initialStationScale = transform.localScale;
 
-        if (dropPoint == null) dropPoint = transform;
-        if (uiUnlock == null) uiUnlock = GetComponentInChildren<UI_UnlockStation>();
-
-        if (uiUnlock != null)
+        if (dropPoint == null)
         {
-            uiUnlock.Init();
-            uiUnlock.UpdateUI(_visualPaid, _targetPrice, animate: false);
+            dropPoint = transform;
         }
 
+        // 프리팹에 연결한 UI의 원래 크기를 보관해 연출을 반복해도 크기가 누적되지 않도록 합니다.
+        if (uiContainer != null)
+        {
+            _initialScale = uiContainer.localScale;
+        }
+
+        UpdateUI(false);
     }
 
+    /// <summary>
+    /// 해금이 진행 중이고 플레이어에게 투입할 돈이 남아 있는지 확인합니다.
+    /// 한 번에 던질 기본 금액보다 돈이 적어도 보유한 금액만큼 투입할 수 있습니다.
+    /// </summary>
     public override bool CanInteract(GameObject actor)
     {
         if (_isUnlocked || _nodeData == null || _currentPaid >= _targetPrice)
             return false;
 
         PlayerController player = actor.GetComponent<PlayerController>();
-        return player != null && player.money >= throwAmount;
+        if (player == null)
+        {
+            return false;
+        }
+
+        return GetPaymentAmount(player.money) > 0;
     }
 
-    // 발판의 Duration(0.1초) 주기가 완료될 때마다 1번씩 실행
+    /// <summary>
+    /// 투척 주기가 끝날 때마다 실제 투입액을 차감하고 돈이 날아가는 연출을 시작합니다.
+    /// 투입액은 목표 금액과 현재 보유 금액을 넘지 않도록 매번 계산합니다.
+    /// </summary>
     public override void OnCompleteInteract(GameObject actor)
     {
         if (!CanInteract(actor)) return;
@@ -66,11 +148,15 @@ public class UnlockStation : InteractableBase
         PlayerController player = actor.GetComponent<PlayerController>();
         if (player == null) return;
 
-        // 1. 플레이어 돈 차감
-        if (!player.TrySpendMoney(throwAmount)) return;
-        _currentPaid += throwAmount;
+        // 이 투척에서 사용할 금액을 보관해 돈이 도착하는 시점에도 같은 금액을 반영합니다.
+        int paymentAmount = GetPaymentAmount(player.money);
+        if (paymentAmount <= 0) return;
 
-        // 2. 날아가는 돈 연출 생성
+        // 실제 돈을 먼저 차감하고, 이미 투척한 금액을 기록해 중복 투입을 막습니다.
+        if (!player.TrySpendMoney(paymentAmount)) return;
+        _currentPaid += paymentAmount;
+
+        // 플레이어 위치에서 발판의 도착 지점까지 돈이 날아가는 연출을 만듭니다.
         Vector3 startPos = player.transform.position + Vector3.up * 1f;
         GameObject flyingMoney = Managers.Resource.Instantiate(moneyPrefab, startPos, Quaternion.identity);
 
@@ -84,14 +170,11 @@ public class UnlockStation : InteractableBase
         {
             Managers.Resource.Destroy(flyingMoney);
 
-            // 3. 돈이 도착했을 때 시각적 금액 반영 및 UI 갱신
-            _visualPaid += throwAmount;
-            if (uiUnlock != null)
-            {
-                uiUnlock.UpdateUI(_visualPaid, _targetPrice, animate: true);
-            }
+            // 돈이 실제로 도착한 뒤에만 화면의 금액과 게이지를 갱신합니다.
+            _visualPaid += paymentAmount;
+            UpdateUI(true);
 
-            // 4. 모든 금액이 지불되었으면 언락
+            // 마지막 돈까지 도착했을 때 해금 처리를 한 번 실행합니다.
             if (_visualPaid >= _targetPrice)
             {
                 CompleteUnlock();
@@ -99,31 +182,128 @@ public class UnlockStation : InteractableBase
         });
     }
 
+    /// <summary>
+    /// 데이터의 해금 가격을 목표 투척 횟수로 나누고, 최소 금액 단위에 맞춰 올림합니다.
+    /// 예를 들어 가격 1,000원, 목표 20회, 최소 단위 10원이면 한 번에 50원씩 던집니다.
+    /// </summary>
+    private int CalculateThrowAmount()
+    {
+        int throwCount = Mathf.Max(1, targetThrowCount);
+        int minimumAmount = Mathf.Max(1, minimumThrowAmount);
+
+        // 정수 연산으로 올림해 큰 가격에서도 소수점 오차 없이 필요한 투입액을 구합니다.
+        long averageAmount = ((long)_targetPrice + throwCount - 1) / throwCount;
+        long roundedAmount = ((averageAmount + minimumAmount - 1) / minimumAmount) * minimumAmount;
+
+        // 계산 결과가 int 범위를 넘으면 최댓값으로 제한하고, 실제 투입 때 남은 금액으로 다시 제한합니다.
+        if (roundedAmount > int.MaxValue)
+        {
+            return int.MaxValue;
+        }
+
+        return Mathf.Max(minimumAmount, (int)roundedAmount);
+    }
+
+    /// <summary>
+    /// 한 번에 던질 기본 금액, 남은 해금 금액, 보유 금액 중 가장 작은 값을 반환합니다.
+    /// 마지막 투척이나 보유 금액이 적은 경우에도 초과 차감 없이 진행할 수 있습니다.
+    /// </summary>
+    private int GetPaymentAmount(int availableMoney)
+    {
+        if (availableMoney <= 0)
+        {
+            return 0;
+        }
+
+        int remainingPrice = _targetPrice - _currentPaid;
+        if (remainingPrice <= 0)
+        {
+            return 0;
+        }
+
+        int paymentAmount = Mathf.Min(_moneyPerThrow, remainingPrice);
+        return Mathf.Min(paymentAmount, availableMoney);
+    }
+
     private void CompleteUnlock()
     {
         if (_isUnlocked) return;
         _isUnlocked = true;
 
-        // 매니저에 언락 알림
-        Managers.Unlock.UnlockNode(_uniqueUnlockID);
-
-        // 첫 구역(Level_0)을 구매하면 가게를 먼저 열어 실제 게임 상태를 반영합니다.
-        if (_uniqueUnlockID == "Level_0")
-        {
-            Managers.Game.OpenShop();
-        }
-
-        // 노드가 실제로 열린 뒤 행동 종류와 노드 ID를 퀘스트 시스템에 한 번 보고합니다.
-        if (Managers.Quest != null)
-            Managers.Quest.ReportNodeUnlock(_uniqueUnlockID);
-
-        // 오브젝트 축소 연출 후 삭제
+        // 축소 연출이 끝나면 매니저가 이 발판을 숨기고 해금 대상을 표시합니다.
         transform.DOScale(Vector3.zero, 0.3f)
             .SetEase(Ease.InBack)
             .OnComplete(() =>
             {
-                if (uiUnlock != null) uiUnlock.KillTweens();
-                Managers.Resource.Destroy(gameObject);
+                KillBounce();
+                Managers.Unlock.UnlockNode(_uniqueUnlockID);
+
+                // 첫 구역을 구매하면 가게의 영업 상태도 함께 엽니다.
+                if (_uniqueUnlockID == "Level_0")
+                {
+                    Managers.Game.OpenShop();
+                }
+
+                // 해금 결과를 퀘스트에 한 번 보고합니다.
+                if (Managers.Quest != null)
+                {
+                    Managers.Quest.ReportNodeUnlock(_uniqueUnlockID);
+                }
             });
+    }
+
+    /// <summary>
+    /// 실제로 도착한 금액을 기준으로 게이지와 남은 금액을 갱신합니다.
+    /// 돈이 도착한 경우에만 UI 크기 연출을 재생합니다.
+    /// </summary>
+    /// <param name="animate">돈 도착 연출을 재생할지 여부</param>
+    private void UpdateUI(bool animate)
+    {
+        if (_targetPrice <= 0)
+        {
+            return;
+        }
+
+        // 누적 지불액을 전체 가격으로 나눈 뒤 게이지가 0에서 1 사이에 머물도록 합니다.
+        if (fillImage != null)
+        {
+            fillImage.fillAmount = Mathf.Clamp01((float)_visualPaid / _targetPrice);
+        }
+
+        // 지불액이 목표를 넘더라도 화면에는 음수 대신 0을 표시합니다.
+        if (progressText != null)
+        {
+            int remainingPrice = Mathf.Max(0, _targetPrice - _visualPaid);
+            progressText.text = remainingPrice.ToString();
+        }
+
+        if (!animate || uiContainer == null)
+        {
+            return;
+        }
+
+        // 이전 연출을 끝내고 원래 크기에서 다시 시작해 연속 투척에도 같은 크기로 튕기게 합니다.
+        KillBounce();
+        uiContainer.localScale = _initialScale;
+
+        Vector3 punchAmount = _initialScale * punchScaleRatio;
+        _bounceTween = uiContainer.DOPunchScale(punchAmount, punchDuration, 10, 1f)
+            .OnKill(() =>
+            {
+                // 발판이 비활성화되거나 제거될 때도 UI 크기를 원래대로 복원합니다.
+                if (uiContainer != null)
+                {
+                    uiContainer.localScale = _initialScale;
+                }
+            });
+    }
+
+    /// <summary>
+    /// 진행 중인 UI 크기 연출을 중지합니다.
+    /// </summary>
+    private void KillBounce()
+    {
+        _bounceTween?.Kill();
+        _bounceTween = null;
     }
 }
