@@ -15,6 +15,12 @@ MonoBehaviour:
   m_GroupName: Data
   m_GUID: 719e7c5211d19524a88f934b6da7601b
   m_SerializeEntries:
+  - m_GUID: 1030a29ff9f3cfa4796d1be4f270fb21
+    m_Address: Employee_helper
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - EmployeeData
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 17a601b4ba4bbe549b4b48331c19a4d9
     m_Address: Data_UnlockNode_Fridge
     m_ReadOnly: 0
@@ -33,11 +39,41 @@ MonoBehaviour:
     m_SerializedLabels:
     - Preload
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 3578ca4c2af08964582f6bdc505cb53d
+    m_Address: Ingredient_UdonNoodle
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - IngredientData
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 55272083ca20e054882b03a1b5dde6ea
+    m_Address: Employee_cashier
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - EmployeeData
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 81c13f7b5aa34c8a90e9c4b09d8ae4fa
+    m_Address: Ingredient_UdonSauce
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - IngredientData
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 825b36f2017a12444b805f674f07a177
+    m_Address: Employee_server
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - EmployeeData
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 9038a8c93e3b00a4ea0959d2661c4c80
     m_Address: Data_NPCPositionData.asset
     m_ReadOnly: 0
     m_SerializedLabels:
     - Preload
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 9cdb1d95ff61c574b84dcdccb33bc7a4
+    m_Address: Ingredient_Water
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - IngredientData
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: a22040ce11aac804ba911922dcf9abd6
     m_Address: Data_UnlockNode_Start.asset

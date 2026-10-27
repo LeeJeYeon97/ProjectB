@@ -37,6 +37,7 @@ public class SeatStation : InteractableBase
         isActiveAndEnabled &&
         currentState == SeatState.Occupied &&
         currentCustomer != null &&
+        currentCustomer.OrderedRecipe != null &&
         currentCustomer.CurrentState == CustomerState.WaitingForFood;
 
     [Header("position")]
@@ -217,7 +218,7 @@ public class SeatStation : InteractableBase
     /// <summary>손님에게 서빙할 수 있는 메뉴 아이템인지 확인합니다.</summary>
     private static bool IsMenuItem(ItemType itemType)
     {
-        return true;
+        return itemType == ItemType.Menu;
     }
 
     protected override void OnInteractionEnded()

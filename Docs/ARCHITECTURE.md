@@ -34,6 +34,7 @@ flowchart TD
     M --> S[StationManager]
     M --> E[EmployeeManager]
     M --> T[TaskManager]
+    M --> N[IngredientManager]
     M --> X[UnlockManager / GrowthManager / ReviewManager]
     M --> P[PlayerPrefsManager / QuestManager]
     C --> CC[CustomerController]
@@ -42,12 +43,14 @@ flowchart TD
     T --> EC
     EC --> I[InteractableBase 하위 시설]
     CC --> I
+    CC --> N
+    EC --> N
     I --> T
     X --> P
 ```
 
 1. 첫 `Managers.Instance` 접근 때 `@Managers`를 찾거나 생성하고, 플레이 중이면 DontDestroyOnLoad로 유지한다. 매니저 필드는 `new`로 다시 구성된다.
-2. Core 일부를 초기화하고 `Resource.Init()`가 Preload 비동기 로드를 시작한다. Customer/Employee는 로드 완료 이벤트를 기다릴 수 있다. Growth는 Resources 카탈로그를 읽고 Review는 저장 통계를 읽는다.
+2. Core 일부를 초기화하고 `Resource.Init()`가 Preload 비동기 로드를 시작한다. Customer/Employee는 로드 완료 이벤트를 기다릴 수 있다. Quest는 직렬화된 카탈로그를 읽고, Ingredient는 `IngredientData` 라벨의 재료 데이터 로드를 시작한다. Growth는 Resources 카탈로그를 읽으며 Review는 저장 통계를 읽는다. 재료 로드가 끝나기 전 손님이 착석하면 재고 보충 알림까지 주문을 기다린다.
 3. `Managers.Awake()`는 `Game.OnAwake()`를 호출한다. 이 함수는 이름이 `Player`인 활성 오브젝트를 찾는다. 플레이어 없는 씬의 예외 방어가 없다.
 4. `CustomerSceneBinder.Awake()`는 스폰·입구 대기점·퇴장점을 등록한다. `PlayerController.Awake()`는 자신의 Instance, 적재 시스템, 저장 잔액, 성장, 카메라 타깃을 연결한다.
 5. `GameScene`은 리소스 로드 후 `Unlock.Init()` → `Customer.RefreshAvailableRecipes()` → 선택적 `Game.OpenShop()` → 게임 UI 생성 순서로 진행한다.
@@ -84,10 +87,7 @@ classDiagram
     MonoBehaviour <|-- BaseScene
     BaseScene <|-- GameScene
     BaseScene <|-- LoginScene
-    MenuMachine --> IIngredientStock : 선택적 연결
 ```
-
-위 다이어그램의 `IIngredientStock` 연결은 선택 사항이다. 인터페이스는 `HasIngredients(IReadOnlyList<FoodIngredient>)`, `TryUseIngredients(...)`를 정의하지만 현재 구현 클래스와 연결 호출은 없다. 재고를 연결하려면 모든 요구 재료를 한 번에 검사·차감하는 계약을 지켜야 한다.
 
 `IDamageable`, `IStatusTarget`은 선언만 있고 주요 게임 코드에서 구현/사용이 확인되지 않았다. 이를 근거로 전투·상태이상 시스템을 구현 완료로 기록하면 안 된다. `BaseController`도 현재 공통 게임 행동이 없는 골격이다.
 
@@ -100,10 +100,12 @@ classDiagram
 | [CustomerManager](../Assets/01_Scripts/Managers/Content/CustomerManager.cs) | 입구 대기열, 생성 타이머, 주문 가능한 레시피 | `SetScenePositions`, `RefreshAvailableRecipes`, `TryGetRandomRecipe`, `OnUpdate`. 씬 참조 준비와 리소스 로딩 필요 |
 | [CustomerController](../Assets/01_Scripts/Content/Controller/CustomerController.cs) | 손님 한 명의 이동·주문·식사·방해·결제 상태 | `Init`, `AssignSeat`, `OnFoodServed(ItemType)`, `ResolveDisturbance`, `CompletePayment`. 현재 주문 레시피는 private이고 서빙 API에는 전달되지 않음 |
 | [StationManager](../Assets/01_Scripts/Managers/Content/StationManager.cs) | 좌석 등록부, 빈 좌석 탐색 | `RegisterSeat`, `UnregisterSeat`, `FindAvailableSeat`, `RegisterDirtyTable`. AvailableSeatCount는 빈 좌석 수가 아닌 활성 좌석 수 |
-| [EmployeeManager](../Assets/01_Scripts/Managers/Content/EmployeeManager.cs) | 직원 생성과 목록 | `HireEmployee(Vector3?)`는 생성 API이며 비용 지불을 하지 않음. `Employees`는 읽기 전용 목록. `Clear`는 목록만 비움 |
+| [EmployeeManager](../Assets/01_Scripts/Managers/Content/EmployeeManager.cs) | 직원 후보 로드·선택 고용·목록 | `EmployeeData` 라벨에서 후보를 읽어 ID 중복을 거르고 순서대로 제공. `CanHire`, `TryHire`가 후보별 비용·중복을 확인하고 공용 프리팹을 생성해 작업 재배정. `HireEmployee(Vector3?)`는 비용 없는 기존 생성 API. `OnChanged`는 UI 갱신용. `Clear`는 목록과 이번 실행의 고용 ID를 비움 |
 | [TaskManager](../Assets/01_Scripts/Managers/Content/TaskManager.cs) | 작업 목록, 중복 방지, 배정·예약 해제 | `CreateTask(type,target)`, `AssignWaitingTasks`, `FinishTask`, `TakeOverTask` 두 오버로드, `RemoveTasksFor`, `RegisterDishWashTask` |
-| [EmployeeController](../Assets/01_Scripts/Content/Controller/EmployeeController.cs) | 직원의 NavMesh 이동·실제 작업·개별 성장 | `AssignTask`, `CancelTask`, `StopTaskForPlayer`, `SetMoveUpgrade`, `SetInteractionUpgrade`. 게임 틱은 자체 Update |
-| [MenuMachine](../Assets/01_Scripts/Content/InteractObject/MenuMachine.cs) | 레시피 검증·기계 작업자·생산 | `Recipe`, `CanOfferRecipe`, `TryStartMachineWorkForEmployee`, `TryProduceMenu`, `SetIngredientStock`. 공통 예약과 별도 machineWorkingActor가 모두 존재 |
+| [EmployeeData](../Assets/01_Scripts/Data/EmployeeData.cs) / [고용 UI](../Assets/01_Scripts/UI/Popup/UI_MenuPopup.cs) | 후보 설정 / 표시와 입력 | `Assets/10_Data/Employee`의 세 에셋이 같은 프리팹을 참조한다. UI는 프리팹에 미리 만든 세 카드의 정보·버튼을 Bind하고 후보 로드, 고용, 잔액 변경 이벤트마다 갱신한다. 카드 수는 현재 3개로 고정 |
+| [EmployeeController](../Assets/01_Scripts/Content/Controller/EmployeeController.cs) | 직원의 NavMesh 이동·실제 작업·개별 성장 | `ApplyHireData`가 기본 속도와 허용 업무를 후보 데이터로 교체한다. `AssignTask`, `CancelTask`, `StopTaskForPlayer`, `SetMoveUpgrade`, `SetInteractionUpgrade`. 작업 시간 성장은 후보별 기본 배율에서 감소량을 뺀다. 게임 틱은 자체 Update |
+| [IngredientManager](../Assets/01_Scripts/Managers/Content/IngredientManager.cs) | 매장 공용 재고, 주문 예약, 원자적 차감, 보충 API | `HasIngredients`, `TryReserveForOrder`, `HasReservation`, `TryUseReservedIngredients`, `TryUseIngredients`, `ReleaseReservation`, `AddIngredients`, `GetIngredientData`. 시작 수량·이름·가격은 `10_Data/FoodIngredient`의 재료 데이터에서 비동기로 읽고, 수량만 런타임 메모리에 보관 |
+| [MenuMachine](../Assets/01_Scripts/Content/InteractObject/MenuMachine.cs) | 레시피 검증·기계 작업자·생산 | `Recipe`, `CanOfferRecipe`, `TryStartMachineWorkForEmployee`, `TryProduceMenu`. 주문 예약 또는 미예약 수량을 IngredientManager에서 확인. 공통 예약과 기계 점유가 함께 있음 |
 | [SeatStation](../Assets/01_Scripts/Content/InteractObject/SeatStation.cs) | 좌석 상태·손님 참조·서빙·청소 | `SetState`, `IsWaitingToServe`, `ServeForEmployee`, `CleanSeat`, `CleanSeatForEmployee`. OnEnable/OnDisable에서 등록/해제 |
 | [Counter](../Assets/01_Scripts/Content/InteractObject/Counter.cs) | 결제 대기열·돈 오브젝트 배치 | `AddWaitingCustomer`, `CollectForEmployee`, `PayPoint`. OnEnable에서 단일 `Managers.Game.Counter`로 등록 |
 | [UnlockManager](../Assets/01_Scripts/Managers/Content/UnlockManager.cs) | 씬 발판 사전·해금 ID 집합 | `Init`, `RefreshMapState`, `UnlockNode`. 노드 ID는 `그룹_index`. 영속 저장 함수는 비어 있음 |
@@ -159,7 +161,7 @@ stateDiagram-v2
 
 - 입구 소음 손님은 WaitingAtEntrance에 남고 `CanLeaveQueue`가 false다.
 - 좌석: Empty → Reserved → Occupied → Dirty → Empty. 좌석 해제는 계산대 이동 시작과 연결된다.
-- 직원: Idle → MovingToWork → Working → Idle. 서빙 내부 enum `ServingStep`은 None/MakeBeer/DeliverBeer이며 아직 Define.cs 밖에 있다.
+- 직원: Idle → MovingToWork → Working → Idle. 서빙 내부 enum `ServingStep`은 None/MakeBeer/DeliverBeer이다.
 - 실패 복구는 상태별로 다르다. 계산대 이동은 경로 재시도가 있지만 입구/좌석/퇴장 이동에는 같은 수준의 제한시간 처리가 없다.
 
 ## 이벤트와 데이터 전달
@@ -168,7 +170,8 @@ stateDiagram-v2
 | --- | --- | --- |
 | ResourceManager.assetLoaded | Preload 처리가 끝남 | GameScene, CustomerManager, EmployeeManager. 콜백 호출 뒤 IsLoaded=true로 설정하는 현재 순서에 주의 |
 | PlayerController.OnMoneyChanged | 새 잔액 int | UI_GameScene 구독 및 Clear 해제 |
-| QuestManager.OnQuestChanged | 제목·설명·진행·목표·완료 | UI_Quest.Bind(manager)가 구독하도록 구현. 현재 Bind 호출 경로가 확인되지 않음 |
+| QuestManager.OnQuestChanged | 제목·설명·진행·목표·완료 | UI_Quest.Init/OnEnable에서 구독하고 비활성화·파괴 시 해제 |
+| QuestManager.OnQuestCompleted | 실제 지급한 보상 금액 | UI_Quest가 진행바·완료·보상 문구를 순서대로 표시한 뒤 AdvanceAfterPresentation 호출 |
 | StationManager.OnSeatCountChanged | 활성 좌석 수 | 주요 게임 코드의 구독처 미확인 |
 | GrowthManager.OnChanged | 성장 구매 후 변경 알림 | 주요 게임 코드의 구독처 미확인 |
 | ReviewManager.OnReviewChanged | 평균 별점과 리뷰 수 | 주요 게임 코드의 구독처 미확인 |
@@ -177,7 +180,7 @@ stateDiagram-v2
 
 중앙 EventManager의 이벤트 버스 구현은 주석 처리되어 있다. 실제 전달은 직접 메서드 호출과 각 객체의 C# event를 사용한다. 이벤트 이름이 존재한다고 화면까지 연결됐다고 판단하지 않는다.
 
-주문은 `FoodRecipeData`를 손님 private 필드에 저장하지만 제조 선택·서빙 결과·퀘스트 보고는 `ItemType.Menu`만 전달한다. 반면 스택은 레시피 참조까지 비교한다. 새 메뉴 설계는 이 불일치를 먼저 고려해야 한다.
+손님은 주문 시 `FoodRecipeData.Ingredients`를 IngredientManager에 예약한다. 예약 수량은 다른 주문과 플레이어 제조가 사용하지 못하며 제조에 성공할 때 실제 재고에서 차감한다. 직원 제조는 해당 손님의 레시피를 선택하고, 플레이어 제조는 같은 레시피 주문 예약을 우선 처리하며 없으면 미예약 재고를 사용한다. 주문 가능한 재료가 없으면 손님은 좌석을 점유한 채 기다리며 주문/서빙 작업을 만들지 않는다. `IngredientData` 라벨의 재료 정의를 읽은 직후와 `AddIngredients`로 보충할 때 재고 변경 이벤트를 보내 손님이 주문과 예약을 재시도한다. `UI_MenuPopup`은 재료 데이터와 재고를 표시하고 테스트 구매 버튼에서 `PlayerController.TrySpendMoney`와 `AddIngredients`를 호출한다. 현재 가격 0은 무료 테스트 구매로 처리한다. 가격 밸런스와 재고 저장은 없다. 메뉴 서빙 결과와 퀘스트 보고에는 여전히 `ItemType.Menu`만 전달된다.
 
 재화 흐름은 `Counter → ReviewManager.CreateReview → 돈 ItemController.Value → StackingSystem 획득 연출 → PlayerController.UpdateMoney → PlayerPrefs/OnMoneyChanged`다. 시설 해금은 `UnlockStation 분할 지불 → UnlockManager.UnlockNode → 생성/활성화 → 주문 후보 갱신`이며 완료 시 퀘스트에도 보고한다.
 
@@ -186,6 +189,7 @@ stateDiagram-v2
 | 데이터 | 키/식별 방식 | 현재 보장과 제한 |
 | --- | --- | --- |
 | 플레이어 재화 | `ProjectB.Player.Money` | SetInt는 메모리 값 갱신. 플레이어 Pause/Quit에서 Save 호출 |
+| 매장 재료 | `Assets/10_Data/FoodIngredient` 재료 에셋의 `StartingAmount` | IngredientManager 메모리에서 관리. 재시작하면 데이터의 시작 수량으로 초기화 |
 | 전역 성장 | `ProjectB.Growth.Save` | JSON version 3, 버전 1~3 읽기. 과거 employee_clean/make를 employee_interact로 옮기고 큰 단계 유지 |
 | 리뷰 | `ProjectB.Review.Count`, `ProjectB.Review.StarTotal` | 리뷰 처리마다 명시적 Save |
 | 가구 재고 | `ProjectB.Furniture.Inventory` | 공통 JSON, 현재 버전 필드 없음 |
@@ -199,9 +203,9 @@ stateDiagram-v2
 
 ## UI와 리소스
 
-- UI_Base는 enum 이름에 해당하는 자식을 찾아 타입별 배열에 Bind한다. 프리팹 이름과 enum 이름이 계약이다. UI_GameScene은 잔액과 메뉴 버튼, UI_MenuPopup은 Panel_MainMenu 연결까지만 구현되어 있다.
+- UI_Base는 enum 이름에 해당하는 자식을 찾아 타입별 배열에 Bind한다. 프리팹 이름과 enum 이름이 계약이다. UI 요소 enum은 해당 UI 스크립트에 둔다. UI_GameScene은 잔액과 메뉴 버튼을 연결한다. UI_MenuPopup은 자체 GameObjects/Buttons/Texts enum으로 기존 프리팹 요소를 Bind하고, 메인/시장 패널 전환·재료별 가격/재고 표시·1개 구매·이벤트 구독 해제를 처리한다.
 - UIManager는 씬 UI 하나와 팝업 스택을 보관하고 ScreenSpaceCamera Canvas 및 정렬값을 설정한다. 서브 UI는 프리팹을 생성/풀링한다. 프리팹 인스턴스 생성과 프리팹 내부 요소를 코드로 만드는 것은 구분한다.
-- UI_Bubble은 주문·진행·상태 표현, 화면 위치 추적, 풀 반환 초기화를 맡는다. UI_Quest는 프리팹 요소와 이벤트 수신을 제공하나 매니저 연결 호출은 빠져 있다.
+- UI_Bubble은 주문·진행·상태 표현, 화면 위치 추적, 풀 반환 초기화를 맡는다. UI_Quest는 자체 Init에서 QuestManager 이벤트를 구독한다. 목표를 달성하면 QuestManager가 완료·보상 지급을 먼저 확정하고 UI 연출 종료 알림을 기다린다. UI가 없거나 연출 도중 사라지면 다음 목표로 즉시 진행한다. 퀘스트 진행·완료 대기 상태는 아직 저장하지 않는다.
 - 가구 컨트롤러는 UI를 직접 new GameObject로 구성한다. 현재 UI 프리팹 제작 규칙과 충돌하며 씬/주요 프리팹 연결도 확인되지 않았다.
 - ResourceManager는 Preload 캐시에서 동기 Load를 제공한다. Resources 카탈로그는 `LoadResource`로 읽는다. 로드 실패를 성공과 구분한 복구 절차와 동시 동일 키 로딩 처리가 부족하다.
 - Poolable이 있으면 일반 생성/파괴를 풀 Get/Release로 연결한다. 가구는 Unpooled API를 사용한다. 풀 키가 원본/인스턴스 이름이므로 풀링 객체 이름 변경, OnEnable 이전 상태 복구, 반환 시 이벤트·Tween 정리를 확인해야 한다.
@@ -217,7 +221,7 @@ stateDiagram-v2
 | 직원 업무 | Define.EmployeeTaskType, TaskManager, EmployeeController | 작업 생성 조건, CanWork, 선점/해제, 경로 실패, 플레이어 개입, 완료 후 재배정 |
 | 성장 항목 | GrowthCatalog + GrowthManager + 실제 대상 | 단계 저장 호환성, 누적 효과, 최소 시간, 구매 UI. 새 Core 수정 필요 시 승인 |
 | 가구 | FurnitureCatalog + FurniturePlacementController + SeatStation 등 | 미리보기 생명주기, 예약 좌석 이동, 바닥/통로, 안정적인 저장 ID, 현재 UI 진입 연결 |
-| UI | UI_Base/Scene/Popup + Define enum + 프리팹 | Bind 이름, 이벤트 구독/해제, 중복 Init, 사전 로딩 주소 |
-| 퀘스트 | QuestData/Catalog + 행동 보고 | Menu/노드/가구 매핑, 저장 정책, UI_Quest.Bind. QuestManager는 Core 승인 대상 |
+| UI | UI_Base/Scene/Popup + 해당 UI 스크립트의 enum + 프리팹 | Bind 이름, 이벤트 구독/해제, 중복 Init, 사전 로딩 주소 |
+| 퀘스트 | QuestData/Catalog + 행동 보고 | Menu/노드/가구 매핑, 저장 정책, UI_Quest의 구독과 완료 연출 종료 알림. QuestManager는 Core 승인 대상 |
 
 구체적인 결함과 미검증 위험은 [DEVELOPMENT_STATUS](DEVELOPMENT_STATUS.md), 처리 순서는 [BACKLOG](BACKLOG.md)에서 관리한다. 여기서 새 구조로 변경하기로 결정한 것은 아니다.

@@ -50,6 +50,7 @@ public class Managers : MonoBehaviour
     [SerializeField]
     private DishManager _dish;
     private GrowthManager _growth;
+    private IngredientManager _ingredient;
     private ReviewManager _review;
 
     [SerializeField]
@@ -82,6 +83,7 @@ public class Managers : MonoBehaviour
     public static TaskManager Task => Instance._task;
     public static DishManager Dish => Instance._dish;
     public static GrowthManager Growth => Instance._growth;
+    public static IngredientManager Ingredient => Instance._ingredient;
     public static ReviewManager Review => Instance._review;
     public static StationManager Station => Instance._station;
     // ========================================================== //
@@ -136,6 +138,7 @@ public class Managers : MonoBehaviour
             _instance._task = new TaskManager();
             _instance._dish = new DishManager();
             _instance._growth = new GrowthManager();
+            _instance._ingredient = new IngredientManager();
             _instance._review = new ReviewManager();
             _instance._station = new StationManager();
 
@@ -149,6 +152,7 @@ public class Managers : MonoBehaviour
             UI.Init();
             Setting.Init();
             Quest.Init(_instance._questCatalog);
+            Ingredient.Init();
 
 
             // Content

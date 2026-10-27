@@ -27,6 +27,12 @@ public class EmployeeController : MonoBehaviour
 
     public IReadOnlyList<EmployeeTaskType> AvailableTasks => availableTasks;
 
+    [SerializeField]
+    [Tooltip("직원 데이터의 고유 ID입니다. 데이터 없이 만든 기존 직원은 비어 있습니다.")]
+    private string employeeId;
+
+    public string EmployeeId => employeeId;
+
 
     [Header("Current Task")]
     [SerializeField]
@@ -80,6 +86,10 @@ public class EmployeeController : MonoBehaviour
     [SerializeField, Range(0.25f, 1f)]
     private float interactionTimeScale = 1f;
 
+    [SerializeField, Range(0.25f, 1f)]
+    [Tooltip("직원 데이터가 정한 업그레이드 전 작업 시간 배율입니다.")]
+    private float baseInteractionTimeScale = 1f;
+
     /// <summary>이 직원만 가진 작업 속도 업그레이드 단계입니다.</summary>
     public int InteractionUpgradeLevel => interactionUpgradeLevel;
 
@@ -112,6 +122,33 @@ public class EmployeeController : MonoBehaviour
         AddTaskIfMissing(EmployeeTaskType.Serving);
         AddTaskIfMissing(EmployeeTaskType.Casher);
         AddTaskIfMissing(EmployeeTaskType.DishWash);
+    }
+
+    /// <summary>공용 프리팹에 선택한 직원의 속도와 가능한 업무를 덮어씁니다.</summary>
+    public void ApplyHireData(EmployeeData data)
+    {
+        if (data == null)
+            return;
+
+        // 같은 프리팹으로 생성해도 직원별 고유 ID와 기본 능력치를 따로 유지합니다.
+        employeeId = data.Id;
+        moveSpeed = Mathf.Max(0.1f, data.MoveSpeed);
+        baseInteractionTimeScale = Mathf.Clamp(data.WorkTimeScale, 0.25f, 1f);
+        ApplyMoveSpeed();
+        SetInteractionUpgrade(interactionUpgradeLevel, 0f);
+
+        // 프리팹의 기본 업무 목록을 비우고 선택한 직원 데이터의 업무만 허용합니다.
+        availableTasks.Clear();
+        if (data.Tasks == null)
+            return;
+
+        foreach (EmployeeTaskType taskType in data.Tasks)
+        {
+            if (taskType == EmployeeTaskType.None)
+                continue;
+
+            AddTaskIfMissing(taskType);
+        }
     }
 
     /// <summary>기본 업무를 중복 없이 직원의 수행 가능 목록에 등록합니다.</summary>
@@ -184,7 +221,7 @@ public class EmployeeController : MonoBehaviour
     public void SetInteractionUpgrade(int level, float totalTimeReduction)
     {
         interactionUpgradeLevel = Mathf.Max(0, level);
-        interactionTimeScale = Mathf.Clamp(1f - totalTimeReduction, 0.25f, 1f);
+        interactionTimeScale = Mathf.Clamp(baseInteractionTimeScale - totalTimeReduction, 0.25f, 1f);
     }
 
     /// <summary>현재 직원의 NavMeshAgent에 개인 이동 속도 능력치를 적용합니다.</summary>
@@ -314,7 +351,7 @@ public class EmployeeController : MonoBehaviour
 
                 if (!MenuMachine.TryStartMachineWorkForEmployee(
                         this,
-                        seat.currentCustomer.OrderedType,
+                        seat.currentCustomer,
                         out sourceMachine))
                 {
                     return false;
@@ -607,7 +644,11 @@ public class EmployeeController : MonoBehaviour
             if (!UpdateWorkProgress(GetWorkDuration(sourceMachine)))
                 return;
 
-            if (!sourceMachine.TryProduceMenu(gameObject, stacking, seat.currentCustomer.OrderedType))
+            if (!sourceMachine.TryProduceMenu(
+                    gameObject,
+                    stacking,
+                    seat.currentCustomer.OrderedType,
+                    seat.currentCustomer))
             {
                 CancelTask();
                 return;
@@ -642,7 +683,7 @@ public class EmployeeController : MonoBehaviour
     /// <summary>직원이 손님에게 전달할 수 있는 메뉴인지 확인합니다.</summary>
     private static bool IsMenuItem(Define.ItemType itemType)
     {
-        return true;
+        return itemType == Define.ItemType.Menu;
     }
 
     private void UpdateCashier()
@@ -738,6 +779,19 @@ public class EmployeeController : MonoBehaviour
     public void CancelTask()
     {
         EmployeeTask cancelledTask = currentEmployeeTask;
+        CustomerController waitingCustomer = null;
+        SeatStation waitingSeat = null;
+
+        // 제조 작업이 취소되면 손님 좌석과 재료 예약을 유지한 채 다시 맡길 대상을 기억합니다.
+        if (cancelledTask != null && cancelledTask.Type == EmployeeTaskType.Serving)
+        {
+            SeatStation seat = cancelledTask.Target as SeatStation;
+            if (seat != null && seat.IsWaitingToServe)
+            {
+                waitingCustomer = seat.currentCustomer;
+                waitingSeat = seat;
+            }
+        }
 
         // 취소된 작업도 대상 말풍선과 진행 표시를 바로 정리합니다.
         HideProgressUI();
@@ -763,6 +817,13 @@ public class EmployeeController : MonoBehaviour
         // 취소된 작업은 관리 목록에서 제거해 잘못된 대상에 다시 배정되지 않게 합니다.
         if (cancelledTask != null && Managers.Instance != null)
             Managers.Task.FinishTask(cancelledTask);
+
+        // 예약 재료와 착석 손님을 보존하고 서빙 작업을 대기열에 다시 등록합니다.
+        if (waitingCustomer != null)
+        {
+            if (waitingCustomer.OrderedRecipe != null && Managers.Instance != null)
+                Managers.Task.CreateTask(EmployeeTaskType.Serving, waitingSeat);
+        }
     }
 
     #endregion

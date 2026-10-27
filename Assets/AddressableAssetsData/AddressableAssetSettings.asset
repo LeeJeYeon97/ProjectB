@@ -15,7 +15,7 @@ MonoBehaviour:
   m_DefaultGroup: 1bb6596c9b0900644b1868b59618dbf1
   m_currentHash:
     serializedVersion: 2
-    Hash: ac069102ead32322205d62321488539c
+    Hash: 00000000000000000000000000000000
   m_ExtractTypeTreeData: 0
   m_OptimizeCatalogSize: 0
   m_BuildRemoteCatalog: 0
@@ -107,6 +107,8 @@ MonoBehaviour:
     m_LabelNames:
     - default
     - Preload
+    - IngredientData
+    - EmployeeData
   m_SchemaTemplates: []
   m_GroupTemplateObjects:
   - {fileID: 11400000, guid: cb2dd5d961f976c4e83159c0ecf4d841, type: 2}

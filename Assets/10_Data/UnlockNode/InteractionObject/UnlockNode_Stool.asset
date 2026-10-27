@@ -14,6 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::UnlockNodeData
   groupType: 4
   index: 0
-  prerequisiteData: {fileID: 0}
+  prerequisiteData: {fileID: 11400000, guid: 2421ec640fe24dd40b127b12d4fa8131, type: 2}
   price: 100
   targetPrefab: {fileID: 2843010516504927045, guid: df2a6f5fcdecdfd45aacd114375b3a0f, type: 3}

@@ -40,10 +40,10 @@
 - **날짜/상태:** 2026-10-26 관찰 기록. 원래 결정일/승인 이유 확인 필요. 미래 기획 확정 기록이 아니다.
 - **결정한 내용:** 현행 코드는 메뉴를 ItemType.Menu로 묶고 FoodRecipeData 참조로 구체적인 음식을 구분한다.
 - **결정 배경:** FoodRecipeData에 기계·재료·시간·완성품·가격이 있고, ItemController.MenuRecipe 및 StackingSystem의 레시피 비교가 존재한다. b4fd92b에서 관련 클래스가 변경되었다.
-- **선택한 방식:** MenuMachine의 recipe와 완성품 ItemController.MenuRecipe가 같은 에셋인지 검사하고, 스택도 같은 recipe만 허용한다. IIngredientStock은 선택적으로 연결할 수 있다.
+- **선택한 방식:** MenuMachine의 recipe와 완성품 ItemController.MenuRecipe가 같은 에셋인지 검사하고, 스택도 같은 recipe만 허용한다. 매장 공용 IngredientManager가 레시피 재료를 확인하고 주문 수량을 예약한다.
 - **고려했던 대안:** 코드 변경 이전 형태는 Git 이력에서 볼 수 있으나 당시 어떤 대안을 검토했는지 확인되지 않았다.
 - **선택 이유:** 기록된 이유 없음. 데이터 확장이 목적이었다고 단정하지 않는다.
-- **향후 확장 시 제약사항:** 직원 선택·서빙·퀘스트·가격에는 레시피 식별이 끝까지 전달되지 않는다. 새 메뉴를 넣기 전에 ISS-003/004/006의 연결 공백과 저장용 안정 ID 필요 여부를 검토한다.
+- **향후 확장 시 제약사항:** 직원 서빙·퀘스트·가격에는 레시피 식별이 끝까지 전달되지 않는다. 새 메뉴를 넣기 전에 ISS-003/006의 연결 공백과 저장용 안정 ID 필요 여부를 검토한다.
 - **근거:** [FoodRecipeData](../Assets/01_Scripts/Data/FoodRecipeData.cs), [MenuMachine](../Assets/01_Scripts/Content/InteractObject/MenuMachine.cs), [StackingSystem](../Assets/01_Scripts/Content/Player/StackingSystem.cs).
 
 ## DEC-005 — 문서와 검증 증거를 코드 변경에 함께 관리
@@ -57,9 +57,53 @@
 - **향후 확장 시 제약사항:** 자동 갱신은 Codex가 승인된 작업을 수행할 때의 절차다. 백그라운드 동기화 서비스·CI·커밋 훅을 설치한 것은 아니다. 기준 SHA는 실제 코드 스냅샷이며 미래 문서 커밋을 추정하지 않는다.
 - **근거:** [AGENTS](../AGENTS.md), [상태 문서의 검증 구분](DEVELOPMENT_STATUS.md).
 
+## DEC-006 — 재고 부족 손님의 좌석 점유
+
+- **날짜/상태:** 2026-10-26, 사용자 확정.
+- **결정한 내용:** 주문 가능한 재료가 없더라도 손님은 퇴장하지 않는다. 재고가 보충될 때까지 해당 좌석을 계속 점유한다.
+- **결정 배경:** 사용자는 재고 부족 동안 손님이 자리를 선점하는 것이 게임의 기믹이라고 지정했다.
+- **선택한 방식:** 재고가 충분한 레시피가 없을 때는 주문과 직원 서빙 작업을 만들지 않고 착석 상태를 유지한다. `IngredientManager.AddIngredients`의 재고 변경 알림으로 손님이 주문을 다시 시도한다.
+- **고려했던 대안:** 재고 부족 시 손님을 결제 없이 퇴장시키고 좌석을 청소 상태로 바꾸는 초안이 있었으나 채택하지 않았다.
+- **선택 이유:** 사용자가 지정한 핵심 플레이 규칙을 따른다.
+- **향후 확장 시 제약사항:** 별도 대기 시간, 손님 이탈 조건, 보급 UI/경제, 재고 저장은 결정되지 않았다. 현재 재고는 런타임에만 유지된다.
+- **근거:** [GAME_DESIGN의 재고 규칙](GAME_DESIGN.md), [IngredientManager](../Assets/01_Scripts/Managers/Content/IngredientManager.cs), [CustomerController](../Assets/01_Scripts/Content/Controller/CustomerController.cs).
+
+## DEC-007 — 재료 정의 데이터의 저장 위치와 로드 방식
+
+- **날짜/상태:** 2026-10-26, 사용자 확정.
+- **결정한 내용:** 재료 ScriptableObject 데이터 에셋은 `Assets/10_Data` 아래에 두고, 재료 시스템은 Resources 폴더를 사용하지 않는다.
+- **결정 배경:** 사용자가 재료 데이터에 종류·이름·가격·프리팹 필드를 추가하고 데이터 파일의 위치를 지정했다.
+- **선택한 방식:** `Assets/10_Data/FoodIngredient`에 재료별 `IngredientCatalog` 에셋을 두고 Addressables의 `IngredientData` 라벨로 비동기 로드한다. `StartingAmount`는 각 데이터에 보관하고, 실행 중 수량은 IngredientManager가 관리한다.
+- **고려했던 대안:** 다른 로드 방식의 사용자 검토 기록은 없다.
+- **선택 이유:** 데이터 위치와 Resources 사용 제한이라는 사용자 지시를 따른다.
+- **향후 확장 시 제약사항:** 새 재료를 추가하면 유효한 종류와 시작 수량을 설정하고 같은 Addressables 라벨을 지정해야 한다. 품질별 재고·가격 반영 규칙은 아직 결정되지 않았다.
+- **근거:** [재료 데이터 정의](../Assets/01_Scripts/Data/IngredientCatalog.cs), [재료 에셋 폴더](../Assets/10_Data/FoodIngredient), [재고 매니저](../Assets/01_Scripts/Managers/Content/IngredientManager.cs).
+
+## DEC-008 — 퀘스트 연출 완료 후 다음 목표 시작
+
+- **날짜/상태:** 2026-10-26, 사용자 요청으로 확정.
+- **결정한 내용:** 퀘스트 목표를 달성해도 진행바·완료·보상 표시 시간이 끝나기 전에는 다음 퀘스트를 화면에 띄우지 않는다.
+- **결정 배경:** 기존 QuestManager는 완료 판정과 다음 목표 시작을 같은 호출 안에서 처리해 UI 연출을 볼 수 없었다.
+- **선택한 방식:** QuestManager가 완료와 실제 보상 지급을 한 번 확정하고 UI_Quest의 연출 종료 알림을 기다린다. UI가 없거나 중간에 숨겨지면 다음 목표로 진행한다. 연출 시간은 UI_Quest에서 조절한다.
+- **고려했던 대안:** 기존의 즉시 전환 방식은 완료 연출을 가리므로 유지하지 않았다.
+- **선택 이유:** 사용자가 요청한 화면 순서를 보장하면서 다음 퀘스트 인덱스와 보상 지급 책임을 매니저에 남긴다.
+- **향후 확장 시 제약사항:** 현재 보상 표시는 텍스트다. 별도 보상 효과를 추가하면 종료 알림 시점을 함께 조정해야 한다. 퀘스트 진행·완료 대기 상태의 저장은 아직 구현되지 않았다.
+- **근거:** [QuestManager](../Assets/01_Scripts/Managers/Core/QuestManager.cs), [UI_Quest](../Assets/01_Scripts/UI/SubItem/UI_Quest.cs), [개발 상태](DEVELOPMENT_STATUS.md).
+
+## DEC-009 — 공용 직원 프리팹과 후보별 데이터로 선택 고용
+
+- **날짜/상태:** 2026-10-26, 사용자 확정 테스트 범위.
+- **결정한 내용:** 현재 직원 외형을 분리하지 않고 기존 `Employee.prefab` 하나로 여러 후보를 고용한다. 후보별 능력치와 가능한 업무는 데이터로 바꿔 끼운다.
+- **결정 배경:** 사용자가 원하는 직원을 고르는 고용 방식과 UI 구현을 요청했고, 외형 차이는 현재 우선순위가 아니라고 밝혔다.
+- **선택한 방식:** `Assets/10_Data/Employee`의 `EmployeeData` 세 에셋을 Addressables `EmployeeData` 라벨로 읽는다. 메뉴 팝업의 미리 제작된 카드에서 선택해 고용하며 후보 ID당 실행 중 한 번만 허용한다. 가격 0은 이번 테스트를 위한 임시 값이다.
+- **고려했던 대안:** 후보마다 별도 프리팹을 두는 방식은 이번 요청에서 사용하지 않는다. 다른 가격·저장 정책의 사용자 검토 기록은 없다.
+- **선택 이유:** 공용 외형을 유지하면서 업무와 속도 차이를 바로 시험할 수 있고, 데이터 에셋 위치와 UI 사전 제작 규칙을 따른다.
+- **향후 확장 시 제약사항:** 현재 카드 3개가 고정되어 있어 후보 수를 늘리면 UI를 함께 늘려야 한다. 고용 목록·중복 상태는 저장되지 않으며 가격 밸런스와 재고용 정책은 확인 필요다. 실제 Play Mode 검증도 남았다.
+- **근거:** [EmployeeData](../Assets/01_Scripts/Data/EmployeeData.cs), [EmployeeManager](../Assets/01_Scripts/Managers/Content/EmployeeManager.cs), [메뉴 UI](../Assets/01_Scripts/UI/Popup/UI_MenuPopup.cs), [개발 상태](DEVELOPMENT_STATUS.md).
+
 ## 아직 결정되지 않은 항목
 
-시작 씬, 잘못된 메뉴 정책, 메뉴 가격 기준, 직원 고용/개별 성장 저장, 식기·재료 순환, 가구 구매 시점은 [GAME_DESIGN의 질문](GAME_DESIGN.md)에 남긴다. 과거 성장 문서의 전역 직원 강화 제안과 현행 개별 성장의 차이는 승인 이유가 확인될 때까지 새 확정 결정으로 만들지 않는다.
+시작 씬, 잘못된 메뉴 정책, 메뉴 가격 기준, 직원 고용/개별 성장 저장, 식기 순환, 테스트 구매 UI 이후의 재료 구매 경제·저장, 가구 구매 시점은 [GAME_DESIGN의 질문](GAME_DESIGN.md)에 남긴다. 재고 부족 시 손님이 좌석을 점유하는 규칙은 DEC-006에서 확정했다. 과거 성장 문서의 전역 직원 강화 제안과 현행 개별 성장의 차이는 승인 이유가 확인될 때까지 새 확정 결정으로 만들지 않는다.
 
 ## 앞으로 추가할 결정의 형식
 

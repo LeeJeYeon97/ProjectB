@@ -23,6 +23,7 @@ public class Define
         UdonNoddle = 2,
         UdonSauce = 3,
     }
+
     public enum FoodCookingMachineType
     {
         None = 0,

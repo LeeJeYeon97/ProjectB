@@ -96,12 +96,24 @@ public class CustomerManager
     {
         recipe = null;
 
-        // 해금된 메뉴 기계가 없으면 주문을 만들지 않습니다.
-        if (availableRecipes.Count == 0)
+        // 현재 예약되지 않은 재고로 만들 수 있는 메뉴만 이번 주문 후보에 넣습니다.
+        List<FoodRecipeData> recipesWithStock = new List<FoodRecipeData>();
+        foreach (FoodRecipeData availableRecipe in availableRecipes)
+        {
+            if (availableRecipe == null)
+                continue;
+
+            if (!Managers.Ingredient.HasIngredients(availableRecipe.Ingredients))
+                continue;
+
+            recipesWithStock.Add(availableRecipe);
+        }
+
+        if (recipesWithStock.Count == 0)
             return false;
 
-        int index = Random.Range(0, availableRecipes.Count);
-        recipe = availableRecipes[index];
+        int index = Random.Range(0, recipesWithStock.Count);
+        recipe = recipesWithStock[index];
         return true;
     }
 

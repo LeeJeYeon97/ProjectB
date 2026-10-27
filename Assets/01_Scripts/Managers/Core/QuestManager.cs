@@ -9,6 +9,7 @@ public class QuestManager
     /// <summary>카탈로그 순서대로 만든 퀘스트 실행 객체를 보관합니다.</summary>
     private readonly List<Quest> _quests = new List<Quest>();
     private int _currentIndex;
+    private bool _waitingForPresentation;
 
     /// <summary>현재 진행 중인 퀘스트 객체를 반환합니다.</summary>
     public Quest CurrentQuest => _currentIndex < _quests.Count ? _quests[_currentIndex] : null;
@@ -16,12 +17,16 @@ public class QuestManager
     /// <summary>퀘스트 표시 정보가 바뀌면 화면에 알립니다.</summary>
     public event Action<string, string, int, int, bool> OnQuestChanged;
 
+    /// <summary>완료 연출에 표시할 실제 지급 보상을 UI에 전달합니다.</summary>
+    public event Action<int> OnQuestCompleted;
+
     /// <summary>Inspector에서 받은 카탈로그를 연결하고 첫 퀘스트부터 진행하게 합니다.</summary>
     public void Init(QuestCatalog catalog)
     {
         // 다시 초기화될 때 이전 실행 상태가 남지 않도록 현재 목록부터 비웁니다.
         _quests.Clear();
         _currentIndex = 0;
+        _waitingForPresentation = false;
 
         // 데이터가 누락된 경우 조용히 진행이 멈추지 않도록 원인을 콘솔에 남깁니다.
         if (catalog == null)
@@ -82,15 +87,37 @@ public class QuestManager
             return;
         }
 
-        // 행동 발생 횟수를 더하고 현재 퀘스트 UI에 새 진행도를 알립니다.
+        // 행동 발생 횟수를 더하고 목표에 도달하지 않았다면 진행도만 알립니다.
         quest.AddProgress(amount);
-        NotifyCurrentQuest();
         if (quest.Progress < Mathf.Max(1, quest.Data.targetAmount))
+        {
+            NotifyCurrentQuest();
+            return;
+        }
+
+        // 완료와 보상 지급은 한 번만 확정하고 다음 퀘스트는 연출이 끝날 때까지 기다립니다.
+        quest.Complete();
+        int rewardMoney = GiveReward(quest.Data);
+        _waitingForPresentation = true;
+        NotifyCurrentQuest();
+
+        // 퀘스트 UI가 없는 화면에서도 진행이 멈추지 않도록 즉시 다음 목표로 넘어갑니다.
+        if (OnQuestCompleted == null)
+        {
+            AdvanceAfterPresentation();
+            return;
+        }
+
+        OnQuestCompleted.Invoke(rewardMoney);
+    }
+
+    /// <summary>완료 연출이 끝났다는 알림을 한 번만 받아 다음 퀘스트를 시작합니다.</summary>
+    public void AdvanceAfterPresentation()
+    {
+        if (!_waitingForPresentation)
             return;
 
-        // 필요한 행동 횟수에 도달했으므로 완료 처리와 보상 지급 후 다음 퀘스트로 이동합니다.
-        quest.Complete();
-        GiveReward(quest.Data);
+        _waitingForPresentation = false;
         _currentIndex++;
         StartCurrentQuest();
     }
@@ -174,22 +201,23 @@ public class QuestManager
     }
 
     /// <summary>퀘스트 설정에 저장된 게임 머니를 한 번 지급합니다.</summary>
-    private void GiveReward(QuestData data)
+    private int GiveReward(QuestData data)
     {
         // 보상이 없으면 머니 갱신을 생략합니다.
         if (data == null || data.rewardMoney <= 0)
-            return;
+            return 0;
 
         // 플레이어가 준비되지 않았다면 지급하지 않고 원인을 콘솔에 남깁니다.
         PlayerController player = PlayerController.Instance;
         if (player == null)
         {
             Debug.LogWarning($"[QuestManager] '{data.title}' 보상을 지급할 플레이어가 없습니다.");
-            return;
+            return 0;
         }
 
         // 기존 머니 갱신 함수를 사용해 저장과 UI 알림도 함께 처리합니다.
         player.UpdateMoney(data.rewardMoney);
+        return data.rewardMoney;
     }
 
     /// <summary>현재 퀘스트의 제목, 설명, 진행도, 완료 여부를 화면에 전달합니다.</summary>

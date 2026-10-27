@@ -28,8 +28,6 @@ public class MenuMachine : InteractableBase
     /// <summary>현재 메뉴 제조 작업을 맡은 플레이어나 직원을 반환합니다.</summary>
     public GameObject MachineWorkingActor => machineWorkingActor;
 
-    private IIngredientStock ingredientStock;
-
     /// <summary>기계가 비활성화되면 현재 작업자를 정리합니다.</summary>
     protected override void OnDisable()
     {
@@ -49,8 +47,10 @@ public class MenuMachine : InteractableBase
         if (!IsRecipeReady(recipe))
             return false;
 
-        // 재고 공급처가 아직 없으면 모든 재료가 있다고 가정합니다.
-        if (ingredientStock != null && !ingredientStock.HasIngredients(recipe.Ingredients))
+        // 손님 주문이 예약한 수량을 제외하고 쓸 수 있는 재고가 있는지 확인합니다.
+        bool hasUnreservedIngredients = Managers.Ingredient.HasIngredients(recipe.Ingredients);
+        bool hasReservedOrder = Managers.Ingredient.HasReservedOrder(recipe);
+        if (!hasUnreservedIngredients && !hasReservedOrder)
             return false;
 
         return player.Stacking.CanHoldMenu(recipe);
@@ -71,7 +71,8 @@ public class MenuMachine : InteractableBase
         if (player.Stacking == null)
             return;
 
-        TryProduceMenu(actor, player.Stacking, Define.ItemType.None);
+        Managers.Ingredient.TryGetReservedCustomer(recipe, out CustomerController reservedCustomer);
+        TryProduceMenu(actor, player.Stacking, Define.ItemType.None, reservedCustomer);
     }
 
     /// <summary>플레이어 작업이 끝나면 기계 점유를 정리하고 직원 대기 작업을 다시 배정합니다.</summary>
@@ -117,15 +118,6 @@ public class MenuMachine : InteractableBase
         return Mathf.Max(MinimumProductionDuration, baseDuration);
     }
 
-    /// <summary>
-    /// 재료 확인과 차감을 맡을 재고를 연결합니다.
-    /// 현재는 연결하지 않아 재료를 무제한으로 사용하고, 나중에 통합 또는 기계별 재고를 연결할 수 있습니다.
-    /// </summary>
-    public void SetIngredientStock(IIngredientStock stock)
-    {
-        ingredientStock = stock;
-    }
-
     /// <summary>완성품이 메뉴 분류이고 이 기계의 레시피 연결이 올바른지 확인합니다.</summary>
     public bool CanProduceMenu(Define.ItemType itemType)
     {
@@ -160,7 +152,7 @@ public class MenuMachine : InteractableBase
         if (menuItem.MenuRecipe != recipe)
             return false;
 
-        // 요구 재료 목록은 레시피가 소유합니다. 현재 재고 수량은 아직 검사하지 않습니다.
+        // 요구 재료 목록은 레시피가 소유하며, 실제 수량은 제조 시작과 완료 시 재고 매니저가 확인합니다.
         if (recipe.Ingredients == null)
             return false;
 
@@ -180,7 +172,7 @@ public class MenuMachine : InteractableBase
     }
 
     /// <summary>직원이 사용할 수 있는 메뉴 기계인지 확인하고 작업자를 기록합니다.</summary>
-    public bool TryStartMachineWorkForEmployee(EmployeeController employee, Define.ItemType menuType)
+    public bool TryStartMachineWorkForEmployee(EmployeeController employee, CustomerController customer)
     {
         if (employee == null)
             return false;
@@ -194,7 +186,10 @@ public class MenuMachine : InteractableBase
         if (!IsRecipeReady(recipe))
             return false;
 
-        if (!CanProduceMenu(menuType))
+        if (customer == null || customer.OrderedRecipe != recipe)
+            return false;
+
+        if (!Managers.Ingredient.HasReservation(customer, recipe.Ingredients))
             return false;
 
         machineWorkingActor = employee.gameObject;
@@ -216,7 +211,7 @@ public class MenuMachine : InteractableBase
     /// <summary>현재 씬에서 비어 있는 메뉴 제조 기계를 찾아 직원에게 배정합니다.</summary>
     public static bool TryStartMachineWorkForEmployee(
         EmployeeController employee,
-        Define.ItemType menuType,
+        CustomerController customer,
         out MenuMachine machine)
     {
         machine = null;
@@ -226,7 +221,7 @@ public class MenuMachine : InteractableBase
         MenuMachine[] machines = FindObjectsByType<MenuMachine>(FindObjectsSortMode.None);
         for (int i = 0; i < machines.Length; i++)
         {
-            if (!machines[i].TryStartMachineWorkForEmployee(employee, menuType))
+            if (!machines[i].TryStartMachineWorkForEmployee(employee, customer))
                 continue;
 
             machine = machines[i];
@@ -248,7 +243,11 @@ public class MenuMachine : InteractableBase
     }
 
     /// <summary>레시피 메뉴를 생성해 작업자의 스택에 전달합니다.</summary>
-    public bool TryProduceMenu(GameObject actor, StackingSystem stack, Define.ItemType requestedType)
+    public bool TryProduceMenu(
+        GameObject actor,
+        StackingSystem stack,
+        Define.ItemType requestedType,
+        CustomerController reservedCustomer = null)
     {
         if (actor == null)
             return false;
@@ -265,8 +264,19 @@ public class MenuMachine : InteractableBase
         if (!IsRecipeReady(recipe))
             return false;
 
-        if (ingredientStock != null && !ingredientStock.HasIngredients(recipe.Ingredients))
-            return false;
+        if (reservedCustomer == null)
+        {
+            if (!Managers.Ingredient.HasIngredients(recipe.Ingredients))
+                return false;
+        }
+        else
+        {
+            if (reservedCustomer.OrderedRecipe != recipe)
+                return false;
+
+            if (!Managers.Ingredient.HasReservation(reservedCustomer, recipe.Ingredients))
+                return false;
+        }
 
         if (requestedType != Define.ItemType.None && requestedType != Define.ItemType.Menu)
             return false;
@@ -280,15 +290,25 @@ public class MenuMachine : InteractableBase
         if (menu == null)
             return false;
 
-        // 생성 중 재고가 바뀌었을 수도 있으므로 모든 재료의 일괄 차감에 실패하면 완성품을 되돌립니다.
-        if (ingredientStock != null && !ingredientStock.TryUseIngredients(recipe.Ingredients))
+        // 완성품을 스택에 넣기 전에 재료 전부를 확인하고 차감해 재고 부족 시 생성물을 정리합니다.
+        bool ingredientsUsed = false;
+        if (reservedCustomer == null)
+            ingredientsUsed = Managers.Ingredient.TryUseIngredients(recipe.Ingredients);
+        else
+            ingredientsUsed = Managers.Ingredient.TryUseReservedIngredients(reservedCustomer, recipe.Ingredients);
+
+        if (!ingredientsUsed)
         {
             Managers.Resource.Destroy(menu);
             return false;
         }
 
-        // 재고 공급처를 연결하지 않은 현재 단계에서는 재료가 충분하다고 가정하고 완성품을 전달합니다.
+        // 재료 차감에 성공한 뒤에만 완성품을 작업자의 적재 목록에 전달합니다.
         stack.PickUpItem(menu);
+
+        // 플레이어가 손님 주문용 메뉴를 만들면 해당 직원 작업은 중복되지 않도록 제거합니다.
+        if (reservedCustomer != null && actor.GetComponent<PlayerController>() != null)
+            Managers.Task?.RemoveServingTaskFor(reservedCustomer);
 
         if (actor.GetComponent<PlayerController>() == null)
         {

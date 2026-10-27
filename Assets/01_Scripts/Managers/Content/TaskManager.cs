@@ -207,6 +207,22 @@ public class TaskManager
         }
     }
 
+    /// <summary>플레이어가 주문용 메뉴를 만들면 해당 손님 좌석의 직원 서빙 작업을 제거합니다.</summary>
+    public void RemoveServingTaskFor(CustomerController customer)
+    {
+        if (customer == null || Managers.Station == null)
+            return;
+
+        foreach (SeatStation seat in Managers.Station.AllSeats)
+        {
+            if (seat == null || seat.currentCustomer != customer)
+                continue;
+
+            RemoveTasksFor(seat);
+            return;
+        }
+    }
+
     /// <summary>씬이나 게임 상태를 초기화할 때 대기 작업 참조를 정리합니다.</summary>
     public void Clear()
     {

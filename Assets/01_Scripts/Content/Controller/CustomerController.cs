@@ -20,6 +20,8 @@ public class CustomerController : MonoBehaviour
 
     // 이 손님의 주문을 레시피 에셋 참조로 기억해 말풍선에 해당 이미지를 전달합니다.
     private FoodRecipeData orderedRecipe;
+    /// <summary>손님이 주문한 실제 레시피를 제조 직원에게 전달합니다.</summary>
+    public FoodRecipeData OrderedRecipe => orderedRecipe;
 
     [Header("Timers")]
     public float eatingDuration = 5.0f; // 밥 먹는 시간
@@ -51,6 +53,8 @@ public class CustomerController : MonoBehaviour
     private CustomerResolve resolveWork;
     private Coroutine noiseRoutine;
     private Coroutine queueArrivalRoutine;
+    private bool waitingForIngredients;
+    private bool subscribedToIngredientChanges;
 
     [Header("방해 손님 설정")]
     [SerializeField, Min(0.5f)] private float noiseRange = 4f;
@@ -76,10 +80,18 @@ public class CustomerController : MonoBehaviour
         animator.SetFloat("Speed", agent.velocity.magnitude);
     }
 
+    /// <summary>손님이 활성화될 때 재고 보충 알림을 구독합니다.</summary>
+    private void OnEnable()
+    {
+        SubscribeToIngredientChanges();
+    }
+
     /// <summary>손님이 풀로 돌아가거나 제거될 때 소음과 말풍선 상태를 정리합니다.</summary>
     private void OnDisable()
     {
         StopNoise();
+        UnsubscribeFromIngredientChanges();
+        Managers.Ingredient?.ReleaseReservation(this);
         ReleaseBubble(uiBubble);
         ReleaseBubble(hidingBubble);
         uiBubble = null;
@@ -93,6 +105,7 @@ public class CustomerController : MonoBehaviour
     {
         // 풀에서 재사용되기 전에 남은 소음 코루틴이 새 손님의 상태에 영향을 주지 않게 합니다.
         StopNoise();
+        Managers.Ingredient?.ReleaseReservation(this);
 
         // 리뷰 대기 시간은 손님이 가게에 도착한 시점부터 음식이 제공될 때까지 측정합니다.
         arrivedAtTime = Time.time;
@@ -101,7 +114,11 @@ public class CustomerController : MonoBehaviour
         customerType = type;
         orderedType = ItemType.None;
         orderedRecipe = null;
+        waitingForIngredients = false;
         servedMenuCorrectly = true;
+
+        // 오브젝트 풀에서 다시 사용할 때 재고 보충 알림을 다시 받도록 연결합니다.
+        SubscribeToIngredientChanges();
         gameObject.name = $"Customer_{customerType}";
 
         if (agent == null) agent = GetComponent<NavMeshAgent>(); // agent 할당 확인
@@ -298,10 +315,20 @@ public class CustomerController : MonoBehaviour
         // 활성 기계의 레시피에서 한 가지를 고르고, 이번 손님의 주문으로 보관합니다.
         if (!Managers.Customer.TryGetRandomRecipe(out FoodRecipeData recipe))
         {
-            Debug.LogWarning("[Customer] 주문 가능한 메뉴가 없습니다.", this);
+            Debug.Log("[Customer] 주문 가능한 메뉴가 없어 재고 보충을 기다립니다.", this);
+            waitingForIngredients = true;
             return;
         }
 
+        // 주문 시 재료를 예약해 다른 주문이 같은 재고를 먼저 소비하지 못하게 합니다.
+        if (!Managers.Ingredient.TryReserveForOrder(this, recipe.Ingredients))
+        {
+            Debug.Log($"[Customer] {recipe.FoodName} 재료가 부족해 좌석에서 보충을 기다립니다.", this);
+            waitingForIngredients = true;
+            return;
+        }
+
+        waitingForIngredients = false;
         orderedRecipe = recipe;
         // 기존 직원 작업과 서빙 흐름은 메뉴 분류 값을 계속 사용합니다.
         orderedType = ItemType.Menu;
@@ -309,12 +336,54 @@ public class CustomerController : MonoBehaviour
         Managers.Task.CreateTask(EmployeeTaskType.Serving, assignedSeat);
         Debug.Log($"[Customer] {orderedRecipe.FoodName} 주문 완료", this);
     }
+
+    /// <summary>재고가 보충되었을 때 아직 주문하지 못한 착석 손님의 주문을 다시 시도합니다.</summary>
+    private void OnIngredientsChanged()
+    {
+        if (!waitingForIngredients)
+            return;
+
+        if (CurrentState != CustomerState.WaitingForFood)
+            return;
+
+        PlaceOrder();
+    }
+
+    /// <summary>매니저가 준비된 경우 재고 보충 알림을 한 번만 구독합니다.</summary>
+    private void SubscribeToIngredientChanges()
+    {
+        if (subscribedToIngredientChanges || Managers.Instance == null)
+            return;
+
+        IngredientManager ingredientManager = Managers.Ingredient;
+        if (ingredientManager == null)
+            return;
+
+        ingredientManager.OnIngredientsChanged += OnIngredientsChanged;
+        subscribedToIngredientChanges = true;
+    }
+
+    /// <summary>손님이 비활성화될 때 재고 매니저의 이벤트 참조를 해제합니다.</summary>
+    private void UnsubscribeFromIngredientChanges()
+    {
+        if (!subscribedToIngredientChanges || Managers.Instance == null)
+            return;
+
+        IngredientManager ingredientManager = Managers.Ingredient;
+        if (ingredientManager != null)
+            ingredientManager.OnIngredientsChanged -= OnIngredientsChanged;
+
+        subscribedToIngredientChanges = false;
+    }
     #endregion
 
     
     #region 음식받고 음식 먹는 코드
     public void OnFoodServed(ItemType servedType)
     {
+        // 주문이 끝났으므로 남아 있는 예약을 해제합니다. 제조 때 이미 사용된 예약은 무시됩니다.
+        Managers.Ingredient.ReleaseReservation(this);
+
         // 음식이 처음 제공될 때까지의 대기 시간을 기록해 리뷰 평가에 전달합니다.
         foodWaitSeconds = Mathf.Max(0f, Time.time - arrivedAtTime);
         servedMenuCorrectly = servedType == orderedType;
@@ -695,7 +764,7 @@ public class CustomerController : MonoBehaviour
     private IEnumerator CoCheckExit()
     {
         // 퇴장하기 전에 제자리에서 출구를 바라보고, 회전이 끝난 뒤 이동을 시작합니다.
-        if (agent != null && agent.enabled && exitPoint != null)
+        if (agent != null && agent.enabled && agent.isOnNavMesh && exitPoint != null)
         {
             agent.isStopped = true;
             agent.updateRotation = false;

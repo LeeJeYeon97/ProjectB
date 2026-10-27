@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d3b40eb14ff0dc64f807aa6251732d9c, type: 3}
+  m_Name: Employee_helper
+  m_EditorClassIdentifier: Assembly-CSharp::EmployeeData
+  Id: helper
+  Order: 2
+  Name: "\uB2E4\uAE30\uB2A5 \uC9C1\uC6D0"
+  HirePrice: 0
+  Prefab: {fileID: 3005606789880545942, guid: 8bb6c0e3b6f4d0f4b93c63169484d89e, type: 3}
+  MoveSpeed: 1
+  WorkTimeScale: 1
+  Tasks: 03000000040000000100000002000000
