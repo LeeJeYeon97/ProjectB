@@ -6,50 +6,49 @@ using UnityEngine;
 [Serializable]
 public class GrowthManager
 {
+    #region 변수
+
     private const string SaveKey = "ProjectB.Growth.Save";
     private const int CurrentSaveVersion = 3;
+    private const string CatalogAddress = "GrowthCatalog";
 
-    [SerializeField] private GrowthCatalog catalog;
+    [SerializeField] private GrowthData catalog;
     private readonly Dictionary<string, int> levels = new Dictionary<string, int>();
 
     public event Action OnChanged;
 
-    /// <summary>저장한 단계를 불러오고 현재 플레이어와 직원에 효과를 적용합니다.</summary>
+    #endregion
+
+    #region 초기화
+
+    /// <summary>성장 카탈로그를 Addressables에서 읽기 시작합니다.</summary>
     public void Init()
     {
-        catalog = Managers.Resource.LoadResource<GrowthCatalog>("GrowthCatalog");
-        if (catalog == null)
-            catalog = CreateDefaultCatalog();
+        // 카탈로그가 준비되기 전에는 저장 단계를 해석하거나 효과를 적용하지 않습니다.
+        catalog = null;
+        levels.Clear();
+        Managers.Resource.LoadAsync<GrowthData>(CatalogAddress, OnCatalogLoaded);
+    }
+
+    /// <summary>카탈로그 로드가 끝나면 저장 단계를 복원하고 현재 플레이어에게 효과를 적용합니다.</summary>
+    private void OnCatalogLoaded(GrowthData loadedCatalog)
+    {
+        if (loadedCatalog == null)
+        {
+            Debug.LogError("[GrowthManager] 성장 카탈로그를 불러오지 못했습니다. 성장 구매를 사용할 수 없습니다.");
+            OnChanged?.Invoke();
+            return;
+        }
+
+        catalog = loadedCatalog;
         Load();
         ApplyAll();
+
+        // 먼저 열린 성장 화면도 실제 가격과 단계를 다시 표시하도록 알립니다.
+        OnChanged?.Invoke();
     }
 
-    /// <summary>에셋 카탈로그가 아직 없을 때도 첫 업그레이드 흐름을 쓸 수 있게 기본값을 만듭니다.</summary>
-    private static GrowthCatalog CreateDefaultCatalog()
-    {
-        GrowthCatalog data = ScriptableObject.CreateInstance<GrowthCatalog>();
-        data.items = new List<GrowthItem>
-        {
-            MakeItem("player_speed", "플레이어 이동 속도", new[] { 100, 250, 500 }, new[] { 0.5f, 0.5f, 0.5f }),
-            MakeItem("player_stack", "플레이어 적재량", new[] { 150, 300, 600 }, new[] { 2f, 2f, 2f }),
-            MakeItem("player_interact", "상호작용 속도", new[] { 150, 300, 600 }, new[] { 0.08f, 0.08f, 0.08f }),
-            MakeItem("employee_speed", "직원 이동 속도", new[] { 200, 400, 800 }, new[] { 0.4f, 0.4f, 0.4f }),
-            MakeItem("employee_interact", "직원 작업 속도", new[] { 200, 400, 800 }, new[] { 0.08f, 0.08f, 0.08f }),
-        };
-        return data;
-    }
-
-    /// <summary>기본 카탈로그의 한 항목을 보기 쉬운 형태로 만듭니다.</summary>
-    private static GrowthItem MakeItem(string id, string title, int[] prices, float[] values)
-    {
-        return new GrowthItem
-        {
-            id = id,
-            title = title,
-            prices = prices,
-            values = values
-        };
-    }
+    #endregion
 
     /// <summary>항목 ID에 해당하는 현재 업그레이드 단계를 돌려줍니다.</summary>
     public int GetLevel(string id)

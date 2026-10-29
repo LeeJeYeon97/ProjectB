@@ -191,6 +191,11 @@ public class Sink : InteractableBase
         if (actor == null)
             return;
 
+        // 다른 대상에서 진행 중인 작업이 있으면 잔을 동시에 회수하지 않습니다.
+        PlayerController player = actor.GetComponent<PlayerController>();
+        if (player != null && !player.CanStartInstantInteraction())
+            return;
+
         // 진열 재고와 플레이어의 손 상태는 잔 회수 함수에서 확인합니다.
         // 실제 이동에 성공했을 때만 다음 잔을 위한 대기 시간을 설정합니다.
         if (TryTakeCleanDish(actor))

@@ -30,6 +30,7 @@ public class UI_Bubble : UI_Base
     private RectTransform bubbleRect;
     private Canvas bubbleCanvas;
     private Transform bubbleAnchor;
+    private Vector3 prefabWorldScale;
     private Vector3 shownScale;
     private Tween bubbleTween;
     private bool isShowing;
@@ -40,16 +41,18 @@ public class UI_Bubble : UI_Base
     [SerializeField] private float showStartScale = 0.65f;
     [SerializeField] private float hideEndScale = 0.75f;
 
-    public void ResetForPool()
+    public void ResetForReuse()
     {
         Init();
         bubbleTween?.Kill();
         bubbleTween = null;
         isShowing = false;
         HideAll();
-        // 풀로 돌려보낼 때 직전 손님의 메뉴 그림을 남기지 않습니다.
+        // 다시 사용할 때 직전 손님의 메뉴 그림과 진행 상태가 남지 않게 정리합니다.
         if (foodImg != null)
             foodImg.sprite = defaultFoodIcon;
+
+        // 현재 소유자 아래에 둔 채 숨겨 다음 활성화 때 같은 말풍선을 다시 사용합니다.
         transform.localScale = shownScale;
         gameObject.SetActive(false);
     }
@@ -71,6 +74,7 @@ public class UI_Bubble : UI_Base
         disturbanceText = GetText((int)Texts.Text_Disturbance);
         bubbleRect = transform as RectTransform;
         bubbleCanvas = GetComponent<Canvas>();
+        prefabWorldScale = transform.lossyScale;
         shownScale = transform.localScale;
 
         HideAll();
@@ -79,17 +83,23 @@ public class UI_Bubble : UI_Base
     /// <summary>말풍선을 소유 객체의 기준점 아래로 옮기고 그 위치에 맞춥니다.</summary>
     public void SetAnchor(Transform anchor)
     {
+        // 원래 크기를 먼저 기억한 뒤 부모를 바꾸어 부모별 스케일이 기본값이 되지 않게 합니다.
+        Init();
         bubbleAnchor = anchor;
 
         if (bubbleAnchor == null)
             return;
 
-        // 공용 UI 루트에서 생성되거나 풀에서 재사용된 말풍선도 실제 소유자의 자식으로 옮깁니다.
-        // 기존 월드 크기를 유지한 채 부모를 바꿔, 서로 다른 객체의 크기 설정에 영향을 받지 않게 합니다.
+        // 풀에 남은 이전 부모의 localScale을 버리고 프리팹의 원래 월드 크기로 맞춥니다.
+        SetWorldScale(prefabWorldScale);
+
+        // 공용 UI 루트에서 생성되거나 풀에서 재사용된 말풍선을 실제 소유자의 자식으로 옮깁니다.
         transform.SetParent(bubbleAnchor, true);
 
         // 기준점 자체가 말풍선의 위치이므로 프리팹의 임시 위치값을 제거합니다.
         transform.position = bubbleAnchor.position;
+        // 애니메이션은 현재 앵커에 맞춘 localScale을 사용합니다.
+        shownScale = transform.localScale;
         // 첫 화면에서도 세로 비율이 눌리지 않도록 카메라와 같은 방향을 바라봅니다.
         Camera viewCamera = Camera.main;
         transform.rotation = viewCamera != null ? viewCamera.transform.rotation : Quaternion.identity;
@@ -134,6 +144,27 @@ public class UI_Bubble : UI_Base
 
         // 방해 손님 표시용 글자도 다른 말풍선에서는 보이지 않도록 함께 숨깁니다.
         disturbanceText?.gameObject.SetActive(false);
+    }
+
+    /// <summary>부모의 크기와 관계없이 지정한 월드 크기를 유지하도록 localScale을 환산합니다.</summary>
+    private void SetWorldScale(Vector3 worldScale)
+    {
+        Transform currentParent = transform.parent;
+        if (currentParent == null)
+        {
+            transform.localScale = worldScale;
+            return;
+        }
+
+        Vector3 parentScale = currentParent.lossyScale;
+        float scaleX = parentScale.x == 0f ? 1f : parentScale.x;
+        float scaleY = parentScale.y == 0f ? 1f : parentScale.y;
+        float scaleZ = parentScale.z == 0f ? 1f : parentScale.z;
+
+        transform.localScale = new Vector3(
+            worldScale.x / scaleX,
+            worldScale.y / scaleY,
+            worldScale.z / scaleZ);
     }
 
     public void SetBubble(BubbleType type)
@@ -230,7 +261,7 @@ public class UI_Bubble : UI_Base
         }
     }
 
-    /// <summary>말풍선을 닫고 실제로 비활성화된 뒤 요청한 완료 동작을 호출합니다.</summary>
+    /// <summary>말풍선을 닫고 비활성화한 뒤 선택한 완료 동작을 호출합니다.</summary>
     public void Hide(Action onHidden = null)
     {
         Init();
@@ -241,7 +272,7 @@ public class UI_Bubble : UI_Base
         if (!gameObject.activeSelf)
         {
             HideAll();
-            // 이미 닫힌 말풍선도 호출자가 즉시 풀에 반납할 수 있도록 완료를 알립니다.
+            // 이미 닫힌 말풍선도 호출자가 다음 처리를 이어가도록 완료를 알립니다.
             onHidden?.Invoke();
             return;
         }
@@ -252,7 +283,7 @@ public class UI_Bubble : UI_Base
             HideAll();
             transform.localScale = Vector3.zero;
             gameObject.SetActive(false);
-            // 애니메이션을 생략한 경우에도 비활성화가 끝난 뒤에만 반환합니다.
+            // 애니메이션을 생략해도 비활성화한 다음 완료 동작을 호출합니다.
             onHidden?.Invoke();
             return;
         }
@@ -268,7 +299,7 @@ public class UI_Bubble : UI_Base
                 transform.localScale = Vector3.zero;
                 gameObject.SetActive(false);
                 bubbleTween = null;
-                // 닫힘 연출이 끝난 시점에 소유자가 말풍선을 풀로 돌려보낼 수 있습니다.
+                // 닫힘 연출이 끝난 시점에 소유자가 다음 처리를 이어가도록 알립니다.
                 onHidden?.Invoke();
             });
     }

@@ -19,4 +19,4 @@ MonoBehaviour:
   Prefab: {fileID: 3005606789880545942, guid: 8bb6c0e3b6f4d0f4b93c63169484d89e, type: 3}
   MoveSpeed: 1
   WorkTimeScale: 0.9
-  Tasks: 0300000001000000
+  Tasks: 030000000100000005000000

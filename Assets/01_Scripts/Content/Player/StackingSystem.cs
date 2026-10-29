@@ -34,6 +34,19 @@ public class StackingSystem : MonoBehaviour
         if (item == null)
             return;
 
+        // 직원이 예약한 배달 물건은 다른 운반자가 자동으로 줍지 않습니다.
+        IngredientItem ingredient = other.GetComponent<IngredientItem>();
+        if (ingredient != null)
+        {
+            PlayerController player = GetComponentInParent<PlayerController>();
+            EmployeeController employee = GetComponentInParent<EmployeeController>();
+            // 직원은 운반 작업에서 도착과 예약을 확인한 뒤 명시적으로 집습니다.
+            if (employee != null) return;
+            GameObject actor = gameObject;
+            if (player != null) actor = player.gameObject;
+            if (!ingredient.CanTake(actor)) return;
+        }
+
         // 돈처럼 스택에 쌓이지 않는 아이템은 손에 든 물건의 종류나 스택 자리와 상관없이 수집합니다.
         if (item.StackType == Define.StackType.NoStack)
         {
@@ -44,6 +57,10 @@ public class StackingSystem : MonoBehaviour
         // 스택 아이템만 기존 종류 일치 및 최대 개수 검사를 통과해야 수집합니다.
         if (CheckListItem(other.gameObject))
         {
+            if (ingredient != null)
+            {
+                Managers.Ingredient.TakeDelivery(ingredient);
+            }
             PickUpItem(other.gameObject);
         }
     }
@@ -233,4 +250,30 @@ public class StackingSystem : MonoBehaviour
 
         
     }
+
+    #region 스택 물건 분리
+
+    /// <summary>맨 위 물건을 파괴하지 않고 스택에서 분리해 외부 연출에 넘깁니다.</summary>
+    public GameObject TakeTopItem()
+    {
+        if (_stackedItems.Count == 0)
+        {
+            return null;
+        }
+
+        int index = _stackedItems.Count - 1;
+        GameObject item = _stackedItems[index];
+        if (item == null)
+        {
+            return null;
+        }
+
+        // 획득 점프가 아직 진행 중이면 이전 이동과 완료 처리가 폐기 연출과 겹치지 않도록 중지합니다.
+        item.transform.DOKill();
+        _stackedItems.RemoveAt(index);
+        item.transform.SetParent(null, true);
+        return item;
+    }
+
+    #endregion
 }

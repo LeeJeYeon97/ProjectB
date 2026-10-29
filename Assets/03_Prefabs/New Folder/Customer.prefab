@@ -535,7 +535,6 @@ MonoBehaviour:
   CurrentState: 1
   orderedType: 0
   eatingDuration: 5
-  payAmount: 15
   noiseRange: 4
   noiseInterval: 3
   bubbleAnchor: {fileID: 7718849833976465513}

@@ -13,6 +13,14 @@ public class EmployeeController : MonoBehaviour
         DeliverBeer,
     }
 
+    private enum CarryStep
+    {
+        None,
+        Pickup,
+        Storage,
+        Return,
+    }
+
     [Header("State")]
     [SerializeField]
     private EmployeeState currentState = EmployeeState.Idle;
@@ -66,6 +74,9 @@ public class EmployeeController : MonoBehaviour
 
     private MenuMachine sourceMachine;
     private ServingStep servingStep;
+    private CarryStep carryStep;
+    private IngredientItem carryItem;
+    private Storage carryStorage;
 
     private float workProgressTimer = 0f;
 
@@ -329,13 +340,25 @@ public class EmployeeController : MonoBehaviour
         }
 
         // 메뉴를 들고 있으면 배달부터 하고, 빈손이면 기계에서 메뉴를 준비합니다.
+        if (task.Type == EmployeeTaskType.CarryIngredient)
+        {
+            if (stacking == null || stacking.StackCount != 0) return false;
+            // 이동할 수 없는 직원을 반복 배정해 작업 취소가 재귀적으로 이어지는 상황을 막습니다.
+            if (agent == null) return false;
+            if (!agent.enabled) return false;
+            if (!agent.isOnNavMesh) return false;
+            carryItem = Managers.Ingredient.ReserveDelivery(gameObject);
+            if (carryItem == null) return false;
+            carryStep = CarryStep.Pickup;
+        }
+
         if (task.Type == EmployeeTaskType.Serving)
         {
             if (stacking == null)
                 return false;
 
             Define.ItemType heldMenu = stacking.GetFirstListItemType();
-            if (IsMenuItem(heldMenu))
+            if (IsMenuItem(stacking))
             {
                 servingStep = ServingStep.DeliverBeer;
             }
@@ -423,6 +446,7 @@ public class EmployeeController : MonoBehaviour
         MenuMachine.StopEmployeeMachineWork(this);
         sourceMachine = null;
         servingStep = ServingStep.None;
+        ClearCarryWork();
         currentEmployeeTask = null;
         currentTask = EmployeeTaskType.None;
         target = null;
@@ -545,6 +569,10 @@ public class EmployeeController : MonoBehaviour
                 UpdateCashier();
                 break;
 
+            case EmployeeTaskType.CarryIngredient:
+                UpdateCarryIngredient();
+                break;
+
             default:
                 CancelTask();
                 break;
@@ -665,7 +693,7 @@ public class EmployeeController : MonoBehaviour
 
         if (servingStep != ServingStep.DeliverBeer ||
             stacking == null ||
-            !IsMenuItem(stacking.GetFirstListItemType()))
+            !IsMenuItem(stacking))
         {
             CancelTask();
             return;
@@ -680,10 +708,24 @@ public class EmployeeController : MonoBehaviour
         }
     }
 
-    /// <summary>직원이 손님에게 전달할 수 있는 메뉴인지 확인합니다.</summary>
-    private static bool IsMenuItem(Define.ItemType itemType)
+    /// <summary>직원이 든 맨 위 아이템에 실제 메뉴 레시피가 연결됐는지 확인합니다.</summary>
+    private static bool IsMenuItem(StackingSystem stack)
     {
-        return itemType == Define.ItemType.Menu;
+        if (stack == null || stack.StackCount <= 0)
+            return false;
+
+        GameObject topObject = stack.StackedItems[stack.StackCount - 1];
+        if (topObject == null)
+            return false;
+
+        ItemController item = topObject.GetComponent<ItemController>();
+        if (item == null)
+            return false;
+
+        if (item.type != Define.ItemType.Menu)
+            return false;
+
+        return item.MenuRecipe != null;
     }
 
     private void UpdateCashier()
@@ -755,6 +797,7 @@ public class EmployeeController : MonoBehaviour
         MenuMachine.StopEmployeeMachineWork(this);
         sourceMachine = null;
         servingStep = ServingStep.None;
+        ClearCarryWork();
 
         currentEmployeeTask = null;
         currentTask = EmployeeTaskType.None;
@@ -798,6 +841,7 @@ public class EmployeeController : MonoBehaviour
         MenuMachine.StopEmployeeMachineWork(this);
         sourceMachine = null;
         servingStep = ServingStep.None;
+        ClearCarryWork();
 
         currentEmployeeTask = null;
         currentTask = EmployeeTaskType.None;
@@ -870,6 +914,11 @@ public class EmployeeController : MonoBehaviour
     /// <summary>서빙 단계에 따라 맥주 기계나 손님 좌석 중 이동 목적지를 고릅니다.</summary>
     private Transform GetMoveTarget()
     {
+        if (currentTask == EmployeeTaskType.CarryIngredient)
+        {
+            if (carryStep == CarryStep.Storage && carryStorage != null) return carryStorage.transform;
+            if (carryStep == CarryStep.Pickup && carryItem != null) return carryItem.transform;
+        }
         if (currentTask == EmployeeTaskType.Serving && servingStep == ServingStep.MakeBeer)
             return sourceMachine != null ? sourceMachine.transform : null;
 
@@ -898,4 +947,76 @@ public class EmployeeController : MonoBehaviour
     {
         CancelTask();
     }
+
+    #region 재료 운반
+
+    /// <summary>배송 재료를 가져가 입고하거나 자리가 없으면 배송 지점에 반환합니다.</summary>
+    private void UpdateCarryIngredient()
+    {
+        if (carryStep == CarryStep.Pickup)
+        {
+            if (carryItem == null || stacking == null)
+            {
+                CancelTask();
+                return;
+            }
+            GameObject item = carryItem.gameObject;
+            if (!stacking.CheckListItem(item))
+            {
+                CancelTask();
+                return;
+            }
+            Managers.Ingredient.TakeDelivery(carryItem);
+            stacking.PickUpItem(item);
+            carryItem.Release(gameObject);
+            carryItem = null;
+            carryStorage = UnityEngine.Object.FindFirstObjectByType<Storage>();
+            if (carryStorage == null || Managers.Ingredient.TotalAmount >= Managers.Ingredient.Capacity)
+                carryStep = CarryStep.Return;
+            else
+                carryStep = CarryStep.Storage;
+            MoveToTask();
+            return;
+        }
+
+        if (carryStep == CarryStep.Storage)
+        {
+            if (carryStorage != null && carryStorage.isActiveAndEnabled && carryStorage.DepositOne(stacking))
+            {
+                FinishTask();
+                return;
+            }
+            carryStep = CarryStep.Return;
+            MoveToTask();
+            return;
+        }
+
+        if (carryStep == CarryStep.Return)
+        {
+            GameObject item = stacking.TakeTopItem();
+            if (item != null) Managers.Ingredient.ReturnDelivery(item, gameObject);
+            FinishTask();
+            return;
+        }
+        CancelTask();
+    }
+
+    /// <summary>작업이 취소될 때 재료 예약을 풀고 들고 있던 재료를 안전하게 반환합니다.</summary>
+    private void ClearCarryWork()
+    {
+        if (carryItem != null) carryItem.Release(gameObject);
+        carryItem = null;
+        if (carryStep != CarryStep.None && stacking != null)
+        {
+            if (stacking.GetFirstListItemType() == Define.ItemType.Ingredient)
+            {
+                GameObject item = stacking.TakeTopItem();
+                if (item != null) Managers.Ingredient.ReturnDelivery(item, gameObject);
+            }
+        }
+        carryStorage = null;
+        carryStep = CarryStep.None;
+    }
+
+    #endregion
 }

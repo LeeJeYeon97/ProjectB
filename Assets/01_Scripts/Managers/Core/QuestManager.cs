@@ -87,6 +87,12 @@ public class QuestManager
             return;
         }
 
+        AddQuestProgress(quest, amount);
+    }
+
+    /// <summary>일치한 퀘스트의 진행도를 올리고 완료 시 보상과 연출을 처리합니다.</summary>
+    private void AddQuestProgress(Quest quest, int amount)
+    {
         // 행동 발생 횟수를 더하고 목표에 도달하지 않았다면 진행도만 알립니다.
         quest.AddProgress(amount);
         if (quest.Progress < Mathf.Max(1, quest.Data.targetAmount))
@@ -129,11 +135,27 @@ public class QuestManager
         ReportProgress(objectiveType, GetItemTargetType(itemType), amount);
     }
 
-    /// <summary>노드 고유 ID를 퀘스트 대상 enum으로 바꿔 해금 행동을 보고합니다.</summary>
-    public void ReportNodeUnlock(string nodeId)
+    /// <summary>해금한 데이터가 현재 퀘스트의 목표와 일치하면 진행도를 올립니다.</summary>
+    public void ReportNodeUnlock(UnlockNodeData data)
     {
-        // 해금 지점은 내부 문자열 대신 미리 정한 enum 대상으로 진행도를 전달합니다.
-        ReportProgress(Define.QuestObjectiveType.Unlock, GetNodeTargetType(nodeId));
+        if (data == null) return;
+        Quest quest = CurrentQuest;
+        if (quest == null) return;
+        if (!quest.IsStarted) return;
+        if (quest.Data == null) return;
+        if (quest.Data.objectiveType != Define.QuestObjectiveType.Unlock) return;
+
+        // 모든 해금 대상을 허용하지 않는다면 연결한 데이터가 정확히 같아야 합니다.
+        if (!quest.Data.anyUnlockTarget)
+        {
+            if (quest.Data.unlockTarget == null)
+            {
+                Debug.LogWarning($"[QuestManager] 해금 퀘스트에 목표 데이터가 없습니다: {quest.Data.name}", quest.Data);
+                return;
+            }
+            if (quest.Data.unlockTarget != data) return;
+        }
+        AddQuestProgress(quest, 1);
     }
 
     /// <summary>가구 카탈로그 ID를 퀘스트 대상 enum으로 바꿔 새 배치 행동을 보고합니다.</summary>
@@ -155,33 +177,6 @@ public class QuestManager
                 return Define.QuestTargetType.EmptyBeer;
             case Define.ItemType.Beer_Dirty:
                 return Define.QuestTargetType.DirtyBeer;
-            default:
-                return Define.QuestTargetType.Unknown;
-        }
-    }
-
-    /// <summary>노드 고유 ID를 퀘스트 대상 enum으로 바꿉니다.</summary>
-    private static Define.QuestTargetType GetNodeTargetType(string nodeId)
-    {
-        // 현재 씬에서 사용하는 노드 ID를 대응 enum과 연결해 문자열 오타를 막습니다.
-        switch (nodeId)
-        {
-            case "Level_0":
-                return Define.QuestTargetType.LevelNode0;
-            case "Counter_0":
-                return Define.QuestTargetType.CounterNode0;
-            case "Kitchen_0":
-                return Define.QuestTargetType.KitchenNode0;
-            case "Stool_0":
-                return Define.QuestTargetType.StoolNode0;
-            case "Stool_1":
-                return Define.QuestTargetType.StoolNode1;
-            case "Stool_2":
-                return Define.QuestTargetType.StoolNode2;
-            case "BeerMachine_0":
-                return Define.QuestTargetType.BeerMachineNode0;
-            case "Sink_0":
-                return Define.QuestTargetType.SinkNode0;
             default:
                 return Define.QuestTargetType.Unknown;
         }

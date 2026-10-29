@@ -9,11 +9,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0a8f1d55f3e942a9b172124cf4a389af, type: 3}
+  m_Script: {fileID: 11500000, guid: fa4ba1d181f6b0045ab8a55ed3c24337, type: 3}
   m_Name: UdonNoodle
   m_EditorClassIdentifier: Assembly-CSharp::IngredientCatalog
   Type: 2
-  Name: "\uC6B0\uB3D9 \uBA74"
-  Price: 0
-  Prefab: {fileID: 0}
+  Name: "\uC6B0\uB3D9\uBA74"
+  Price: 100
+  Prefab: {fileID: 6423833815036636924, guid: 6503a9bf62fd46648a26d1d435d4062a, type: 3}
   StartingAmount: 0

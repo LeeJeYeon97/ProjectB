@@ -91,29 +91,17 @@ public class CustomerManager
         }
     }
 
-    /// <summary>현재 사용할 수 있는 기계의 레시피 중 손님이 주문할 메뉴 하나를 고릅니다.</summary>
+    /// <summary>재고와 관계없이 현재 사용할 수 있는 기계의 레시피 중 주문 메뉴를 고릅니다.</summary>
     public bool TryGetRandomRecipe(out FoodRecipeData recipe)
     {
         recipe = null;
 
-        // 현재 예약되지 않은 재고로 만들 수 있는 메뉴만 이번 주문 후보에 넣습니다.
-        List<FoodRecipeData> recipesWithStock = new List<FoodRecipeData>();
-        foreach (FoodRecipeData availableRecipe in availableRecipes)
-        {
-            if (availableRecipe == null)
-                continue;
-
-            if (!Managers.Ingredient.HasIngredients(availableRecipe.Ingredients))
-                continue;
-
-            recipesWithStock.Add(availableRecipe);
-        }
-
-        if (recipesWithStock.Count == 0)
+        // 메뉴 선택은 기계의 사용 가능 여부만 따릅니다. 재료 부족은 주문 후 예약 단계에서 처리합니다.
+        if (availableRecipes.Count == 0)
             return false;
 
-        int index = Random.Range(0, recipesWithStock.Count);
-        recipe = recipesWithStock[index];
+        int index = Random.Range(0, availableRecipes.Count);
+        recipe = availableRecipes[index];
         return true;
     }
 

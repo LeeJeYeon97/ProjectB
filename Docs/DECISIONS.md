@@ -43,7 +43,7 @@
 - **선택한 방식:** MenuMachine의 recipe와 완성품 ItemController.MenuRecipe가 같은 에셋인지 검사하고, 스택도 같은 recipe만 허용한다. 매장 공용 IngredientManager가 레시피 재료를 확인하고 주문 수량을 예약한다.
 - **고려했던 대안:** 코드 변경 이전 형태는 Git 이력에서 볼 수 있으나 당시 어떤 대안을 검토했는지 확인되지 않았다.
 - **선택 이유:** 기록된 이유 없음. 데이터 확장이 목적이었다고 단정하지 않는다.
-- **향후 확장 시 제약사항:** 직원 서빙·퀘스트·가격에는 레시피 식별이 끝까지 전달되지 않는다. 새 메뉴를 넣기 전에 ISS-003/006의 연결 공백과 저장용 안정 ID 필요 여부를 검토한다.
+- **향후 확장 시 제약사항:** 당시에는 직원 서빙·퀘스트·가격에 레시피 식별이 끝까지 전달되지 않았다. 서빙과 가격은 DEC-010으로 연결했으며, 퀘스트의 레시피별 목표(ISS-006)와 저장용 안정 ID 필요 여부는 남았다.
 - **근거:** [FoodRecipeData](../Assets/01_Scripts/Data/FoodRecipeData.cs), [MenuMachine](../Assets/01_Scripts/Content/InteractObject/MenuMachine.cs), [StackingSystem](../Assets/01_Scripts/Content/Player/StackingSystem.cs).
 
 ## DEC-005 — 문서와 검증 증거를 코드 변경에 함께 관리
@@ -59,7 +59,7 @@
 
 ## DEC-006 — 재고 부족 손님의 좌석 점유
 
-- **날짜/상태:** 2026-10-26, 사용자 확정.
+- **날짜/상태:** 2026-10-26, 사용자 확정. 주문 시점과 재시도 방식은 2026-10-27 DEC-013으로 대체되며 좌석 점유 규칙은 유지.
 - **결정한 내용:** 주문 가능한 재료가 없더라도 손님은 퇴장하지 않는다. 재고가 보충될 때까지 해당 좌석을 계속 점유한다.
 - **결정 배경:** 사용자는 재고 부족 동안 손님이 자리를 선점하는 것이 게임의 기믹이라고 지정했다.
 - **선택한 방식:** 재고가 충분한 레시피가 없을 때는 주문과 직원 서빙 작업을 만들지 않고 착석 상태를 유지한다. `IngredientManager.AddIngredients`의 재고 변경 알림으로 손님이 주문을 다시 시도한다.
@@ -101,9 +101,80 @@
 - **향후 확장 시 제약사항:** 현재 카드 3개가 고정되어 있어 후보 수를 늘리면 UI를 함께 늘려야 한다. 고용 목록·중복 상태는 저장되지 않으며 가격 밸런스와 재고용 정책은 확인 필요다. 실제 Play Mode 검증도 남았다.
 - **근거:** [EmployeeData](../Assets/01_Scripts/Data/EmployeeData.cs), [EmployeeManager](../Assets/01_Scripts/Managers/Content/EmployeeManager.cs), [메뉴 UI](../Assets/01_Scripts/UI/Popup/UI_MenuPopup.cs), [개발 상태](DEVELOPMENT_STATUS.md).
 
+## DEC-010 — 다른 메뉴 수락과 주문 레시피 기준 결제
+
+- **날짜/상태:** 2026-10-27, 사용자 확정.
+- **결정한 내용:** 주문과 다른 레시피의 메뉴도 수락하지만 리뷰를 감점한다. 같은 메뉴는 주문 레시피 `Pay` 전액, 다른 메뉴는 주문 레시피 `Pay`의 절반을 기본 결제액으로 사용한다.
+- **결정 배경:** `ItemType.Menu`만 비교하던 서빙과 손님별 고정 `payAmount`는 여러 레시피를 구분하지 못했다.
+- **선택한 방식:** `ItemController.MenuRecipe`와 주문 레시피 에셋 참조를 비교한다. 다른 레시피는 기존 리뷰 규칙대로 2점을 감점하며 절반 금액의 소수 부분은 버린다. 비메뉴와 레시피 참조가 없는 메뉴는 거부한다.
+- **고려했던 대안:** 다른 메뉴를 거부하거나 실제 제공 레시피 가격을 결제 기준으로 삼는 방식은 이번 사용자 선택에서 채택하지 않았다.
+- **선택 이유:** 사용자가 다른 메뉴 수락·리뷰 감점과 주문 레시피 가격 기준, 정상 메뉴 전액·다른 메뉴 절반을 직접 확정했다.
+- **향후 확장 시 제약사항:** 현재 맥주 레시피 `Pay`는 0이다. 가격 밸런스와 레시피별 퀘스트 목표는 별도 작업이며, 이번 변경의 전체 씬 플레이 결과는 [DEVELOPMENT_STATUS](DEVELOPMENT_STATUS.md)를 따른다.
+- **근거:** 이번 사용자 답변, [CustomerController](../Assets/01_Scripts/Content/Controller/CustomerController.cs), [SeatStation](../Assets/01_Scripts/Content/InteractObject/SeatStation.cs), [Counter](../Assets/01_Scripts/Content/InteractObject/Counter.cs).
+
+## DEC-011 — 성장 카탈로그의 Resources 의존 제거
+
+- **날짜/상태:** 2026-10-27, 사용자 지시.
+- **결정한 내용:** `GrowthCatalog` 데이터는 `Assets/10_Data`에 두고 `GrowthManager.Init`에서 Resources 폴더를 사용하지 않는다.
+- **결정 배경:** 사용자가 성장 초기화의 Resources 사용이 기존 데이터 배치 지시와 어긋난다고 지적했다.
+- **선택한 방식:** 카탈로그 GUID를 유지해 이동하고 Addressables `Data` 그룹의 `GrowthCatalog` 주소로 비동기 로드한다. 완료 후 저장 단계를 복원하고 플레이어 효과를 적용한다.
+- **고려했던 대안:** Core `Managers`의 직렬화 참조 추가는 Core 수정 승인이 필요해 적용하지 않았다. 데이터가 없을 때 코드의 임시 기본 카탈로그를 사용하는 방식은 에셋 가격과 달라질 수 있어 제거했다.
+- **선택 이유:** 기존 Addressables 로더를 재사용하며 카탈로그를 단일 에셋으로 관리한다.
+- **향후 확장 시 제약사항:** 로딩 완료 전에는 성장 구매 정보가 준비되지 않는다. 로드 실패 시 구매는 사용할 수 없다. 이전 UI 플레이 검증은 이 변경 전 결과이며 새 로드 경로의 실행 검증은 사용자가 진행한다.
+- **근거:** 이번 사용자 지시, [GrowthManager](../Assets/01_Scripts/Managers/Content/GrowthManager.cs), [GrowthCatalog](../Assets/10_Data/GrowthCatalog.asset), [Addressables Data 그룹](../Assets/AddressableAssetsData/AssetGroups/Data.asset).
+
+## DEC-012 — 범용 이동 코드와 프로젝트 성장 로직의 분리
+
+- **날짜/상태:** 2026-10-27, 사용자 요청.
+- **결정한 내용:** `ThirdPersonController`는 다른 프로젝트로 옮겨 쓸 수 있도록 성장·적재·프로젝트 공용 enum에 직접 의존하지 않는다.
+- **결정 배경:** 사용자가 이동 컴포넌트의 재사용성을 위해 프로젝트 전용 의존성 제거를 요청했다.
+- **선택한 방식:** 이동 속도는 범용 `MoveSpeed`로 받고, 선택적 화면 방향은 `ExtraMoveDirection` 함수로 받는다. 플레이어 성장 계산, `ScreenMoveInput`, 운반 애니메이션 연결은 `PlayerController`가 담당한다. 이동 모드 enum은 이동 컴포넌트 내부로 옮기되 기존 숫자 순서를 유지한다.
+- **고려했던 대안:** 이동 코드에 `SetGrowthSpeedBonus`와 적재·화면 입력 컴포넌트 참조를 유지하는 방식은 단독 재사용 목적에 맞지 않는다.
+- **선택 이유:** 이동 계산은 Unity의 CharacterController와 Input System만 사용하고 현재 게임의 규칙은 플레이어 코드에 남길 수 있다.
+- **향후 확장 시 제약사항:** 다른 프로젝트에서는 Input System 패키지와 CharacterController가 필요하며, 외부 방향 입력은 필요한 경우에만 연결한다. 변경 후 컴파일·플레이 검증은 사용자가 진행한다.
+- **근거:** 이번 사용자 요청, [이동 컨트롤러](../Assets/01_Scripts/Utils/ThirdPersonController.cs), [플레이어 컨트롤러](../Assets/01_Scripts/Content/Player/PlayerController.cs).
+
+## DEC-013 — 재고가 없어도 주문을 먼저 확정
+
+- **날짜/상태:** 2026-10-27, 사용자 정정으로 확정.
+- **결정한 내용:** 재고가 없어도 손님은 활성 기계의 메뉴를 주문하고, 그 주문을 유지하며 재료가 들어올 때까지 좌석에서 기다린다.
+- **결정 배경:** DEC-006 구현은 재고 부족 시 주문 자체를 미뤄 손님 말풍선에 메뉴가 나오지 않았다. 사용자가 주문을 먼저 하도록 정정했다.
+- **선택한 방식:** `CustomerManager`는 재고와 무관하게 활성 기계의 레시피를 고른다. `CustomerController`는 주문과 말풍선을 확정한 뒤 재료 예약을 시도한다. 예약이 실패하면 주문을 바꾸지 않고 기다리며, 보충 또는 예약 해제 알림에 같은 레시피를 다시 예약한다. 예약 성공 후에만 직원 서빙 작업을 만든다.
+- **고려했던 대안:** 재고가 들어왔을 때 메뉴를 처음 고르는 이전 방식은 이번 사용자 지시와 맞지 않아 대체했다.
+- **선택 이유:** 재고 부족이 손님의 주문 표시와 좌석 점유를 막지 않으면서, 실제 제조는 확보한 재료만 사용하도록 유지한다.
+- **향후 확장 시 제약사항:** 주문 메뉴는 기다리는 동안 자동으로 다른 메뉴로 바뀌지 않는다. 이번 변경의 컴파일·실제 플레이 검증은 사용자가 진행한다.
+- **근거:** 이번 사용자 정정, [CustomerManager](../Assets/01_Scripts/Managers/Content/CustomerManager.cs), [CustomerController](../Assets/01_Scripts/Content/Controller/CustomerController.cs), [IngredientManager](../Assets/01_Scripts/Managers/Content/IngredientManager.cs).
+
+## DEC-014 — 실행 중 해금 지점은 데이터 참조로 식별
+
+- **날짜/상태:** 2026-10-28, 사용자 승인.
+- **결정한 내용:** 하나의 `UnlockNodeData` 에셋을 하나의 독립적인 해금 지점으로 사용하고 선행 조건과 해금 퀘스트도 해당 에셋을 참조한다.
+- **배경과 선택:** 중복된 GroupType/Index 문자열을 제거하고 발판·해금 상태·생성물을 에셋 기준으로 관리한다. 같은 프리팹을 여러 번 해금하려면 각 지점에 별도 데이터가 필요하다. 첫 구역의 가게 개점은 발판 설정으로 유지한다.
+- **대안:** 기존 그룹과 숫자로 만든 문자열을 계속 사용하는 방식. 에셋 연결 외에 별도의 번호 중복 관리가 필요하다.
+- **제약:** 실행 중 참조는 저장용 식별자가 아니다. 영속 저장과 매장 간 식별 정책은 추후 결정한다. `GameScene`의 옛 연결과 실제 플레이 검증은 [DEV-021](BACKLOG.md)에 남긴다.
+- **근거:** 사용자 승인, [UnlockNodeData](../Assets/01_Scripts/Data/UnlockNodeData.cs), [UnlockManager](../Assets/01_Scripts/Managers/Content/UnlockManager.cs), [QuestManager](../Assets/01_Scripts/Managers/Core/QuestManager.cs).
+
+## DEC-015 — 플레이어 휴지통의 음식 폐기
+
+- **날짜/상태:** 2026-10-29, 사용자 확정.
+- **결정한 내용:** 플레이어만 스택 맨 위의 음식을 0.2초마다 한 개씩 휴지통으로 날려 폐기하며 재료를 돌려주지 않는다. 현재 식기는 폐기하지 않고 직원은 사용하지 않는다.
+- **선택한 방식:** `TrashCan`이 공통 상호작용을 사용하고 `StackingSystem`은 맨 위 물건을 분리한다. 폐기 후 처리는 기존 리소스 관리 경로를 사용한다.
+- **대안:** 처리 방식을 전략으로 분리하는 방식은 현재 단일 폐기 규칙에 필요하지 않아 보류한다.
+- **제약:** 재료 반환 정책은 추후 변경 가능하다. 주문용 음식 폐기 후 직원 서빙 작업 복구는 [DEV-023](BACKLOG.md)에서 별도 확인한다.
+- **근거:** 사용자 요청, [TrashCan](../Assets/01_Scripts/Content/InteractObject/TrashCan.cs), [StackingSystem](../Assets/01_Scripts/Content/Player/StackingSystem.cs).
+
+## DEC-016 — 재료 배송과 창고 입고
+
+- **날짜/상태:** 2026-10-29, 사용자 확정. 일부 플레이 검증 완료.
+- **결정한 내용:** 초기 공용 용량 15, 물·면·소스 시작 재고 각 0. 시장은 어디서든 사용하며 재료는 문 앞에 즉시 배송하고 플레이어 또는 직원이 창고로 운반해 입고한다. 공용 재고가 가득 차면 주문을 막으며, 운반 중 공간이 없어지면 배송 지점에 반환한다. 재료끼리는 혼합 적재 가능하고 음식과 재료는 혼합하지 않는다. 제조는 공용 재고를 직접 이용한다.
+- **선택한 방식:** 배송 관련 동작은 기존 IngredientManager가 맡는다. 최초 창고 활성화 시 공용 기본 용량 15가 적용되며 추가 창고의 추가 용량은 미확정이므로 현재 기본값 0이다. 직원 업무 enum에 재료 운반을 추가하고 기존 세 후보 모두에게 연결한다. 재료 외형은 임시 색상 상자다. 배송 영역에는 접근 가능한 물건만 표시하고 빈자리가 생기면 대기 물품을 순서대로 표시한다.
+- **대안과 이유:** 구매 즉시 재고로 들어가는 현행 방식은 직접 운반·입고하려는 사용자 기획과 다르다.
+- **제약:** 물품 인계·작업 취소·직원 이동·동시 입고·기존 예약 및 시장 구매는 함께 검증해야 한다. 현행 구현과 차이는 [DEV-024](BACKLOG.md)를 따른다.
+- **근거:** 사용자 확정 기획, [IngredientManager](../Assets/01_Scripts/Managers/Content/IngredientManager.cs), [시장 UI](../Assets/01_Scripts/UI/Popup/UI_MenuPopup.cs).
+
 ## 아직 결정되지 않은 항목
 
-시작 씬, 잘못된 메뉴 정책, 메뉴 가격 기준, 직원 고용/개별 성장 저장, 식기 순환, 테스트 구매 UI 이후의 재료 구매 경제·저장, 가구 구매 시점은 [GAME_DESIGN의 질문](GAME_DESIGN.md)에 남긴다. 재고 부족 시 손님이 좌석을 점유하는 규칙은 DEC-006에서 확정했다. 과거 성장 문서의 전역 직원 강화 제안과 현행 개별 성장의 차이는 승인 이유가 확인될 때까지 새 확정 결정으로 만들지 않는다.
+시작 씬, 직원 고용/개별 성장 저장, 식기 순환, 테스트 구매 UI 이후의 재료 구매 경제·저장, 가구 구매 시점은 [GAME_DESIGN의 질문](GAME_DESIGN.md)에 남긴다. 재고 부족 시 좌석 점유는 DEC-006, 주문 우선 확정은 DEC-013에서 확정했다. 메뉴 수락과 가격 규칙은 DEC-010에서 확정했다. 과거 성장 문서의 전역 직원 강화 제안과 현행 개별 성장의 차이는 승인 이유가 확인될 때까지 새 확정 결정으로 만들지 않는다.
 
 ## 앞으로 추가할 결정의 형식
 

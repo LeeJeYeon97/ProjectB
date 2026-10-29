@@ -26,9 +26,6 @@ public class CustomerController : MonoBehaviour
     [Header("Timers")]
     public float eatingDuration = 5.0f; // 밥 먹는 시간
 
-    [Header("Payment Settings")]
-    public int payAmount = 15;          // 식사 가격
-
     private NavMeshAgent agent;
     private SeatStation assignedSeat;
     private Transform exitPoint;
@@ -50,6 +47,24 @@ public class CustomerController : MonoBehaviour
     /// <summary>받은 메뉴가 주문과 일치했는지 리뷰 계산에 전달합니다.</summary>
     public bool ServedMenuCorrectly => servedMenuCorrectly;
 
+    /// <summary>주문 가격을 기준으로 같은 메뉴는 전액, 다른 메뉴는 절반의 기본 결제액을 돌려줍니다.</summary>
+    public int BasePay
+    {
+        get
+        {
+            // 주문이 없거나 데이터 가격이 음수라면 결제액을 만들지 않습니다.
+            if (orderedRecipe == null)
+                return 0;
+
+            int price = Mathf.Max(0, orderedRecipe.Pay);
+            if (servedMenuCorrectly)
+                return price;
+
+            // 재화가 정수이므로 홀수 가격의 절반은 소수 부분을 버립니다.
+            return price / 2;
+        }
+    }
+
     private CustomerResolve resolveWork;
     private Coroutine noiseRoutine;
     private Coroutine queueArrivalRoutine;
@@ -65,7 +80,6 @@ public class CustomerController : MonoBehaviour
     [Tooltip("손님 말풍선이 따라갈 위치입니다. 프리팹 안의 BubbleAnchor를 연결합니다.")]
     [SerializeField] private Transform bubbleAnchor;
     private UI_Bubble uiBubble;
-    private UI_Bubble hidingBubble;
 
     [Header("회전 설정")]
     [SerializeField] private float turnDuration = 0.35f;
@@ -92,10 +106,9 @@ public class CustomerController : MonoBehaviour
         StopNoise();
         UnsubscribeFromIngredientChanges();
         Managers.Ingredient?.ReleaseReservation(this);
-        ReleaseBubble(uiBubble);
-        ReleaseBubble(hidingBubble);
-        uiBubble = null;
-        hidingBubble = null;
+        // 손님이 풀로 돌아가도 말풍선은 함께 보관해 다음 활성화 때 다시 켭니다.
+        if (uiBubble != null)
+            uiBubble.ResetForReuse();
     }
 
     #region 초기화
@@ -105,6 +118,7 @@ public class CustomerController : MonoBehaviour
     {
         // 풀에서 재사용되기 전에 남은 소음 코루틴이 새 손님의 상태에 영향을 주지 않게 합니다.
         StopNoise();
+        waitingForIngredients = false;
         Managers.Ingredient?.ReleaseReservation(this);
 
         // 리뷰 대기 시간은 손님이 가게에 도착한 시점부터 음식이 제공될 때까지 측정합니다.
@@ -302,42 +316,56 @@ public class CustomerController : MonoBehaviour
             Debug.Log("[Customer] 착석 소음 손님이 주문 전에 해결을 기다립니다.", this);
     }
 
-    /// <summary>착석 후 또는 소음 해결 후 주문을 한 번 만들고 서빙 작업을 등록합니다.</summary>
+    /// <summary>착석 후 또는 소음 해결 후 재고와 관계없이 주문 메뉴를 먼저 확정합니다.</summary>
     private void PlaceOrder()
     {
         if (assignedSeat == null || CurrentState != CustomerState.WaitingForFood)
             return;
 
-        // 같은 손님에게 주문 요청이 다시 와도 이미 정한 레시피와 이미지를 유지합니다.
+        // 같은 손님의 재시도는 메뉴를 다시 고르지 않고 기존 주문의 재료만 확인합니다.
         if (orderedRecipe != null)
+        {
+            if (waitingForIngredients)
+                TryPrepareOrderedFood();
             return;
+        }
 
-        // 활성 기계의 레시피에서 한 가지를 고르고, 이번 손님의 주문으로 보관합니다.
+        // 활성 기계의 레시피 중 하나를 먼저 주문으로 정하고 말풍선에 표시합니다.
         if (!Managers.Customer.TryGetRandomRecipe(out FoodRecipeData recipe))
         {
-            Debug.Log("[Customer] 주문 가능한 메뉴가 없어 재고 보충을 기다립니다.", this);
-            waitingForIngredients = true;
+            Debug.Log("[Customer] 주문할 수 있는 메뉴 기계가 없습니다.", this);
             return;
         }
 
-        // 주문 시 재료를 예약해 다른 주문이 같은 재고를 먼저 소비하지 못하게 합니다.
-        if (!Managers.Ingredient.TryReserveForOrder(this, recipe.Ingredients))
-        {
-            Debug.Log($"[Customer] {recipe.FoodName} 재료가 부족해 좌석에서 보충을 기다립니다.", this);
-            waitingForIngredients = true;
-            return;
-        }
-
-        waitingForIngredients = false;
         orderedRecipe = recipe;
         // 기존 직원 작업과 서빙 흐름은 메뉴 분류 값을 계속 사용합니다.
         orderedType = ItemType.Menu;
         GetBubble()?.SetOrder(orderedRecipe);
-        Managers.Task.CreateTask(EmployeeTaskType.Serving, assignedSeat);
         Debug.Log($"[Customer] {orderedRecipe.FoodName} 주문 완료", this);
+
+        TryPrepareOrderedFood();
     }
 
-    /// <summary>재고가 보충되었을 때 아직 주문하지 못한 착석 손님의 주문을 다시 시도합니다.</summary>
+    /// <summary>이미 확정한 주문의 재료를 예약하고, 확보한 뒤에만 직원 서빙 작업을 만듭니다.</summary>
+    private void TryPrepareOrderedFood()
+    {
+        if (orderedRecipe == null || assignedSeat == null || CurrentState != CustomerState.WaitingForFood)
+            return;
+
+        IngredientManager ingredients = Managers.Ingredient;
+        if (ingredients == null || !ingredients.TryReserveForOrder(this, orderedRecipe.Ingredients))
+        {
+            // 재고가 없어도 주문과 말풍선은 그대로 두고 보충 알림을 기다립니다.
+            waitingForIngredients = true;
+            Debug.Log($"[Customer] {orderedRecipe.FoodName} 주문 재료가 부족해 좌석에서 기다립니다.", this);
+            return;
+        }
+
+        waitingForIngredients = false;
+        Managers.Task.CreateTask(EmployeeTaskType.Serving, assignedSeat);
+    }
+
+    /// <summary>재고가 보충되면 이미 정한 주문의 재료 확보를 다시 시도합니다.</summary>
     private void OnIngredientsChanged()
     {
         if (!waitingForIngredients)
@@ -346,7 +374,7 @@ public class CustomerController : MonoBehaviour
         if (CurrentState != CustomerState.WaitingForFood)
             return;
 
-        PlaceOrder();
+        TryPrepareOrderedFood();
     }
 
     /// <summary>매니저가 준비된 경우 재고 보충 알림을 한 번만 구독합니다.</summary>
@@ -379,18 +407,29 @@ public class CustomerController : MonoBehaviour
 
     
     #region 음식받고 음식 먹는 코드
-    public void OnFoodServed(ItemType servedType)
+    /// <summary>실제 제공한 레시피를 주문과 비교하고, 유효한 식사만 시작합니다.</summary>
+    public bool OnFoodServed(FoodRecipeData servedRecipe)
     {
+        // 주문 전이나 이미 식사 중인 손님에게는 음식을 중복 제공하지 않습니다.
+        if (CurrentState != CustomerState.WaitingForFood)
+            return false;
+
+        if (orderedRecipe == null || servedRecipe == null)
+            return false;
+
+        // 재료 대기 상태를 먼저 끝내 이벤트로 같은 주문을 다시 예약하지 않게 합니다.
+        waitingForIngredients = false;
+
         // 주문이 끝났으므로 남아 있는 예약을 해제합니다. 제조 때 이미 사용된 예약은 무시됩니다.
         Managers.Ingredient.ReleaseReservation(this);
 
         // 음식이 처음 제공될 때까지의 대기 시간을 기록해 리뷰 평가에 전달합니다.
         foodWaitSeconds = Mathf.Max(0f, Time.time - arrivedAtTime);
-        servedMenuCorrectly = servedType == orderedType;
+        servedMenuCorrectly = servedRecipe == orderedRecipe;
         CurrentState = CustomerState.Eating;
 
         if (!servedMenuCorrectly)
-            Debug.LogWarning($"[Customer] 주문과 다른 메뉴를 받았습니다. 주문: {orderedType}, 받은 메뉴: {servedType}");
+            Debug.LogWarning($"[Customer] 주문과 다른 메뉴를 받았습니다. 주문: {orderedRecipe.FoodName}, 받은 메뉴: {servedRecipe.FoodName}");
 
         // 음식을 받으면 음식 그림을 진행 이미지로 바꾸고, 새 식사의 진행도를 0부터 표시합니다.
         if (GetBubble() != null)
@@ -401,6 +440,7 @@ public class CustomerController : MonoBehaviour
 
         Debug.Log("밥 먹습니다..");
         StartCoroutine(CoEating());
+        return true;
     }
 
     /// <summary>식사 중 방해가 발생했음을 기록해 손님 리뷰에 반영합니다.</summary>
@@ -781,59 +821,33 @@ public class CustomerController : MonoBehaviour
         Managers.Resource.Destroy(gameObject);
     }
 
-    /// <summary>표시가 필요한 순간에만 공용 말풍선을 빌려 손님의 기준점에 연결합니다.</summary>
+    /// <summary>표시가 필요한 순간에만 풀에서 말풍선을 가져와 손님의 기준점에 연결합니다.</summary>
     private UI_Bubble GetBubble()
     {
         if (uiBubble != null)
             return uiBubble;
-
-        // 닫힘 애니메이션 중 다시 표시해야 하면 새 말풍선을 만들지 않고 같은 것을 사용합니다.
-        if (hidingBubble != null)
-        {
-            uiBubble = hidingBubble;
-            hidingBubble = null;
-            return uiBubble;
-        }
 
         if (Managers.Instance == null)
             return null;
 
         uiBubble = Managers.UI.MakeSubItem<UI_Bubble>();
         if (uiBubble != null)
+        {
+            // 풀의 이전 표시 상태를 초기화한 뒤 손님 기준점에 연결합니다.
+            uiBubble.ResetForReuse();
             uiBubble.SetAnchor(bubbleAnchor != null ? bubbleAnchor : transform);
+        }
 
         return uiBubble;
     }
 
-    /// <summary>말풍선을 닫고 애니메이션이 끝나면 소유 관계를 풀에 돌려줍니다.</summary>
+    /// <summary>말풍선을 닫아 두고 다음 표시 요청에서 같은 오브젝트를 다시 사용합니다.</summary>
     private void HideBubble()
     {
         if (uiBubble == null)
             return;
 
-        UI_Bubble bubble = uiBubble;
-        uiBubble = null;
-        hidingBubble = bubble;
-
-        // 손님이 표시 도중 다시 말풍선을 쓰면 이전 닫힘 완료 알림은 반환하지 않습니다.
-        bubble.Hide(() =>
-        {
-            if (hidingBubble != bubble)
-                return;
-
-            hidingBubble = null;
-            ReleaseBubble(bubble);
-        });
-    }
-
-    /// <summary>말풍선의 그림과 애니메이션을 초기화하고 UI 풀에 반납합니다.</summary>
-    private static void ReleaseBubble(UI_Bubble bubble)
-    {
-        if (bubble == null || Managers.Instance == null)
-            return;
-
-        bubble.ResetForPool();
-        Managers.Pool.Release(bubble.gameObject);
+        uiBubble.Hide();
     }
 
     #endregion

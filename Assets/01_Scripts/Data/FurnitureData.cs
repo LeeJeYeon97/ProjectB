@@ -4,7 +4,7 @@ using UnityEngine;
 
 /// <summary>배치 화면에서 사용할 가구 이름, 가격, 프리팹을 보관합니다.</summary>
 [CreateAssetMenu(fileName = "FurnitureCatalog", menuName = "Content/Furniture Catalog")]
-public class FurnitureCatalog : ScriptableObject
+public class FurnitureData : ScriptableObject
 {
     public List<FurnitureItem> items = new List<FurnitureItem>();
 }

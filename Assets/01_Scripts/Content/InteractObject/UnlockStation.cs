@@ -1,4 +1,4 @@
-﻿using DG.Tweening;
+using DG.Tweening;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -12,6 +12,8 @@ public class UnlockStation : InteractableBase
     [SerializeField] private Define.UnlockType unlockType = Define.UnlockType.SpawnPrefab;
     [SerializeField] private GameObject targetSceneObject;
     [SerializeField] private Transform targetSpawnPoint;
+    [Tooltip("이 발판을 해금했을 때 가게 영업을 시작합니다.")]
+    [SerializeField] private bool openShopOnUnlock;
 
     [Header("투척 주기 및 금액 설정")]
     [Tooltip("돈을 던지는 주기 (초)")]
@@ -34,7 +36,6 @@ public class UnlockStation : InteractableBase
     [SerializeField] private float punchScaleRatio = 0.2f;
     [SerializeField] private float punchDuration = 0.2f;
 
-    private string _uniqueUnlockID;
     private UnlockNodeData _nodeData;
     private int _targetPrice;
     private int _moneyPerThrow;
@@ -44,16 +45,33 @@ public class UnlockStation : InteractableBase
     private Vector3 _initialScale = Vector3.one;
     private Vector3 _initialStationScale = Vector3.one;
     private Tween _bounceTween;
+    private bool _hasSavedSpawn;
+    private Vector3 _savedSpawnPosition;
+    private Quaternion _savedSpawnRotation;
 
-    // 데이터와 ID를 모두 지정한 발판만 해금 관리 대상으로 등록합니다.
-    public bool HasSettings => nodeData != null && nodeData.HasID;
-    public string UniqueID => nodeData != null ? nodeData.UniqueID : null;
-    public string PrerequisiteID => nodeData != null ? nodeData.PrerequisiteID : null;
+    // 해금 데이터가 연결된 발판만 관리 대상으로 등록합니다.
+    public bool HasSettings => nodeData != null;
     public UnlockNodeData NodeData => nodeData;
     public Define.UnlockType UnlockType => unlockType;
     public GameObject TargetSceneObject => targetSceneObject;
-    public Vector3 SpawnPosition => targetSpawnPoint != null ? targetSpawnPoint.position : transform.position;
-    public Quaternion SpawnRotation => targetSpawnPoint != null ? targetSpawnPoint.rotation : transform.rotation;
+    public Vector3 SpawnPosition
+    {
+        get
+        {
+            if (_hasSavedSpawn) return _savedSpawnPosition;
+            if (targetSpawnPoint != null) return targetSpawnPoint.position;
+            return transform.position;
+        }
+    }
+    public Quaternion SpawnRotation
+    {
+        get
+        {
+            if (_hasSavedSpawn) return _savedSpawnRotation;
+            if (targetSpawnPoint != null) return targetSpawnPoint.rotation;
+            return transform.rotation;
+        }
+    }
     public int Price => nodeData != null ? nodeData.Price : 0;
     public override float Duration => throwInterval;
 
@@ -70,39 +88,20 @@ public class UnlockStation : InteractableBase
         base.OnDisable();
     }
 
-    /// <summary>
-    /// 발판이 실제로 배치된 위치와 해금 대상이 생성될 위치를 씬에서 표시합니다.
-    /// </summary>
-    private void OnDrawGizmos()
-    {
-        if (nodeData == null)
-        {
-            return;
-        }
-
-        Gizmos.color = Color.green;
-        Gizmos.DrawWireSphere(transform.position, 0.4f);
-
-        if (targetSpawnPoint != null)
-        {
-            Gizmos.color = Color.blue;
-            Gizmos.DrawLine(transform.position, targetSpawnPoint.position);
-        }
-    }
 
     /// <summary>
     /// 씬에 배치된 발판의 해금 정보를 읽고 금액 표시를 초기 상태로 되돌립니다.
     /// </summary>
     public void Setup()
     {
-        // 발판에 연결된 데이터 에셋에서 가격과 ID를 읽습니다.
+        // 발판에 연결된 데이터 에셋에서 가격을 읽습니다.
         _nodeData = nodeData;
         _targetPrice = Price;
         _moneyPerThrow = CalculateThrowAmount();
-        _uniqueUnlockID = UniqueID;
         _currentPaid = 0;
         _visualPaid = 0;
         _isUnlocked = false;
+        _hasSavedSpawn = false;
         _initialStationScale = transform.localScale;
 
         if (dropPoint == null)
@@ -182,6 +181,7 @@ public class UnlockStation : InteractableBase
         });
     }
 
+
     /// <summary>
     /// 데이터의 해금 가격을 목표 투척 횟수로 나누고, 최소 금액 단위에 맞춰 올림합니다.
     /// 예를 들어 가격 1,000원, 목표 20회, 최소 단위 10원이면 한 번에 50원씩 던집니다.
@@ -230,16 +230,21 @@ public class UnlockStation : InteractableBase
         if (_isUnlocked) return;
         _isUnlocked = true;
 
+        // 발판 축소가 자식 생성 지점의 월드 위치를 바꾸기 전에 위치와 방향을 보관합니다.
+        _savedSpawnPosition = SpawnPosition;
+        _savedSpawnRotation = SpawnRotation;
+        _hasSavedSpawn = true;
+
         // 축소 연출이 끝나면 매니저가 이 발판을 숨기고 해금 대상을 표시합니다.
         transform.DOScale(Vector3.zero, 0.3f)
             .SetEase(Ease.InBack)
             .OnComplete(() =>
             {
                 KillBounce();
-                Managers.Unlock.UnlockNode(_uniqueUnlockID);
+                Managers.Unlock.UnlockNode(_nodeData);
 
                 // 첫 구역을 구매하면 가게의 영업 상태도 함께 엽니다.
-                if (_uniqueUnlockID == "Level_0")
+                if (openShopOnUnlock)
                 {
                     Managers.Game.OpenShop();
                 }
@@ -247,7 +252,7 @@ public class UnlockStation : InteractableBase
                 // 해금 결과를 퀘스트에 한 번 보고합니다.
                 if (Managers.Quest != null)
                 {
-                    Managers.Quest.ReportNodeUnlock(_uniqueUnlockID);
+                    Managers.Quest.ReportNodeUnlock(_nodeData);
                 }
             });
     }
@@ -306,4 +311,180 @@ public class UnlockStation : InteractableBase
         _bounceTween?.Kill();
         _bounceTween = null;
     }
+
+    #region 에디터 미리보기
+
+    /// <summary>
+    /// 발판과 생성 위치를 표시하고 편집 중에는 해금될 프리팹의 형태를 함께 그립니다.
+    /// </summary>
+    private void OnDrawGizmos()
+    {
+#if UNITY_EDITOR
+        // 씬 오브젝트 미리보기는 데이터 연결 여부와 관계없이 확인할 수 있습니다.
+        if (!Application.isPlaying)
+        {
+            DrawSceneObjectPreview();
+        }
+#endif
+
+        if (nodeData == null)
+        {
+            return;
+        }
+
+        Gizmos.color = Color.green;
+        Gizmos.DrawWireSphere(transform.position, 0.4f);
+
+        if (targetSpawnPoint != null)
+        {
+            Gizmos.color = Color.blue;
+            Gizmos.DrawLine(transform.position, targetSpawnPoint.position);
+        }
+
+#if UNITY_EDITOR
+        if (!Application.isPlaying)
+        {
+            DrawPrefabPreview();
+        }
+#endif
+    }
+
+    #endregion
+
+    #region 에디터 미리보기 함수
+
+#if UNITY_EDITOR
+    /// <summary>
+    /// 활성화할 씬 오브젝트를 현재 위치에 주황색으로 표시합니다.
+    /// 대상 루트가 꺼져 있어도 해금 후 보일 메시를 확인할 수 있습니다.
+    /// </summary>
+    private void DrawSceneObjectPreview()
+    {
+        if (unlockType != Define.UnlockType.ToggleActive)
+        {
+            return;
+        }
+
+        if (targetSceneObject == null)
+        {
+            return;
+        }
+
+        Matrix4x4 previousMatrix = Gizmos.matrix;
+        Color previousColor = Gizmos.color;
+        Gizmos.color = new Color(1f, 0.5f, 0f, 0.35f);
+
+        // 꺼진 루트 아래의 메시도 찾되, 해금 후에도 꺼져 있을 자식은 제외합니다.
+        MeshFilter[] filters = targetSceneObject.GetComponentsInChildren<MeshFilter>(true);
+        foreach (MeshFilter filter in filters)
+        {
+            if (filter.sharedMesh == null)
+            {
+                continue;
+            }
+
+            MeshRenderer meshRenderer = filter.GetComponent<MeshRenderer>();
+            if (meshRenderer == null)
+            {
+                continue;
+            }
+
+            if (!meshRenderer.enabled)
+            {
+                continue;
+            }
+
+            if (!IsPreviewChildActive(filter.transform))
+            {
+                continue;
+            }
+
+            // 씬 오브젝트의 실제 월드 위치, 회전, 크기를 그대로 사용합니다.
+            Gizmos.matrix = filter.transform.localToWorldMatrix;
+            Gizmos.DrawMesh(filter.sharedMesh);
+        }
+
+        Gizmos.matrix = previousMatrix;
+        Gizmos.color = previousColor;
+    }
+
+    /// <summary>
+    /// 대상 루트를 켰을 때 메시까지 이어지는 자식들이 활성 상태인지 확인합니다.
+    /// </summary>
+    private bool IsPreviewChildActive(Transform child)
+    {
+        Transform current = child;
+        while (current != targetSceneObject.transform)
+        {
+            if (!current.gameObject.activeSelf)
+            {
+                return false;
+            }
+
+            current = current.parent;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// 실제 오브젝트를 생성하지 않고 프리팹의 메시를 생성 예정 위치에 반투명하게 표시합니다.
+    /// </summary>
+    private void DrawPrefabPreview()
+    {
+        if (unlockType != Define.UnlockType.SpawnPrefab)
+        {
+            return;
+        }
+
+        GameObject prefab = nodeData.TargetPrefab;
+        if (prefab == null)
+        {
+            return;
+        }
+
+        if (!prefab.activeSelf)
+        {
+            return;
+        }
+
+        // 런타임 생성과 같은 위치와 회전을 사용하고 프리팹 루트의 크기를 유지합니다.
+        Matrix4x4 rootMatrix = Matrix4x4.TRS(SpawnPosition, SpawnRotation, prefab.transform.localScale);
+        Matrix4x4 prefabInverse = prefab.transform.worldToLocalMatrix;
+        Matrix4x4 previousMatrix = Gizmos.matrix;
+        Color previousColor = Gizmos.color;
+        Gizmos.color = new Color(0.2f, 0.85f, 1f, 0.35f);
+
+        // 활성화된 메시와 렌더러만 표시하고 자식의 상대 위치, 회전, 크기를 반영합니다.
+        MeshFilter[] filters = prefab.GetComponentsInChildren<MeshFilter>();
+        foreach (MeshFilter filter in filters)
+        {
+            MeshRenderer meshRenderer = filter.GetComponent<MeshRenderer>();
+            if (filter.sharedMesh == null)
+            {
+                continue;
+            }
+
+            if (meshRenderer == null)
+            {
+                continue;
+            }
+
+            if (!meshRenderer.enabled)
+            {
+                continue;
+            }
+
+            Gizmos.matrix = rootMatrix * prefabInverse * filter.transform.localToWorldMatrix;
+            Gizmos.DrawMesh(filter.sharedMesh);
+        }
+
+        // 다른 Gizmo의 표시 설정에 영향을 주지 않도록 원래 값을 복원합니다.
+        Gizmos.matrix = previousMatrix;
+        Gizmos.color = previousColor;
+    }
+#endif
+
+    #endregion
+
 }

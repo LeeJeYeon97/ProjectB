@@ -2,200 +2,191 @@ using DG.Tweening;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
+using UnityEngine.SceneManagement;
 using static Define;
 
 public class UnlockManager
 {
-    // 씬에 배치된 해금 설정 발판들
-    private Dictionary<string, UnlockStation> sceneStations = new Dictionary<string, UnlockStation>();
+    #region 해금 상태
 
-    // 해금이 끝난 노드의 ID를 보관합니다.
-    private HashSet<string> unlockedIDs = new HashSet<string>(); // unique ID 기반 해금 상태 관리
+    // 데이터 에셋 하나를 하나의 해금 지점으로 취급합니다.
+    private readonly Dictionary<UnlockNodeData, UnlockStation> sceneStations = new Dictionary<UnlockNodeData, UnlockStation>();
+    private readonly HashSet<UnlockNodeData> unlockedData = new HashSet<UnlockNodeData>();
+    private readonly Dictionary<UnlockNodeData, GameObject> spawnedObjects = new Dictionary<UnlockNodeData, GameObject>();
+    private ulong sceneHandle;
+    private bool hasScene;
 
-    /// <summary>
-    /// 맵에 미리 배치된 발판을 모으고 현재 해금 상태에 맞게 표시합니다.
-    /// </summary>
+    #endregion
+
+    #region 해금 관리
+
+    /// <summary>현재 씬의 발판을 데이터별로 등록하고 선행 조건에 맞게 표시합니다.</summary>
     public void Init()
     {
-        // 저장된 해금 상태를 먼저 읽은 뒤 씬 발판의 표시 상태를 결정합니다.
-        LoadSaveData();
-
-        // 조건 때문에 비활성화된 발판도 다시 찾을 수 있도록 비활성 오브젝트를 포함합니다.
+        ulong currentScene = SceneManager.GetActiveScene().handle.GetRawData();
+        if (!hasScene || sceneHandle != currentScene)
+        {
+            // 저장 기능이 없으므로 다른 씬으로 이동하면 이전 씬의 실행 상태를 버립니다.
+            sceneStations.Clear();
+            spawnedObjects.Clear();
+            unlockedData.Clear();
+            sceneHandle = currentScene;
+            hasScene = true;
+        }
         sceneStations.Clear();
-        UnlockStation[] stations = UnityEngine.Object.FindObjectsByType<UnlockStation>(FindObjectsInactive.Include);
+
+        UnlockStation[] stations = Object.FindObjectsByType<UnlockStation>(FindObjectsInactive.Include);
         foreach (UnlockStation station in stations)
         {
             if (!station.HasSettings)
             {
-                // 설정되지 않은 발판은 씬 편집 중에만 보이고 게임에서는 숨깁니다.
                 station.gameObject.SetActive(false);
                 continue;
             }
 
-            if (!station.NodeData.HasValidPrerequisite)
+            UnlockNodeData data = station.NodeData;
+            if (sceneStations.ContainsKey(data))
             {
-                Debug.LogError($"선행 해금 데이터에 ID가 없습니다: {station.name}", station);
+                Debug.LogError($"[UnlockManager] 같은 해금 데이터가 여러 발판에 연결되었습니다: {data.name}", station);
                 station.gameObject.SetActive(false);
                 continue;
             }
 
-            string id = station.UniqueID;
-            if (sceneStations.ContainsKey(id))
+            sceneStations.Add(data, station);
+            if (!unlockedData.Contains(data))
             {
-                Debug.LogError($"중복된 해금 ID입니다: {id}", station);
-                station.gameObject.SetActive(false);
-                continue;
-            }
-
-            sceneStations[id] = station;
-            station.Setup();
-
-            // 아직 해금되지 않은 구역은 시작 시 대상 오브젝트를 숨깁니다.
-            if (station.UnlockType == UnlockType.ToggleActive && !unlockedIDs.Contains(id))
-            {
-                if (station.TargetSceneObject != null)
+                station.Setup();
+                if (station.UnlockType == UnlockType.ToggleActive)
                 {
-                    station.TargetSceneObject.SetActive(false);
+                    if (station.TargetSceneObject != null) station.TargetSceneObject.SetActive(false);
                 }
             }
         }
 
-        // 현재 해금 상태에 맞게 대상과 발판을 표시합니다.
+        // 등록을 모두 마친 뒤 선행 발판 누락과 순환 참조를 검사합니다.
+        foreach (KeyValuePair<UnlockNodeData, UnlockStation> pair in sceneStations)
+        {
+            CheckPrerequisites(pair.Key, pair.Value);
+        }
         RefreshMapState();
     }
 
-    /// <summary>
-    /// 열린 대상은 표시하고 발판은 선행 조건에 맞게 켜거나 끕니다.
-    /// </summary>
+    /// <summary>해금 여부와 선행 데이터에 따라 발판과 대상을 갱신합니다.</summary>
     public void RefreshMapState()
     {
-      foreach (var pair in sceneStations)
+        foreach (KeyValuePair<UnlockNodeData, UnlockStation> pair in sceneStations)
         {
-            string id = pair.Key;
+            UnlockNodeData data = pair.Key;
             UnlockStation station = pair.Value;
-
-            // 이미 해금 완료된 경우 -> 대상 생성 혹은 활성화
-            if (unlockedIDs.Contains(id))
+            if (unlockedData.Contains(data))
             {
                 station.gameObject.SetActive(false);
-                HandleObjectState(station, immediate: true);
+                HandleObjectState(station, true);
                 continue;
             }
 
-            // 선행 조건이 충족되었는가?
-            string prereqID = station.PrerequisiteID;
-            bool isPrereqMet = string.IsNullOrEmpty(prereqID) || unlockedIDs.Contains(prereqID);
-            if (isPrereqMet)
-            {
-                station.gameObject.SetActive(true);
-            }
-            else
-            {
-                station.gameObject.SetActive(false);
-            }
+            UnlockNodeData previous = data.PrerequisiteData;
+            bool canOpen = previous == null;
+            if (previous != null) canOpen = unlockedData.Contains(previous);
+            station.gameObject.SetActive(canOpen);
         }
     }
 
-    /// <summary>
-    /// 해금 방식에 따라 프리팹을 만들거나 씬에 준비된 구역을 활성화합니다.
-    /// </summary>
-    private void HandleObjectState(UnlockStation sceneStation, bool immediate)
+    /// <summary>등록된 데이터를 한 번 해금하고 대상과 다음 발판을 갱신합니다.</summary>
+    public void UnlockNode(UnlockNodeData data)
     {
-        string id = sceneStation.UniqueID;
-
-        // C방식: 프리팹 동적 스폰
-        if (sceneStation.UnlockType == UnlockType.SpawnPrefab)
+        if (data == null) return;
+        if (unlockedData.Contains(data)) return;
+        if (!sceneStations.TryGetValue(data, out UnlockStation station))
         {
-            string objName = $"{id}";
-            if (GameObject.Find(objName) != null) return;
+            Debug.LogWarning($"[UnlockManager] 씬에 등록되지 않은 해금 데이터입니다: {data.name}", data);
+            return;
+        }
 
-            GameObject targetGo = Managers.Resource.Instantiate(sceneStation.NodeData.TargetPrefab, sceneStation.SpawnPosition, sceneStation.SpawnRotation);
-            targetGo.name = objName;
+        unlockedData.Add(data);
+        HandleObjectState(station, false);
+        RefreshMapState();
+        Managers.Customer.RefreshAvailableRecipes();
+    }
 
+    /// <summary>선행 데이터가 씬에 존재하는지와 서로 순환하는지 확인합니다.</summary>
+    private void CheckPrerequisites(UnlockNodeData data, UnlockStation station)
+    {
+        HashSet<UnlockNodeData> visited = new HashSet<UnlockNodeData>();
+        UnlockNodeData current = data;
+        while (current != null)
+        {
+            if (!visited.Add(current))
+            {
+                Debug.LogError($"[UnlockManager] 선행 해금 데이터가 순환합니다: {data.name}", station);
+                return;
+            }
+            if (!sceneStations.ContainsKey(current))
+            {
+                Debug.LogWarning($"[UnlockManager] 선행 데이터의 발판이 씬에 없습니다: {data.name} → {current.name}", station);
+                return;
+            }
+            current = current.PrerequisiteData;
+        }
+    }
+
+    /// <summary>해금 방식에 따라 대상을 한 번 생성하거나 씬 오브젝트를 켭니다.</summary>
+    private void HandleObjectState(UnlockStation station, bool immediate)
+    {
+        UnlockNodeData data = station.NodeData;
+        if (station.UnlockType == UnlockType.SpawnPrefab)
+        {
+            // 이름 검색 대신 데이터에 연결된 생성 결과를 확인해 다른 오브젝트와 충돌하지 않도록 합니다.
+            if (spawnedObjects.TryGetValue(data, out GameObject existing))
+            {
+                if (existing != null) return;
+            }
+            GameObject target = Managers.Resource.Instantiate(data.TargetPrefab, station.SpawnPosition, station.SpawnRotation);
+            if (target == null)
+            {
+                Debug.LogError($"[UnlockManager] 해금할 프리팹을 생성하지 못했습니다: {data.name}", station);
+                return;
+            }
+            target.name = data.name;
+            spawnedObjects[data] = target;
             if (!immediate)
             {
-                targetGo.transform.localScale = Vector3.zero;
-                targetGo.transform.DOScale(Vector3.one, 0.3f)
+                target.transform.localScale = Vector3.zero;
+                target.transform.DOScale(Vector3.one, 0.3f)
                     .SetEase(Ease.OutBack)
-                    .OnComplete(() => RefreshObstacle(targetGo));
+                    .OnComplete(() => RefreshObstacle(target));
             }
         }
-        // A방식: 씬 오브젝트 활성화 (구역 확장)
-        else if (sceneStation.UnlockType == UnlockType.ToggleActive)
+        else if (station.UnlockType == UnlockType.ToggleActive)
         {
-            if (sceneStation.TargetSceneObject == null) return;
-
-            if (!sceneStation.TargetSceneObject.activeSelf)
+            GameObject target = station.TargetSceneObject;
+            if (target == null) return;
+            if (target.activeSelf) return;
+            target.SetActive(true);
+            if (!immediate)
             {
-                sceneStation.TargetSceneObject.SetActive(true);
-
-                if (!immediate)
-                {
-                    // 구역이 해금될 때 "뿅" 하고 커지는 가벼운 연출 적용
-                    sceneStation.TargetSceneObject.transform.localScale = Vector3.zero;
-                    sceneStation.TargetSceneObject.transform.DOScale(Vector3.one, 0.3f)
-                        .SetEase(Ease.OutCubic)
-                        .OnComplete(() => RefreshObstacle(sceneStation.TargetSceneObject));
-                }
+                target.transform.localScale = Vector3.zero;
+                target.transform.DOScale(Vector3.one, 0.3f)
+                    .SetEase(Ease.OutCubic)
+                    .OnComplete(() => RefreshObstacle(target));
             }
         }
     }
 
-    /// <summary>크기 연출이 끝난 뒤 장애물을 다시 켜서 최신 크기로 NavMesh를 깎도록 합니다.</summary>
+    /// <summary>크기 연출이 끝난 뒤 활성 장애물의 NavMesh 영역을 다시 계산합니다.</summary>
     private void RefreshObstacle(GameObject target)
     {
-        if (target == null)
-            return;
-
-        // 프리팹의 루트나 자식에 붙은 장애물을 모두 갱신해 가구 구조가 달라도 재사용할 수 있게 합니다.
+        if (target == null) return;
         NavMeshObstacle[] obstacles = target.GetComponentsInChildren<NavMeshObstacle>(true);
         foreach (NavMeshObstacle obstacle in obstacles)
         {
-            // 원래 꺼져 있던 장애물의 활성 상태는 유지합니다.
-            if (obstacle == null || !obstacle.enabled || !obstacle.gameObject.activeInHierarchy)
-                continue;
-
-            // 컴포넌트를 다시 켜면 Unity가 현재 위치와 크기를 기준으로 carve 영역을 다시 계산합니다.
+            if (obstacle == null) continue;
+            if (!obstacle.enabled) continue;
+            if (!obstacle.gameObject.activeInHierarchy) continue;
             obstacle.enabled = false;
             obstacle.enabled = true;
         }
     }
 
-    public void UnlockNode(string uniqueID)
-    {
-        if (unlockedIDs.Contains(uniqueID)) return;
-
-        unlockedIDs.Add(uniqueID);
-        SaveData();
-
-        if (sceneStations.TryGetValue(uniqueID, out UnlockStation station))
-        {
-            HandleObjectState(station, immediate: false);
-        }
-
-        // 새로운 해금으로 인해 다음 단계의 발판이 열리도록 상태 갱신
-        RefreshMapState();
-
-        // 새로 생성되거나 켜진 메뉴 기계가 있다면 다음 손님부터 주문 후보에 포함합니다.
-        Managers.Customer.RefreshAvailableRecipes();
-    }
-
-    private void LoadSaveData()
-    {
-        //// 예시: 세이브 시스템에서 해금된 ID 목록을 가져옴 (["Counter_0", "Stool_0", "Stool_1"])
-        //List<string> savedIDs = SaveSystem.GetUnlockedNodeIDs();
-        //
-        //unlockedIDs.Clear();
-        //foreach (string id in savedIDs)
-        //{
-        //    unlockedIDs.Add(id);
-        //}
-    }
-
-    private void SaveData()
-    {
-        //// 저장할 때는 unlockedIDs 목록만 모아서 문자열 리스트로 저장
-        //List<string> idsToSave = new List<string>(unlockedIDs);
-        //SaveSystem.SaveUnlockedNodeIDs(idsToSave);
-    }
+    #endregion
 }

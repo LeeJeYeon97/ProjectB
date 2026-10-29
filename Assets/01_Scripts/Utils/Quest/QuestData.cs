@@ -22,6 +22,12 @@ public class QuestData : ScriptableObject
     [Tooltip("행동의 대상을 선택합니다. Any를 고르면 해당 행동의 모든 대상을 셉니다.")]
     public Define.QuestTargetType targetType;
 
+    [Tooltip("해금 퀘스트에서 모든 해금 지점을 목표로 삼습니다.")]
+    public bool anyUnlockTarget;
+
+    [Tooltip("해금 퀘스트에서 요구하는 해금 데이터입니다. 모든 해금 지점을 선택하면 사용하지 않습니다.")]
+    public UnlockNodeData unlockTarget;
+
     [Min(1)]
     [Tooltip("행동이 몇 번 발생해야 퀘스트가 완료되는지 설정합니다.")]
     public int targetAmount = 1;

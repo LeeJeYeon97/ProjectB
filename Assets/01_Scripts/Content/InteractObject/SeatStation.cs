@@ -157,18 +157,16 @@ public class SeatStation : InteractableBase
         if (player.Stacking == null)
             return false;
 
-        // 테스트를 위해 손님이 음식을 기다리는 동안 두 메뉴를 모두 서빙할 수 있게 합니다.
-        if (currentState != SeatState.Occupied ||
-            currentCustomer == null ||
-            currentCustomer.CurrentState != CustomerState.WaitingForFood ||
-            player.Stacking.StackCount <= 0)
-        {
+        // 주문이 완료된 손님에게만 서빙하며, 다른 레시피의 메뉴도 평가를 낮추고 받습니다.
+        if (!IsWaitingToServe)
             return false;
-        }
+
+        if (player.Stacking.StackCount <= 0)
+            return false;
 
         GameObject topItem = player.Stacking.StackedItems[player.Stacking.StackCount - 1];
         ItemController item = topItem != null ? topItem.GetComponent<ItemController>() : null;
-        return item != null && IsMenuItem(item.type);
+        return IsMenuItem(item);
     }
 
     public override void OnCompleteInteract(GameObject actor)
@@ -184,31 +182,45 @@ public class SeatStation : InteractableBase
 
         if (currentState == SeatState.Occupied && currentCustomer != null && CanInteract(actor))
         {
-            // 아이템을 손님에게 주기 전에 실제 서빙 종류를 기억합니다.
+            // 스택에서 제거하면 아이템이 파괴될 수 있으므로 실제 레시피를 먼저 기억합니다.
             GameObject servedObject = player.Stacking.StackedItems[player.Stacking.StackCount - 1];
             ItemController servedItem = servedObject != null ? servedObject.GetComponent<ItemController>() : null;
+            if (!IsMenuItem(servedItem))
+                return;
+
+            FoodRecipeData servedRecipe = servedItem.MenuRecipe;
+            ItemType servedType = servedItem.type;
+            if (!currentCustomer.OnFoodServed(servedRecipe))
+                return;
+
             player.Stacking.PopItem();
-            currentCustomer.OnFoodServed(servedItem != null ? servedItem.type : ItemType.None);
-            // 실제로 서빙한 아이템 종류를 공통 ID로 바꿔 퀘스트에 전달합니다.
-            if (servedItem != null && Managers.Quest != null)
-                Managers.Quest.ReportItemProgress(Define.QuestObjectiveType.Serve, servedItem.type);
+            // 플레이어가 메뉴를 직접 제공했으면 대기 중인 직원 서빙 작업도 제거합니다.
+            Managers.Task?.RemoveServingTaskFor(currentCustomer);
+            // 퀘스트의 레시피별 목표는 별도 작업이며, 현재 공통 메뉴 목표에는 종류를 전달합니다.
+            if (Managers.Quest != null)
+                Managers.Quest.ReportItemProgress(Define.QuestObjectiveType.Serve, servedType);
             Debug.Log("음식을 서빙했습니다. 식사를 시작합니다!");
         }
     }
 
-    /// <summary>직원이 스택에 준비한 맥주를 꺼내 손님에게 서빙합니다.</summary>
+    /// <summary>직원이 스택에 준비한 메뉴의 실제 레시피를 손님에게 전달합니다.</summary>
     public bool ServeForEmployee(StackingSystem employeeStack)
     {
         if (!IsWaitingToServe || employeeStack == null || employeeStack.StackCount <= 0)
             return false;
 
-        ItemType servedType = employeeStack.GetFirstListItemType();
-        if (!IsMenuItem(servedType))
+        GameObject servedObject = employeeStack.StackedItems[employeeStack.StackCount - 1];
+        ItemController servedItem = servedObject != null ? servedObject.GetComponent<ItemController>() : null;
+        if (!IsMenuItem(servedItem))
+            return false;
+
+        FoodRecipeData servedRecipe = servedItem.MenuRecipe;
+        ItemType servedType = servedItem.type;
+        if (!currentCustomer.OnFoodServed(servedRecipe))
             return false;
 
         employeeStack.PopItem();
-        currentCustomer.OnFoodServed(servedType);
-        // 직원이 전달한 아이템 종류를 공통 ID로 바꿔 퀘스트에 보고합니다.
+        // 퀘스트의 레시피별 목표는 별도 작업이며, 현재 공통 메뉴 목표에는 종류를 전달합니다.
         if (Managers.Quest != null)
             Managers.Quest.ReportItemProgress(Define.QuestObjectiveType.Serve, servedType);
         Debug.Log($"직원이 좌석 {name}에 주문을 서빙했습니다.");
@@ -216,9 +228,15 @@ public class SeatStation : InteractableBase
     }
 
     /// <summary>손님에게 서빙할 수 있는 메뉴 아이템인지 확인합니다.</summary>
-    private static bool IsMenuItem(ItemType itemType)
+    private static bool IsMenuItem(ItemController item)
     {
-        return itemType == ItemType.Menu;
+        if (item == null)
+            return false;
+
+        if (item.type != ItemType.Menu)
+            return false;
+
+        return item.MenuRecipe != null;
     }
 
     protected override void OnInteractionEnded()

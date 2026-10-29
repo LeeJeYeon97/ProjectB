@@ -4,7 +4,7 @@ using UnityEngine;
 
 /// <summary>업그레이드 항목의 이름, 가격, 단계별 효과를 보관합니다.</summary>
 [CreateAssetMenu(fileName = "GrowthCatalog", menuName = "Content/Growth Catalog")]
-public class GrowthCatalog : ScriptableObject
+public class GrowthData : ScriptableObject
 {
     public List<GrowthItem> items = new List<GrowthItem>();
 }

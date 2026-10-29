@@ -228,16 +228,24 @@ public abstract class InteractableBase : MonoBehaviour
         if (actor == null || currentActor != null)
             return;
 
-        // 먼저 현재 조건으로 플레이어가 할 수 있는 행동인지 확인해 불필요한 직원 중단을 막습니다.
+        // 다른 대상을 사용 중이면 직원을 선점하기 전부터 새 작업을 보류합니다.
+        PlayerController player = actor.GetComponent<PlayerController>();
         bool playerCanStart = CanInteract(actor);
-        if (actor.GetComponent<PlayerController>() != null && playerCanStart)
+        if (!playerCanStart) return;
+        if (player != null && !player.TryStartInteraction(this)) return;
+
+        // 플레이어가 실제로 이 대상을 맡을 수 있을 때만 직원의 작업을 인계받습니다.
+        if (player != null)
         {
             Managers.Task?.TakeOverTask(this);
             OnPlayerStartingInteraction(actor);
         }
 
-        if (!playerCanStart || !CanInteract(actor) || !TryReserve(actor))
+        if (!CanInteract(actor) || !TryReserve(actor))
+        {
+            if (player != null) player.EndInteraction(this);
             return;
+        }
 
         currentActor = actor;
         timer = 0f;
@@ -262,6 +270,13 @@ public abstract class InteractableBase : MonoBehaviour
 
         // 상호작용이 끝나거나 취소되면 플레이어가 맡았던 선점권을 돌려줍니다.
         ReleaseReservation(currentActor);
+
+        // 대상 선점과 플레이어의 현재 작업을 함께 해제해 다른 대상이 시작할 수 있게 합니다.
+        if (currentActor != null)
+        {
+            PlayerController player = currentActor.GetComponent<PlayerController>();
+            if (player != null) player.EndInteraction(this);
+        }
 
         // 플레이어가 작업을 마치거나 취소한 뒤, 아직 남은 직원 작업을 다시 배정합니다.
         if (currentActor != null && currentActor.GetComponent<PlayerController>() != null)
@@ -326,9 +341,9 @@ public abstract class InteractableBase : MonoBehaviour
             uiBubble = Managers.UI.MakeSubItem<UI_Bubble>(Managers.UI.Root.transform);
             if (uiBubble != null)
             {
-                // 프리팹마다 지정한 기준점을 연결하고, 이전 사용자의 표시 상태를 정리합니다.
+                // 부모 크기에 따른 이전 표시 상태를 정리한 뒤 이 오브젝트의 기준점을 연결합니다.
+                uiBubble.ResetForReuse();
                 uiBubble.SetAnchor(bubbleAnchor != null ? bubbleAnchor : transform);
-                uiBubble.ResetForPool();
             }
         }
 
@@ -343,13 +358,9 @@ public abstract class InteractableBase : MonoBehaviour
         actorInRange = false;
         candidateActor = null;
 
-        // 객체가 꺼지면 말풍선을 초기화하고 공용 풀에 돌려 다른 객체가 재사용합니다.
-        if (uiBubble != null && Managers.Instance != null)
-        {
-            uiBubble.ResetForPool();
-            Managers.Pool.Release(uiBubble.gameObject);
-        }
-        uiBubble = null;
+        // 객체가 꺼져도 말풍선을 풀에 반환하지 않고 숨겨 두어 다시 켤 때 재사용합니다.
+        if (uiBubble != null)
+            uiBubble.ResetForReuse();
     }
 
     
@@ -366,5 +377,13 @@ public abstract class InteractableBase : MonoBehaviour
     {
         if (uiBubble != null)
             uiBubble.Hide();
+    }
+
+    /// <summary>플레이어가 비활성화될 때 그 플레이어가 진행 중인 작업만 취소합니다.</summary>
+    public void CancelPlayerInteraction(PlayerController player)
+    {
+        if (player == null) return;
+        if (currentActor != player.gameObject) return;
+        CancelInteraction();
     }
 }

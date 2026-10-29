@@ -131,6 +131,10 @@ public class TaskManager
         if (task.Type == EmployeeTaskType.Casher && task.Target is Counter counter && counter.HasWaitingCustomers)
             CreateTask(EmployeeTaskType.Casher, counter);
 
+        // 창고에 자리가 있고 배송 물건이 남으면 다음 운반을 이어갑니다.
+        if (task.Type == EmployeeTaskType.CarryIngredient && task.Target is DeliveryZone zone)
+            zone.RequestWork();
+
         AssignWaitingTasks();
     }
 
@@ -271,6 +275,9 @@ public class TaskManager
                 return task.Target is SeatStation servingSeat && servingSeat.IsWaitingToServe;
             case EmployeeTaskType.Casher:
                 return task.Target is Counter counter && counter.HasWaitingCustomers;
+            case EmployeeTaskType.CarryIngredient:
+                if (task.AssignedEmployee != null) return true;
+                return task.Target is DeliveryZone && Managers.Ingredient.HasDelivery();
             case EmployeeTaskType.DishWash:
                 return task.Target is Sink sink && sink.isActiveAndEnabled && Managers.Dish != null &&
                        Managers.Dish.DirtyDishCount > 0 &&

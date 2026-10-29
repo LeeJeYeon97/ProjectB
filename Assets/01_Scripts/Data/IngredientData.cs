@@ -2,7 +2,7 @@ using UnityEngine;
 
 /// <summary>재료 한 종류의 정보와 매장 시작 수량을 보관합니다.</summary>
 [CreateAssetMenu(fileName = "IngredientData", menuName = "Content/Ingredient Data")]
-public class IngredientCatalog : ScriptableObject
+public class IngredientData : ScriptableObject
 {
     #region 변수
 

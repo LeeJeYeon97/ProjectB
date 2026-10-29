@@ -51,6 +51,11 @@ MonoBehaviour:
     m_SerializedLabels:
     - EmployeeData
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 6ee16ca8d361bda4190d329fb3ceed8e
+    m_Address: GrowthCatalog
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 81c13f7b5aa34c8a90e9c4b09d8ae4fa
     m_Address: Ingredient_UdonSauce
     m_ReadOnly: 0

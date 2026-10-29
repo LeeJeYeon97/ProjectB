@@ -69,13 +69,6 @@ public class Define
     {
         QuarterView,
     }
-    /// <summary>플레이어의 화면 터치와 클릭 이동 방식을 고릅니다.</summary>
-    public enum MovementControlMode
-    {
-        DragOnly,     // 화면 드래그로만 직접 조작합니다.
-        ClickToMove,  // 누른 지점까지 이동합니다.
-        Both          // 직접 조작과 지점 이동을 함께 사용합니다.
-    }
     public enum StackType
     {
         Stack,
@@ -89,6 +82,7 @@ public class Define
         Menu = 2,          // 메뉴의 이름은 아이템에 연결한 레시피로 구별합니다.
         Beer_Empty = 3,
         Beer_Dirty = 4,
+        Ingredient = 5,    // 재료는 종류가 달라도 같은 스택에 함께 운반합니다.
     }
 
     /// <summary>퀘스트가 감시할 게임 행동의 종류입니다.</summary>
@@ -109,14 +103,6 @@ public class Define
         EmptyBeer = 3,         // 깨끗한 빈 맥주잔 아이템입니다.
         DirtyBeer = 4,         // 사용한 맥주잔 아이템입니다.
         TestMeal = 5,          // 임시 테스트 메뉴 아이템입니다.
-        LevelNode0 = 10,       // 첫 번째 구역 해금 노드입니다.
-        CounterNode0 = 11,     // 첫 번째 카운터 해금 노드입니다.
-        KitchenNode0 = 12,     // 첫 번째 주방 해금 노드입니다.
-        StoolNode0 = 13,       // 첫 번째 의자 해금 노드입니다.
-        StoolNode1 = 14,       // 두 번째 의자 해금 노드입니다.
-        StoolNode2 = 15,       // 세 번째 의자 해금 노드입니다.
-        BeerMachineNode0 = 16, // 첫 번째 맥주 기계 해금 노드입니다.
-        SinkNode0 = 17,        // 첫 번째 싱크대 해금 노드입니다.
         ChairFurniture = 30,   // 의자 가구입니다.
         Unknown = 999          // 코드에서 대응하지 못한 대상을 나타냅니다.
     }
@@ -127,21 +113,6 @@ public class Define
         ToggleActive        // 구역 확장 : 기존 씬 오브젝트 활성화
     }
 
-    public enum UnlockGroupType
-    {
-        None,
-        Level,
-        Counter,
-        Kitchen,
-        Stool,
-        Table,
-        BeerMachine,
-        Sink,
-        Fridge,
-        UdonMachine,
-
-
-    }
     public enum CustomerState
     {
         None,
@@ -191,6 +162,7 @@ public class Define
         DishWash,
         Serving,
         Casher,
+        CarryIngredient, // 배송된 재료를 창고로 운반합니다.
     }
     public enum EmployeeState
     {

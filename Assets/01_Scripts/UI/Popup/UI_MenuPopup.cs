@@ -1,6 +1,6 @@
 using UnityEngine;
 
-/// <summary>메인 메뉴에서 재료 구매와 직원 선택 고용 화면을 전환합니다.</summary>
+/// <summary>메인 메뉴에서 재료 구매, 직원 고용, 플레이어 성장 화면을 전환합니다.</summary>
 public class UI_MenuPopup : UI_Popup
 {
     #region UI 요소
@@ -11,6 +11,7 @@ public class UI_MenuPopup : UI_Popup
         Panel_MainMenu,
         Panel_Market,
         Panel_HireEmployee,
+        Panel_PlayerUpgrade,
     }
 
     /// <summary>메뉴 팝업에서 누를 수 있는 버튼입니다.</summary>
@@ -26,6 +27,11 @@ public class UI_MenuPopup : UI_Popup
         Button_HireSlot1,
         Button_HireSlot2,
         Button_HireSlot3,
+        Button_Upgrade,
+        Button_UpgradeBack,
+        Button_BuyPlayerSpeed,
+        Button_BuyPlayerStack,
+        Button_BuyPlayerInteract,
     }
 
     /// <summary>시장 화면에 표시할 재료 정보입니다.</summary>
@@ -37,11 +43,19 @@ public class UI_MenuPopup : UI_Popup
         Text_HireSlot1Info,
         Text_HireSlot2Info,
         Text_HireSlot3Info,
+        Text_PlayerMoney,
+        Text_PlayerSpeedInfo,
+        Text_PlayerStackInfo,
+        Text_PlayerInteractInfo,
     }
 
     #endregion
 
     #region 변수
+
+    private const string PlayerSpeedId = "player_speed";
+    private const string PlayerStackId = "player_stack";
+    private const string PlayerInteractId = "player_interact";
 
     private PlayerController player;
 
@@ -75,6 +89,11 @@ public class UI_MenuPopup : UI_Popup
         AddButtonAction(Buttons.Button_HireSlot1, () => HireCandidate(0));
         AddButtonAction(Buttons.Button_HireSlot2, () => HireCandidate(1));
         AddButtonAction(Buttons.Button_HireSlot3, () => HireCandidate(2));
+        AddButtonAction(Buttons.Button_Upgrade, ShowPlayerUpgrade);
+        AddButtonAction(Buttons.Button_UpgradeBack, ShowMainMenu);
+        AddButtonAction(Buttons.Button_BuyPlayerSpeed, () => BuyPlayerUpgrade(PlayerSpeedId));
+        AddButtonAction(Buttons.Button_BuyPlayerStack, () => BuyPlayerUpgrade(PlayerStackId));
+        AddButtonAction(Buttons.Button_BuyPlayerInteract, () => BuyPlayerUpgrade(PlayerInteractId));
 
         player = Managers.Game?.Player;
 
@@ -87,6 +106,10 @@ public class UI_MenuPopup : UI_Popup
 
         if (Managers.Employee != null)
             Managers.Employee.OnChanged += RefreshHireCandidates;
+
+        // 다른 화면에서 성장이 바뀌어도 다시 열었을 때 현재 단계를 보여줍니다.
+        if (Managers.Growth != null)
+            Managers.Growth.OnChanged += RefreshPlayerUpgrades;
 
         ShowMainMenu();
     }
@@ -102,6 +125,9 @@ public class UI_MenuPopup : UI_Popup
 
         if (Managers.Employee != null)
             Managers.Employee.OnChanged -= RefreshHireCandidates;
+
+        if (Managers.Growth != null)
+            Managers.Growth.OnChanged -= RefreshPlayerUpgrades;
 
         base.Clear();
     }
@@ -129,12 +155,16 @@ public class UI_MenuPopup : UI_Popup
         GameObject mainMenu = GetObject((int)GameObjects.Panel_MainMenu);
         GameObject market = GetObject((int)GameObjects.Panel_Market);
         GameObject hire = GetObject((int)GameObjects.Panel_HireEmployee);
+        GameObject upgrade = GetObject((int)GameObjects.Panel_PlayerUpgrade);
 
         if (market != null)
             market.SetActive(false);
 
         if (hire != null)
             hire.SetActive(false);
+
+        if (upgrade != null)
+            upgrade.SetActive(false);
 
         if (mainMenu != null)
             mainMenu.SetActive(true);
@@ -146,12 +176,16 @@ public class UI_MenuPopup : UI_Popup
         GameObject mainMenu = GetObject((int)GameObjects.Panel_MainMenu);
         GameObject market = GetObject((int)GameObjects.Panel_Market);
         GameObject hire = GetObject((int)GameObjects.Panel_HireEmployee);
+        GameObject upgrade = GetObject((int)GameObjects.Panel_PlayerUpgrade);
 
         if (mainMenu != null)
             mainMenu.SetActive(false);
 
         if (hire != null)
             hire.SetActive(false);
+
+        if (upgrade != null)
+            upgrade.SetActive(false);
 
         if (market != null)
             market.SetActive(true);
@@ -165,6 +199,30 @@ public class UI_MenuPopup : UI_Popup
         GameObject mainMenu = GetObject((int)GameObjects.Panel_MainMenu);
         GameObject market = GetObject((int)GameObjects.Panel_Market);
         GameObject hire = GetObject((int)GameObjects.Panel_HireEmployee);
+        GameObject upgrade = GetObject((int)GameObjects.Panel_PlayerUpgrade);
+
+        if (mainMenu != null)
+            mainMenu.SetActive(false);
+
+        if (market != null)
+            market.SetActive(false);
+
+        if (upgrade != null)
+            upgrade.SetActive(false);
+
+        if (hire != null)
+            hire.SetActive(true);
+
+        RefreshHireCandidates();
+    }
+
+    /// <summary>메인 메뉴를 닫고 플레이어 성장 카드와 현재 잔액을 표시합니다.</summary>
+    private void ShowPlayerUpgrade()
+    {
+        GameObject mainMenu = GetObject((int)GameObjects.Panel_MainMenu);
+        GameObject market = GetObject((int)GameObjects.Panel_Market);
+        GameObject hire = GetObject((int)GameObjects.Panel_HireEmployee);
+        GameObject upgrade = GetObject((int)GameObjects.Panel_PlayerUpgrade);
 
         if (mainMenu != null)
             mainMenu.SetActive(false);
@@ -173,9 +231,12 @@ public class UI_MenuPopup : UI_Popup
             market.SetActive(false);
 
         if (hire != null)
-            hire.SetActive(true);
+            hire.SetActive(false);
 
-        RefreshHireCandidates();
+        if (upgrade != null)
+            upgrade.SetActive(true);
+
+        RefreshPlayerUpgrades();
     }
 
     #endregion
@@ -245,6 +306,8 @@ public class UI_MenuPopup : UI_Popup
                 names.Add("청소");
             else if (task == Define.EmployeeTaskType.DishWash)
                 names.Add("설거지");
+            else if (task == Define.EmployeeTaskType.CarryIngredient)
+                names.Add("재료 운반");
         }
 
         return string.Join(", ", names);
@@ -262,6 +325,91 @@ public class UI_MenuPopup : UI_Popup
 
         Managers.Employee.TryHire(data.Id, player);
         RefreshHireCandidates();
+    }
+
+    #endregion
+
+    #region 플레이어 성장과 구매
+
+    /// <summary>잔액과 세 성장 카드의 현재 단계, 다음 효과, 구매 가능 여부를 갱신합니다.</summary>
+    private void RefreshPlayerUpgrades()
+    {
+        TMPro.TMP_Text moneyText = GetText((int)Texts.Text_PlayerMoney);
+        if (moneyText != null)
+        {
+            if (player == null)
+                moneyText.text = "보유 금액: 확인 중";
+            else
+                moneyText.text = $"보유 금액: {player.money:N0}";
+        }
+
+        UpdatePlayerUpgradeCard(PlayerSpeedId, Texts.Text_PlayerSpeedInfo, Buttons.Button_BuyPlayerSpeed);
+        UpdatePlayerUpgradeCard(PlayerStackId, Texts.Text_PlayerStackInfo, Buttons.Button_BuyPlayerStack);
+        UpdatePlayerUpgradeCard(PlayerInteractId, Texts.Text_PlayerInteractInfo, Buttons.Button_BuyPlayerInteract);
+    }
+
+    /// <summary>카탈로그의 다음 단계 정보와 저장된 단계를 한 카드에 표시합니다.</summary>
+    private void UpdatePlayerUpgradeCard(string id, Texts textName, Buttons buttonName)
+    {
+        TMPro.TMP_Text info = GetText((int)textName);
+        UnityEngine.UI.Button button = GetButton((int)buttonName);
+        if (info == null || button == null)
+            return;
+
+        GrowthManager growth = Managers.Growth;
+        GrowthItem item = growth?.GetItem(id);
+        if (item == null || item.prices == null || item.values == null)
+        {
+            info.text = "성장 정보를 불러올 수 없습니다";
+            button.interactable = false;
+            return;
+        }
+
+        int level = growth.GetLevel(id);
+        int maxLevel = Mathf.Min(item.prices.Length, item.values.Length);
+        float currentValue = growth.GetTotalValue(id);
+        string currentEffect = GetPlayerEffectText(id, currentValue);
+
+        if (level >= maxLevel)
+        {
+            info.text = $"{item.title} ({level}/{maxLevel})\n현재: {currentEffect}\n최대 단계";
+            button.interactable = false;
+            return;
+        }
+
+        int price = growth.GetNextPrice(id);
+        float nextValue = currentValue + item.values[level];
+        string nextEffect = GetPlayerEffectText(id, nextValue);
+        info.text = $"{item.title} ({level}/{maxLevel})\n현재: {currentEffect}\n다음: {nextEffect}\n가격: {price:N0}";
+
+        // 매니저의 구매 조건과 같은 양수 가격 및 현재 잔액을 버튼에 반영합니다.
+        button.interactable = player != null && price > 0 && player.money >= price;
+    }
+
+    /// <summary>누적 성장 수치를 카드에서 읽기 쉬운 효과 문장으로 바꿉니다.</summary>
+    private string GetPlayerEffectText(string id, float value)
+    {
+        if (id == PlayerSpeedId)
+            return $"이동 속도 +{value:0.0}";
+
+        if (id == PlayerStackId)
+            return $"최대 적재량 +{Mathf.RoundToInt(value)}";
+
+        if (id == PlayerInteractId)
+            return $"작업 시간 -{value * 100f:0}%";
+
+        return $"효과 +{value:0.##}";
+    }
+
+    /// <summary>선택한 플레이어 능력치의 구매를 매니저에 요청하고 표시를 다시 읽습니다.</summary>
+    private void BuyPlayerUpgrade(string id)
+    {
+        if (Managers.Growth == null || player == null)
+            return;
+
+        // 가격 차감, 단계 저장, 능력치 적용은 기존 성장 매니저가 한 번에 처리합니다.
+        Managers.Growth.TryUpgrade(id);
+        RefreshPlayerUpgrades();
     }
 
     #endregion
@@ -290,7 +438,7 @@ public class UI_MenuPopup : UI_Popup
         if (info == null || buyButton == null)
             return;
 
-        IngredientCatalog data = Managers.Ingredient?.GetIngredientData(type);
+        IngredientData data = Managers.Ingredient?.GetIngredientData(type);
         if (data == null)
         {
             info.text = "재료 정보를 불러오는 중";
@@ -299,22 +447,28 @@ public class UI_MenuPopup : UI_Popup
         }
 
         int amount = Managers.Ingredient.GetAmount(type);
-        info.text = $"{data.Name}\n가격: {data.Price}\n재고: {amount}";
+        info.text = $"{data.Name}\n가격: {data.Price}\n재고 {amount} (총 {Managers.Ingredient.TotalAmount}/{Managers.Ingredient.Capacity})";
 
         // 가격이 아직 0이면 임시 테스트 구매를 무료로 허용합니다.
         bool canPay = player != null && player.money >= data.Price;
-        buyButton.interactable = data.Price >= 0 && canPay;
+        buyButton.interactable = data.Price >= 0 && canPay && Managers.Ingredient.CanOrder(type);
     }
 
-    /// <summary>재료 하나의 가격을 지불하고 매장 재고를 한 개 늘립니다.</summary>
+    /// <summary>재료 하나를 구매해 배송 지점으로 보냅니다.</summary>
     private void BuyIngredient(Define.FoodIngredientType type)
     {
         if (Managers.Ingredient == null || player == null)
             return;
 
-        IngredientCatalog data = Managers.Ingredient.GetIngredientData(type);
+        IngredientData data = Managers.Ingredient.GetIngredientData(type);
         if (data == null || data.Price < 0)
             return;
+
+        if (!Managers.Ingredient.CanOrder(type))
+        {
+            RefreshMarket();
+            return;
+        }
 
         // 유료 구매는 먼저 잔액을 확인하고 차감해 재고 변경 알림 전에 결제를 확정합니다.
         if (data.Price > 0 && !player.TrySpendMoney(data.Price))
@@ -323,7 +477,7 @@ public class UI_MenuPopup : UI_Popup
             return;
         }
 
-        if (!Managers.Ingredient.AddIngredients(type, 1))
+        if (!Managers.Ingredient.Deliver(type))
         {
             // 재고 추가가 실패하면 앞에서 차감한 금액을 돌려줍니다.
             if (data.Price > 0)
@@ -341,6 +495,7 @@ public class UI_MenuPopup : UI_Popup
     {
         RefreshMarket();
         RefreshHireCandidates();
+        RefreshPlayerUpgrades();
     }
 
     #endregion

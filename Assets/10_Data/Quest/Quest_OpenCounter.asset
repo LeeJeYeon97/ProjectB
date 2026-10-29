@@ -16,6 +16,8 @@ MonoBehaviour:
   title: "\uCE74\uC6B4\uD130 \uAD6C\uB9E4\uD558\uAE30"
   description: "100\uC6D0\uC744 \uB0B4\uACE0 \uCE74\uC6B4\uD130\uB97C \uAD6C\uB9E4\uD558\uC138\uC694."
   objectiveType: 0
-  targetType: 11
+  targetType: 999
+  anyUnlockTarget: 0
+  unlockTarget: {fileID: 11400000, guid: ba617c9c7fdd6644c8ed413dd8f4dff5, type: 2}
   targetAmount: 1
   rewardMoney: 100

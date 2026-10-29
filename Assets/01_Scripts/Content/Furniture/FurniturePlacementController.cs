@@ -27,7 +27,7 @@ public class FurniturePlacementController : MonoBehaviour
     }
 
     [Header("가구와 바닥 설정")]
-    [SerializeField] private FurnitureCatalog catalog;
+    [SerializeField] private FurnitureData catalog;
     [SerializeField] private LayerMask floorMask = 1;
     [SerializeField] private float floorLevel;
     [SerializeField, Min(1f)] private float maxRayDistance = 100f;
@@ -69,7 +69,7 @@ public class FurniturePlacementController : MonoBehaviour
     private void Start()
     {
         if (catalog == null)
-            catalog = Managers.Resource.LoadResource<FurnitureCatalog>("FurnitureCatalog");
+            catalog = Managers.Resource.LoadResource<FurnitureData>("FurnitureCatalog");
 
         colorBlock = new MaterialPropertyBlock();
         CreatePlacementControls();
