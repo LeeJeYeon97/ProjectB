@@ -114,6 +114,8 @@ classDiagram
 | [ReviewManager](../Assets/01_Scripts/Managers/Content/ReviewManager.cs) | 누적 리뷰 수·별점 합계·결제 배율 | `CreateReview`가 통계 저장과 결제 결과 생성까지 수행. 단순 조회 함수가 아님 |
 | [FurniturePlacementController](../Assets/01_Scripts/Content/Furniture/FurniturePlacementController.cs) | 구매 재고·입력·검사·미리보기·UI 생성·배치 저장 | `BuyFurniture`, `GetInventoryCount`, `BeginPlacement`, `CancelPlacement`. BeginPlacement의 ID 인수는 현재 즉시 선택에 사용하지 않고 보유 목록을 엶 |
 
+생성된 해금 프리팹 내부의 `UnlockStation`은 비활성 자식까지 `UnlockManager`가 등록한다. `ToggleActive` 발판은 활성화할 대상 외에 숨길 벽을 지정할 수 있으며 크기 연출을 끌 수 있다. 맵 확장 NavMesh와 영속 저장은 별도 보강이 필요하다. 관련 작업: [DEV-025](BACKLOG.md).
+
 매니저는 목록/전역 규칙을, 컨트롤러는 개별 오브젝트의 실제 동작을 주로 맡는다. 다만 가구 컨트롤러는 UI·구매·저장까지 맡고, CustomerController는 리뷰 입력과 연출까지 가진다. 책임 분리가 완전한 구조로 간주하지 않는다. 한 시스템을 여러 Manager로 무조건 분할하지 말라는 기존 규칙도 유지한다.
 
 창고와 배송: `IngredientManager`가 용량·배송·반환을 관리하고 `Storage`와 `DeliveryZone`이 씬 범위를 제공한다. 활성 창고가 있을 때 기본 용량은 15이며 창고별 추가 용량 기본값은 0이다. 배송 지점은 최대 12개만 표시하고 나머지 물건은 비활성 상태로 대기하며 빈자리에 순서대로 표시한다. 표시된 물건의 위치는 유지해 직원 예약 대상을 움직이지 않는다. `CarryIngredient` 직원 업무는 배송 물건 예약 후 창고 이동과 입고를 수행하고, 만재 시 배송 지점에 반환한다. 재료 에셋은 임시 상자 프리팹을 직접 참조한다.
@@ -234,3 +236,13 @@ stateDiagram-v2
 | 퀘스트 | QuestData/Catalog + 행동 보고 | Menu/노드/가구 매핑, 저장 정책, UI_Quest의 구독과 완료 연출 종료 알림. QuestManager는 Core 승인 대상 |
 
 구체적인 결함과 미검증 위험은 [DEVELOPMENT_STATUS](DEVELOPMENT_STATUS.md), 처리 순서는 [BACKLOG](BACKLOG.md)에서 관리한다. 여기서 새 구조로 변경하기로 결정한 것은 아니다.
+
+## 개별 조리 기계 성장
+
+`MachineUpgradeData`는 단계별 가격과 강화 후 전체 조리 시간 배율을 제공한다. `UnlockNodeData.MachineUpgradeId`는 해금 생성 기계의 저장 식별자이며 `UnlockManager`가 생성 직후 `MenuMachine`에 전달한다. 씬에 직접 놓는 기계는 `MenuMachine.upgradeId`를 설정한다. 서로 다른 기계는 변하지 않는 고유 ID를 써야 하며 기존 ID 변경 시 저장 연속성이 끊긴다. `GrowthManager`는 `ProjectB.Growth.Machines`에 ID별 단계를 별도로 저장하고 선택 기계만 초기화한다. `MenuMachine.Duration`은 레시피 시간에 기계 배율을 곱하고, 플레이어와 직원의 기존 작업 경로가 각 작업자 배율을 곱한 뒤 최소 제조 시간을 적용한다. `UI_MachineUpgrade`는 기계 프리팹에 사전 배치된 근접 UI를 Bind해 구매와 테스트 초기화(환불 없음)를 호출한다. 해금 자체의 저장은 아직 없다.
+
+## 개별 창고 용량 성장
+
+`StorageUpgradeData`는 단계별 가격과 해당 단계의 전체 추가 용량을 정의한다. 각 `Storage`는 씬 또는 맵의 창고 인스턴스마다 중복되지 않고 변경되지 않는 `upgradeId`를 사용한다. 현재 `Pocha_Level1` 창고 ID는 `level1.storage.01`이다. `GrowthManager`는 `ProjectB.Growth.Storages`에 ID별 단계를 저장한다. 공용 용량은 활성 창고가 있을 때 기본 15에 각 활성 창고의 기본 추가 용량 및 강화 추가 용량을 합산한다. 강화·초기화는 `IngredientManager.RefreshStorageCapacity`를 통해 시장 화면과 배송 대기 업무에 변경을 알린다. 초기화로 재고가 새 용량을 초과해도 재료를 삭제하지 않고 추가 입고를 거부한다. 프리팹의 `UI_StorageUpgrade`는 근접 버튼·구매·환불 없는 테스트 초기화를 제공한다.
+
+`UnlockStation` 편집 전용 Gizmo는 SpawnPrefab 대상 안의 비활성 자식 발판까지 탐색해 중첩 SpawnPrefab의 메시를 예상 위치에 표시한다. ToggleActive의 비활성 대상 내부 발판도 미리 그리며 프리팹 참조가 순환하면 해당 경로의 재진입을 중단한다. 실제 Scene View 표시 검증은 [개발 상태](DEVELOPMENT_STATUS.md)를 따른다.

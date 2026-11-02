@@ -7,7 +7,24 @@ public class Storage : InteractableBase
 
     [Tooltip("공용 기본 용량 외에 이 창고가 추가하는 용량입니다. 증가 수치 확정 전에는 0으로 둡니다.")]
     [SerializeField, Min(0)] private int capacity;
-    public int Capacity => capacity;
+    /// <summary>기본 추가 용량과 이 창고의 강화 용량을 합산합니다.</summary>
+    public int Capacity
+    {
+        get
+        {
+            int extra = 0;
+            if (upgradeData != null) extra = upgradeData.GetExtraCapacity(UpgradeLevel);
+            return capacity + extra;
+        }
+    }
+
+    [Header("개별 창고 강화")]
+    [SerializeField] private StorageUpgradeData upgradeData;
+    [Tooltip("각 창고마다 중복되지 않는 저장용 ID를 설정합니다.")]
+    [SerializeField] private string upgradeId;
+    public StorageUpgradeData UpgradeData => upgradeData;
+    public string UpgradeId => upgradeId;
+    public int UpgradeLevel => Managers.Growth.GetStorageLevel(upgradeId);
 
     [Tooltip("한 번에 재료 한 개를 입고하는 시간입니다.")]
     [SerializeField, Min(0.01f)] private float depositInterval = 0.2f;

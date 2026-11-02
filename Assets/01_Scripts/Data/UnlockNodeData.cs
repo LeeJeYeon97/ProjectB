@@ -6,6 +6,10 @@ public class UnlockNodeData : ScriptableObject
     [Header("선행 해금 데이터")]
     [SerializeField] private UnlockNodeData prerequisiteData;
 
+    [Tooltip("생성하는 기계의 저장용 고유 ID입니다. 기계 해금 데이터에서만 설정합니다.")]
+    [SerializeField] private string machineUpgradeId;
+    public string MachineUpgradeId => machineUpgradeId;
+
     [Header("가격")]
     [SerializeField] private int price = 100;
 

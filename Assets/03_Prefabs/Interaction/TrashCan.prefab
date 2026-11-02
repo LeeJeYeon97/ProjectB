@@ -159,7 +159,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d9ba0707d4520714bae83146830a2e89, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::TrashCan
   interactionType: 0
   bubbleAnchor: {fileID: 0}
@@ -1412,6 +1412,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 61447798797904579}
+  - component: {fileID: 7831067883814108924}
   m_Layer: 0
   m_Name: TrashArea
   m_TagString: Untagged
@@ -1440,6 +1441,24 @@ Transform:
   - {fileID: 3392696253768253147}
   m_Father: {fileID: 6623343872767484615}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &7831067883814108924
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9131934834882683936}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d25ee641cebad8f4ebabdfcf9cc092ca, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::BoxAreaDisplay
+  areaCollider: {fileID: 454588567136066969}
+  fill: {fileID: 193236641669079831}
+  left: {fileID: 6588619493109473556}
+  right: {fileID: 108231567084658879}
+  front: {fileID: 885040096352860381}
+  back: {fileID: 3856063415578419217}
 --- !u!1 &9143900662601224530
 GameObject:
   m_ObjectHideFlags: 0

@@ -38,29 +38,7 @@ public class UnlockManager
         UnlockStation[] stations = Object.FindObjectsByType<UnlockStation>(FindObjectsInactive.Include);
         foreach (UnlockStation station in stations)
         {
-            if (!station.HasSettings)
-            {
-                station.gameObject.SetActive(false);
-                continue;
-            }
-
-            UnlockNodeData data = station.NodeData;
-            if (sceneStations.ContainsKey(data))
-            {
-                Debug.LogError($"[UnlockManager] 같은 해금 데이터가 여러 발판에 연결되었습니다: {data.name}", station);
-                station.gameObject.SetActive(false);
-                continue;
-            }
-
-            sceneStations.Add(data, station);
-            if (!unlockedData.Contains(data))
-            {
-                station.Setup();
-                if (station.UnlockType == UnlockType.ToggleActive)
-                {
-                    if (station.TargetSceneObject != null) station.TargetSceneObject.SetActive(false);
-                }
-            }
+            RegisterStation(station);
         }
 
         // 등록을 모두 마친 뒤 선행 발판 누락과 순환 참조를 검사합니다.
@@ -71,10 +49,41 @@ public class UnlockManager
         RefreshMapState();
     }
 
+    /// <summary>씬 발판과 생성된 맵 안의 발판을 같은 방식으로 등록합니다.</summary>
+    private void RegisterStation(UnlockStation station)
+    {
+        if (station == null) return;
+        if (!station.HasSettings)
+        {
+            station.gameObject.SetActive(false);
+            return;
+        }
+
+        UnlockNodeData data = station.NodeData;
+        if (sceneStations.ContainsKey(data))
+        {
+            Debug.LogError($"[UnlockManager] 같은 해금 데이터가 여러 발판에 연결되었습니다: {data.name}", station);
+            station.gameObject.SetActive(false);
+            return;
+        }
+
+        sceneStations.Add(data, station);
+        if (!unlockedData.Contains(data))
+        {
+            station.Setup();
+            if (station.UnlockType == UnlockType.ToggleActive)
+            {
+                if (station.TargetSceneObject != null) station.TargetSceneObject.SetActive(false);
+            }
+        }
+    }
+
     /// <summary>해금 여부와 선행 데이터에 따라 발판과 대상을 갱신합니다.</summary>
     public void RefreshMapState()
     {
-        foreach (KeyValuePair<UnlockNodeData, UnlockStation> pair in sceneStations)
+        // 대상을 생성하면서 새 발판이 등록되어도 현재 순회가 깨지지 않게 복사합니다.
+        var stations = new List<KeyValuePair<UnlockNodeData, UnlockStation>>(sceneStations);
+        foreach (KeyValuePair<UnlockNodeData, UnlockStation> pair in stations)
         {
             UnlockNodeData data = pair.Key;
             UnlockStation station = pair.Value;
@@ -147,8 +156,16 @@ public class UnlockManager
                 Debug.LogError($"[UnlockManager] 해금할 프리팹을 생성하지 못했습니다: {data.name}", station);
                 return;
             }
+            // 각 발판의 고유 ID를 전달해 같은 프리팹도 독립적으로 성장합니다.
+            MenuMachine machine = target.GetComponentInChildren<MenuMachine>(true);
+            if (machine != null) machine.SetUpgradeId(data.MachineUpgradeId);
             target.name = data.name;
             spawnedObjects[data] = target;
+            // 런타임에 생성된 맵의 꺼진 구역까지 찾아 후속 해금 발판을 등록합니다.
+            foreach (UnlockStation child in target.GetComponentsInChildren<UnlockStation>(true))
+            {
+                RegisterStation(child);
+            }
             if (!immediate)
             {
                 target.transform.localScale = Vector3.zero;
@@ -161,14 +178,19 @@ public class UnlockManager
         {
             GameObject target = station.TargetSceneObject;
             if (target == null) return;
+            if (station.HideOnUnlock != null) station.HideOnUnlock.SetActive(false);
             if (target.activeSelf) return;
             target.SetActive(true);
-            if (!immediate)
+            if (!immediate && station.AnimateTarget)
             {
                 target.transform.localScale = Vector3.zero;
                 target.transform.DOScale(Vector3.one, 0.3f)
                     .SetEase(Ease.OutCubic)
                     .OnComplete(() => RefreshObstacle(target));
+            }
+            else
+            {
+                RefreshObstacle(target);
             }
         }
     }

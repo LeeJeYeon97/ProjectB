@@ -12,6 +12,15 @@ public class GrowthManager
     private const int CurrentSaveVersion = 3;
     private const string CatalogAddress = "GrowthCatalog";
 
+    private const string StorageSaveKey = "ProjectB.Growth.Storages";
+    private readonly Dictionary<string, int> storageLevels = new Dictionary<string, int>();
+    private bool storageLevelsLoaded;
+
+    private const string MachineSaveKey = "ProjectB.Growth.Machines";
+    private readonly Dictionary<string, int> machineLevels = new Dictionary<string, int>();
+    private bool machineLevelsLoaded;
+
+
     [SerializeField] private GrowthData catalog;
     private readonly Dictionary<string, int> levels = new Dictionary<string, int>();
 
@@ -221,6 +230,140 @@ public class GrowthManager
 
     }
 
+    #region 개별 조리 기계 강화
+
+
+    /// <summary>저장된 기계 단계를 최초 조회 시 한 번 읽습니다.</summary>
+    private void LoadMachineLevels()
+    {
+        if (machineLevelsLoaded) return;
+        machineLevelsLoaded = true;
+        GrowthSaveData data = Managers.PlayerPrefs.GetJson<GrowthSaveData>(MachineSaveKey);
+        if (data == null) return;
+        if (data.version != 1 || data.items == null) return;
+        foreach (GrowthSaveItem item in data.items)
+        {
+            if (item == null || string.IsNullOrEmpty(item.id) || item.level <= 0) continue;
+            machineLevels[item.id] = item.level;
+        }
+    }
+
+    /// <summary>고유 ID에 해당하는 기계의 강화 단계를 반환합니다.</summary>
+    public int GetMachineLevel(string id)
+    {
+        if (string.IsNullOrWhiteSpace(id)) return 0;
+        LoadMachineLevels();
+        if (machineLevels.TryGetValue(id, out int level)) return level;
+        return 0;
+    }
+
+    /// <summary>기계 설정과 잔액을 확인하고 선택한 기계만 강화합니다.</summary>
+    public bool TryUpgradeMachine(MenuMachine machine)
+    {
+        if (machine == null || machine.UpgradeData == null) return false;
+        string id = machine.UpgradeId;
+        if (string.IsNullOrWhiteSpace(id)) return false;
+        int level = GetMachineLevel(id);
+        if (!machine.UpgradeData.TryGetStep(level, out MachineUpgradeStep step)) return false;
+        PlayerController player = PlayerController.Instance;
+        if (player == null || !player.TrySpendMoney(step.Price)) return false;
+        machineLevels[id] = level + 1;
+        SaveMachineLevels();
+        OnChanged?.Invoke();
+        return true;
+    }
+
+    /// <summary>테스트용으로 선택한 기계의 저장 단계만 초기화하며 재화는 환불하지 않습니다.</summary>
+    public void ResetMachineLevel(string id)
+    {
+        if (string.IsNullOrWhiteSpace(id)) return;
+        LoadMachineLevels();
+        machineLevels.Remove(id);
+        SaveMachineLevels();
+        OnChanged?.Invoke();
+    }
+
+    /// <summary>기계별 강화 단계를 기존 플레이어 성장과 별도 키에 저장합니다.</summary>
+    private void SaveMachineLevels()
+    {
+        GrowthSaveData data = new GrowthSaveData { version = 1 };
+        foreach (KeyValuePair<string, int> pair in machineLevels)
+            data.items.Add(new GrowthSaveItem { id = pair.Key, level = pair.Value });
+        Managers.PlayerPrefs.SetJson(MachineSaveKey, data);
+    }
+
+    #endregion
+    #region 개별 창고 강화
+
+    /// <summary>저장된 창고별 단계를 최초 조회할 때 한 번 읽습니다.</summary>
+    private void LoadStorageLevels()
+    {
+        if (storageLevelsLoaded) return;
+        storageLevelsLoaded = true;
+        GrowthSaveData data = Managers.PlayerPrefs.GetJson<GrowthSaveData>(StorageSaveKey);
+        if (data == null) return;
+        if (data.version != 1) return;
+        if (data.items == null) return;
+        foreach (GrowthSaveItem item in data.items)
+        {
+            if (item == null) continue;
+            if (string.IsNullOrWhiteSpace(item.id)) continue;
+            if (item.level <= 0) continue;
+            storageLevels[item.id] = item.level;
+        }
+    }
+
+    /// <summary>고유 ID에 해당하는 창고의 강화 단계를 반환합니다.</summary>
+    public int GetStorageLevel(string id)
+    {
+        if (string.IsNullOrWhiteSpace(id)) return 0;
+        LoadStorageLevels();
+        if (storageLevels.TryGetValue(id, out int level)) return level;
+        return 0;
+    }
+
+    /// <summary>선택한 활성 창고의 다음 단계를 구매하고 용량 변경을 알립니다.</summary>
+    public bool TryUpgradeStorage(Storage storage)
+    {
+        if (storage == null) return false;
+        if (!storage.isActiveAndEnabled) return false;
+        if (storage.UpgradeData == null) return false;
+        string id = storage.UpgradeId;
+        if (string.IsNullOrWhiteSpace(id)) return false;
+        int level = GetStorageLevel(id);
+        if (!storage.UpgradeData.TryGetStep(level, out StorageUpgradeStep step)) return false;
+        PlayerController player = PlayerController.Instance;
+        if (player == null) return false;
+        if (!player.TrySpendMoney(step.Price)) return false;
+        storageLevels[id] = level + 1;
+        SaveStorageLevels();
+        Managers.Ingredient.RefreshStorageCapacity(storage);
+        OnChanged?.Invoke();
+        return true;
+    }
+
+    /// <summary>선택 창고의 단계를 초기화합니다. 보유 재료와 사용한 재화는 변경하지 않습니다.</summary>
+    public void ResetStorageLevel(Storage storage)
+    {
+        if (storage == null) return;
+        if (string.IsNullOrWhiteSpace(storage.UpgradeId)) return;
+        LoadStorageLevels();
+        storageLevels.Remove(storage.UpgradeId);
+        SaveStorageLevels();
+        Managers.Ingredient.RefreshStorageCapacity(storage);
+        OnChanged?.Invoke();
+    }
+
+    /// <summary>창고별 강화 단계만 별도 저장 키에 기록합니다.</summary>
+    private void SaveStorageLevels()
+    {
+        GrowthSaveData data = new GrowthSaveData { version = 1 };
+        foreach (KeyValuePair<string, int> pair in storageLevels)
+            data.items.Add(new GrowthSaveItem { id = pair.Key, level = pair.Value });
+        Managers.PlayerPrefs.SetJson(StorageSaveKey, data);
+    }
+
+    #endregion
     /// <summary>현재 업그레이드 단계를 JSON으로 저장합니다.</summary>
     private void Save()
     {

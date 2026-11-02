@@ -12,8 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 10135eeae28261643bbb4606f10deff0, type: 3}
   m_Name: UnlockNode_BeerMachine
   m_EditorClassIdentifier: Assembly-CSharp::UnlockNodeData
-  groupType: 6
-  index: 0
   prerequisiteData: {fileID: 11400000, guid: 8e3ef8e26fa3629448fed9d8793cede6, type: 2}
+  machineUpgradeId: level1.beer_machine.01
   price: 100
   targetPrefab: {fileID: 6879786950960892166, guid: ef7bf852e8d95ed4ca7f731d3b252ff8, type: 3}

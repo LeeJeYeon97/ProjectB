@@ -12,8 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 10135eeae28261643bbb4606f10deff0, type: 3}
   m_Name: UnlockNode_UdonMachine
   m_EditorClassIdentifier: Assembly-CSharp::UnlockNodeData
-  groupType: 9
-  index: 0
   prerequisiteData: {fileID: 11400000, guid: ba617c9c7fdd6644c8ed413dd8f4dff5, type: 2}
+  machineUpgradeId: level1.udon_machine.01
   price: 100
   targetPrefab: {fileID: 1870333857940077012, guid: ae8faeb05d67ac14eb04e0f55d9ffeb6, type: 3}

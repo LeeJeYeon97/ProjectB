@@ -327,6 +327,15 @@ public class IngredientManager
         OnIngredientsChanged?.Invoke();
     }
 
+    /// <summary>활성 창고의 강화 변경을 시장 화면과 배송 대기 업무에 알립니다.</summary>
+    public void RefreshStorageCapacity(Storage storage)
+    {
+        if (storage == null) return;
+        if (!storages.Contains(storage)) return;
+        OnIngredientsChanged?.Invoke();
+        // 강화로 공간이 생기면 기다리던 재료 운반을 다시 요청합니다.
+        RequestDeliveryWork();
+    }
     /// <summary>시장 주문이 가능한 창고 공간과 배송 설정이 있는지 확인합니다.</summary>
     public bool CanOrder(Define.FoodIngredientType type)
     {

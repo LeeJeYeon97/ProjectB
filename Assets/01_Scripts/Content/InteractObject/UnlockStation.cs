@@ -2,6 +2,9 @@ using DG.Tweening;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+#if UNITY_EDITOR
+using System.Collections.Generic;
+#endif
 
 public class UnlockStation : InteractableBase
 {
@@ -11,6 +14,10 @@ public class UnlockStation : InteractableBase
     [Header("해금할 대상")]
     [SerializeField] private Define.UnlockType unlockType = Define.UnlockType.SpawnPrefab;
     [SerializeField] private GameObject targetSceneObject;
+    [Tooltip("해금할 때 함께 숨길 벽이나 장애물입니다.")]
+    [SerializeField] private GameObject hideOnUnlock;
+    [Tooltip("활성화할 대상의 크기를 늘리는 연출을 사용할지 설정합니다.")]
+    [SerializeField] private bool animateTarget = true;
     [SerializeField] private Transform targetSpawnPoint;
     [Tooltip("이 발판을 해금했을 때 가게 영업을 시작합니다.")]
     [SerializeField] private bool openShopOnUnlock;
@@ -54,6 +61,8 @@ public class UnlockStation : InteractableBase
     public UnlockNodeData NodeData => nodeData;
     public Define.UnlockType UnlockType => unlockType;
     public GameObject TargetSceneObject => targetSceneObject;
+    public GameObject HideOnUnlock => hideOnUnlock;
+    public bool AnimateTarget => animateTarget;
     public Vector3 SpawnPosition
     {
         get
@@ -404,6 +413,21 @@ public class UnlockStation : InteractableBase
             Gizmos.DrawMesh(filter.sharedMesh);
         }
 
+        // 비활성 구역의 발판은 OnDrawGizmos가 호출되지 않으므로 여기서 대신 표시합니다.
+        UnlockStation[] stations = targetSceneObject.GetComponentsInChildren<UnlockStation>(true);
+        foreach (UnlockStation station in stations)
+        {
+            if (station.gameObject.activeInHierarchy) continue;
+            if (station.unlockType != Define.UnlockType.SpawnPrefab) continue;
+            if (station.nodeData == null) continue;
+            GameObject childPrefab = station.nodeData.TargetPrefab;
+            if (childPrefab == null) continue;
+
+            Matrix4x4 childMatrix = Matrix4x4.TRS(station.SpawnPosition, station.SpawnRotation, childPrefab.transform.localScale);
+            Gizmos.color = new Color(0.2f, 0.85f, 1f, 0.35f);
+            DrawPrefabContents(childPrefab, childMatrix, new HashSet<GameObject>());
+        }
+
         Gizmos.matrix = previousMatrix;
         Gizmos.color = previousColor;
     }
@@ -448,12 +472,27 @@ public class UnlockStation : InteractableBase
             return;
         }
 
-        // 런타임 생성과 같은 위치와 회전을 사용하고 프리팹 루트의 크기를 유지합니다.
+        // 실제 생성 위치에서 시작해 프리팹 안의 해금 발판까지 차례로 확인합니다.
         Matrix4x4 rootMatrix = Matrix4x4.TRS(SpawnPosition, SpawnRotation, prefab.transform.localScale);
-        Matrix4x4 prefabInverse = prefab.transform.worldToLocalMatrix;
         Matrix4x4 previousMatrix = Gizmos.matrix;
         Color previousColor = Gizmos.color;
         Gizmos.color = new Color(0.2f, 0.85f, 1f, 0.35f);
+
+        DrawPrefabContents(prefab, rootMatrix, new HashSet<GameObject>());
+
+        // 다른 Gizmo의 표시 설정에 영향을 주지 않도록 원래 값을 복원합니다.
+        Gizmos.matrix = previousMatrix;
+        Gizmos.color = previousColor;
+    }
+
+    /// <summary>프리팹의 메시와 내부 발판이 나중에 생성할 프리팹을 함께 표시합니다.</summary>
+    private static void DrawPrefabContents(GameObject prefab, Matrix4x4 rootMatrix, HashSet<GameObject> parents)
+    {
+        if (prefab == null || !prefab.activeSelf) return;
+        // 데이터가 서로를 다시 가리키는 경우 무한 반복하지 않습니다.
+        if (!parents.Add(prefab)) return;
+
+        Matrix4x4 sourceToPreview = rootMatrix * prefab.transform.worldToLocalMatrix;
 
         // 활성화된 메시와 렌더러만 표시하고 자식의 상대 위치, 회전, 크기를 반영합니다.
         MeshFilter[] filters = prefab.GetComponentsInChildren<MeshFilter>();
@@ -475,13 +514,28 @@ public class UnlockStation : InteractableBase
                 continue;
             }
 
-            Gizmos.matrix = rootMatrix * prefabInverse * filter.transform.localToWorldMatrix;
+            Gizmos.matrix = sourceToPreview * filter.transform.localToWorldMatrix;
             Gizmos.DrawMesh(filter.sharedMesh);
         }
 
-        // 다른 Gizmo의 표시 설정에 영향을 주지 않도록 원래 값을 복원합니다.
-        Gizmos.matrix = previousMatrix;
-        Gizmos.color = previousColor;
+        // 맵 확장처럼 부모가 비활성인 구역의 발판도 편집 중에는 찾습니다.
+        UnlockStation[] stations = prefab.GetComponentsInChildren<UnlockStation>(true);
+        foreach (UnlockStation station in stations)
+        {
+            if (station.unlockType != Define.UnlockType.SpawnPrefab) continue;
+            if (station.nodeData == null) continue;
+            GameObject childPrefab = station.nodeData.TargetPrefab;
+            if (childPrefab == null) continue;
+
+            // 실제 생성물은 발판의 자식이 아니므로 발판 부모의 크기는 위치에만 반영합니다.
+            Vector3 position = sourceToPreview.MultiplyPoint3x4(station.SpawnPosition);
+            Quaternion rotation = sourceToPreview.rotation * station.SpawnRotation;
+            Matrix4x4 childMatrix = Matrix4x4.TRS(position, rotation, childPrefab.transform.localScale);
+            DrawPrefabContents(childPrefab, childMatrix, parents);
+        }
+
+        // 같은 프리팹을 다른 발판에서 다시 사용하는 것은 허용합니다.
+        parents.Remove(prefab);
     }
 #endif
 

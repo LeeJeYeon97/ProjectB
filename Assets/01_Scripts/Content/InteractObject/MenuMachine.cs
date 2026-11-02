@@ -15,6 +15,14 @@ public class MenuMachine : InteractableBase
     /// <summary>현재 레시피에서 설정한 제조 시간을 반환합니다.</summary>
     public override float Duration => GetProductionDuration();
 
+    [Header("기계 강화")]
+    [SerializeField] private MachineUpgradeData upgradeData;
+    [Tooltip("씬에 직접 배치할 때 사용하는 고유 ID입니다. 해금 생성 기계는 해금 데이터에서 전달합니다.")]
+    [SerializeField] private string upgradeId;
+    public MachineUpgradeData UpgradeData => upgradeData;
+    public string UpgradeId => upgradeId;
+    public int UpgradeLevel => Managers.Growth.GetMachineLevel(upgradeId);
+
     [Header("메뉴 생성 위치")]
     [SerializeField] private Transform spawnPoint;
 
@@ -111,11 +119,20 @@ public class MenuMachine : InteractableBase
         return Mathf.Max(MinimumProductionDuration, scaledDuration);
     }
 
+    /// <summary>해금 지점이 생성한 기계에 고유 식별자를 전달합니다.</summary>
+    public void SetUpgradeId(string id)
+    {
+        upgradeId = id;
+    }
+
     /// <summary>이 기계에 설정된 음식 데이터의 제조 시간을 작업 시간으로 사용합니다.</summary>
     protected float GetProductionDuration()
     {
         float baseDuration = recipe != null ? recipe.CookingDuration : 0f;
-        return Mathf.Max(MinimumProductionDuration, baseDuration);
+        float machineScale = 1f;
+        if (upgradeData != null) machineScale = upgradeData.GetTimeScale(UpgradeLevel);
+        // 작업자 배율을 곱한 뒤 각 작업 경로에서 최소 시간을 적용합니다.
+        return baseDuration * machineScale;
     }
 
     /// <summary>완성품이 메뉴 분류이고 이 기계의 레시피 연결이 올바른지 확인합니다.</summary>
