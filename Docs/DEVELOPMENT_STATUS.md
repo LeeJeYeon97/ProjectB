@@ -2,6 +2,8 @@
 
 ## 기준과 읽는 순서
 
+- 2026-11-03 Unity CLI 환경: 기준 SHA `ef3a7def495efdb0764ae25feb08d3890941f4dc`. `unity self-update --yes`로 1.0.0-beta.12에서 1.0.0-beta.15로 업데이트했고 `unity --version`과 `unity self-update --check`로 설치 버전과 최신 버전이 일치함을 확인했다. 최초 샌드박스 확인은 배포 서버 DNS 조회에 실패했으며 샌드박스 밖에서 업데이트와 최신 버전 확인에 성공했다. ProjectB(Unity 6000.5.10f1)를 지정한 `unity status`는 `STATUS_NO_INSTANCES`를 반환했다. `unity pipeline editors`는 실행 중인 ProjectB와 Pipeline 0.8.0-exp.1을 찾았으나 서버에 연결하지 못했다. 컴파일·빌드·플레이는 미검증이다.
+
 - 분석/기록일: **2026-10-27 (Asia/Seoul)**.
 - 2026-10-28 해금 발판 편집 기능: 기준 SHA `7cf8ca596a2f6583645133ac383765d2d20e0c0c` + 기존 작업 트리 변경에 `UnlockStation.cs`의 Scene 뷰 메시 미리보기를 추가했다. SpawnPrefab은 데이터의 프리팹을 하늘색으로, ToggleActive는 연결된 씬 오브젝트를 주황색으로 표시한다. Unity MCP로 프로젝트 경로와 해금 프리팹 7개의 MeshFilter를 확인했다. 새 컴파일 완료와 Scene 뷰의 실제 표시·위치는 미검증이다. Unity CLI는 1.0.0-beta.12이며 beta.14 업데이트는 승인 대기 중이다.
 - 2026-10-28 생성 위치 수정: 같은 기준 SHA와 작업 트리에서 `UnlockStation`은 축소 연출 전에 생성 위치와 회전을 보관한다. 자식 `targetSpawnPoint`가 축소로 발판 위치에 모여도 원래 위치를 사용한다. 연결된 ProjectB Unity 6000.5.10f1에서 Pipeline `recompile`은 완료, 오류 0건이다. 실제 해금 플레이와 Scene 미리보기 표시는 미검증이다. CLI 1.0.0-beta.12는 업데이트하지 않았다.
